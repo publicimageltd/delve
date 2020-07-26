@@ -721,7 +721,7 @@ Calling `delve-toggle' switches to this buffer.")
 	(delete-other-windows))
     (delve)))
 
-(bind-key "<f2>" 'delve-toggle)
+;; (bind-key "<f2>" 'delve-toggle)
 
 (provide 'delve)
 ;;; delve.el ends here
