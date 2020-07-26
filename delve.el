@@ -393,7 +393,7 @@ specific query for special usecases."
   "Return the last 10 modified ZETTEL."
   (seq-take (delve-query-sort-by-mtime zettel) 10))
 
-;; Queries resulting in delve types:
+;; Databvase queries resulting in delve types:
 
 (defun delve-query-zettel-with-tag (tag)
   "Return a list of all zettel tagged TAG."
@@ -449,20 +449,33 @@ specific query for special usecases."
   "Populate the current delve buffer with a useful list of tags.
 If EMPTY-LIST is t, delete any items instead."
   (interactive "P")
-  (delve-start-with-list (current-buffer) (unless empty-list (delve-query-roam-tags)))
+  (lister-set-list (current-buffer) nil)
   (unless empty-list
     (when lister-highlight-mode
       (lister-unhighlight-item))
+    (delve-start-with-list (current-buffer) (delve-query-roam-tags))
+    ;; TODO
+    ;; 1. Klappt nicht
+    ;; 2. Da ist ein seltsamer Bug, wenn ich diese Anweisung
+    ;;   vor "delve-start-with-list" aufrufe. Hängt irgendwie mit dem
+    ;;   Footer/Header zusammen. Grr.
+    ;; (lister-insert (current-buffer) :point
+    ;; 		   (delve-make-search :name "Orphaned Pages"
+    ;; 				      :constraint [:where (null tags:tags)]))
     (lister-insert (current-buffer) :point
 		   (delve-make-search :name "10 Last Modified"
 				      :postprocess #'delve-query-last-10-modified))
     (lister-insert (current-buffer) :point
-		   (delve-make-search :name "10 Most Linked to"
+		   (delve-make-search :name "10 Most Linked To"
 				      :constraint [:order-by (desc backlinks)
 							     :limit 10]))
     (lister-insert (current-buffer) :point
-		   (delve-make-search :name "10 Most Linked from"
+		   (delve-make-search :name "10 Most Linked From"
 				      :constraint [:order-by (desc tolinks)
+							     :limit 10]))
+    (lister-insert (current-buffer) :point
+		   (delve-make-search :name "10 Most Linked"
+				      :constraint [:order-by (desc (+ backlinks tolinks))
 							     :limit 10]))
     (when lister-highlight-mode
       (lister-highlight-item)))
