@@ -26,16 +26,18 @@
 
 ;; * Dependencies
 
-;; add current buffer's directory to the load path:
-(require 'cl-lib)
-(cl-eval-when (eval)
-  (if (not (member default-directory load-path))
-      (add-to-list 'load-path default-directory)))
+;; ;; add current buffer's directory to the load path:
+;; (require 'cl-lib)
+;; (cl-eval-when (eval)
+;;   (if (not (member default-directory load-path))
+;;       (add-to-list 'load-path "home/jv/.emacs.d/lisp/git-")))
 
-(setq load-prefer-newer t)
+;;(setq load-prefer-newer t)
+
 (require 'lister)
 (require 'lister-highlight)
 (require 'org-roam)
+(require 'cl-lib)
 
 (declare-function all-the-icons-faicon "all-the-icons" (string) t)
 
