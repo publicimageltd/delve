@@ -433,27 +433,14 @@ specific query for special usecases."
 
 ;; Set or reset the global list of the buffer
 
-(defun delve-start-with-list (buf seq)
-  "Delete all items in BUF and start afresh with SEQ."
-  (lister-set-list buf seq)
-  (when seq
-    (lister-goto buf :first)))
-
-(defun delve-start-with-list-at-point (buf pos)
-  "In BUF, move the list to which POS belongs to the top."
-  (pcase-let ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
-    (delve-start-with-list buf (lister-get-all-data-tree buf beg end))))
-
 ;; Key "."
 (defun delve-initial-list (&optional empty-list)
   "Populate the current delve buffer with a useful list of tags.
 If EMPTY-LIST is t, delete any items instead."
   (interactive "P")
-  (lister-set-list (current-buffer) nil)
-  (unless empty-list
-    (when lister-highlight-mode
-      (lister-unhighlight-item))
-    (delve-start-with-list (current-buffer) (delve-query-roam-tags))
+  (if empty-list 
+      (lister-set-list (current-buffer) nil)
+    (lister-set-list (current-buffer) (delve-query-roam-tags))
     ;; TODO
     ;; 1. Klappt nicht
     ;; 2. Da ist ein seltsamer Bug, wenn ich diese Anweisung
@@ -462,25 +449,23 @@ If EMPTY-LIST is t, delete any items instead."
     ;; (lister-insert (current-buffer) :point
     ;; 		   (delve-make-search :name "Orphaned Pages"
     ;; 				      :constraint [:where (null tags:tags)]))
-    (lister-insert (current-buffer) :point
+    (lister-insert (current-buffer) :first
 		   (delve-make-search :name "10 Last Modified"
 				      :postprocess #'delve-query-last-10-modified))
-    (lister-insert (current-buffer) :point
+    (lister-insert (current-buffer) :first
 		   (delve-make-search :name "10 Most Linked To"
 				      :constraint [:order-by (desc backlinks)
 							     :limit 10]))
-    (lister-insert (current-buffer) :point
+    (lister-insert (current-buffer) :first
 		   (delve-make-search :name "10 Most Linked From"
 				      :constraint [:order-by (desc tolinks)
 							     :limit 10]))
-    (lister-insert (current-buffer) :point
+    (lister-insert (current-buffer) :first
 		   (delve-make-search :name "10 Most Linked"
 				      :constraint [:order-by (desc (+ backlinks tolinks))
 							     :limit 10]))
-    (when lister-highlight-mode
-      (lister-highlight-item)))
   (when (equal (window-buffer) (current-buffer))
-    (recenter)))
+    (recenter))))
 
 ;; Key "C-l"
 (defun delve-sublist-to-top ()
@@ -488,7 +473,10 @@ If EMPTY-LIST is t, delete any items instead."
   (interactive)
   (unless lister-local-marker-list
     (user-error "There are not items in this buffer"))
-  (delve-start-with-list-at-point (current-buffer) (point)))
+  (pcase-let* ((buf             (current-buffer))
+	       (`(,beg ,end _ ) (lister-sublist-boundaries buf (point))))
+    (lister-set-list buf (lister-get-all-data-tree buf beg end))
+    (lister-goto buf :first)))
 
 ;; Item action
 
