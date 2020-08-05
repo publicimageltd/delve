@@ -500,14 +500,16 @@ If EMPTY-LIST is t, delete any items instead."
 
 (defun delve-execute-search (search)
   "Return the results of executing SEARCH."
-  (let* ((res (delve-query-all-zettel
+  (if-let* ((res (delve-query-all-zettel
 	       (delve-search-result-subtype search)
 	       (delve-search-constraint search)
 	       (delve-search-args search)
 	       (delve-search-with-clause search))))
-    (if (and res (delve-search-postprocess search))
-	(funcall (delve-search-postprocess search) res)
-      res)))
+      (if (and res (delve-search-postprocess search))
+	  (funcall (delve-search-postprocess search) res)
+	res)
+    (message "Query returned no results")
+    nil))
 
 ;; Key "Enter"
 (defun delve-action (data)
