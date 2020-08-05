@@ -283,6 +283,13 @@ passed to MAKE-FN."
 
 ;; One query to rule them all:
 
+;; SELECT titles.file, titles.title, tags.tags, files.meta,
+;;        (SELECT COUNT() FROM links WHERE links.[from]=titles.file) AS tolinks,
+;; 	   (SELECT COUNT() FROM links WHERE links.[to] = titles.file) AS backlinks
+;; FROM  titles
+;; LEFT JOIN files USING (file)
+;; LEFT JOIN tags USING (file)
+
 (defun delve-query-all-zettel (&optional subtype constraints args with-clause)
   "Return all zettel items with all fields.
 The zettel objects will be of subtype SUBTYPE.
