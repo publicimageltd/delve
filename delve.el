@@ -448,14 +448,9 @@ If EMPTY-LIST is t, delete any items instead."
   (if empty-list 
       (lister-set-list (current-buffer) nil)
     (lister-set-list (current-buffer) (delve-query-roam-tags))
-    ;; TODO
-    ;; 1. Klappt nicht
-    ;; 2. Da ist ein seltsamer Bug, wenn ich diese Anweisung
-    ;;   vor "delve-start-with-list" aufrufe. Hängt irgendwie mit dem
-    ;;   Footer/Header zusammen. Grr.
-    ;; (lister-insert (current-buffer) :first 
-    ;; 		   (delve-make-search :name "Orphaned Pages"
-    ;; 				      :constraint [:where (null tags:tags)]))
+    (lister-insert (current-buffer) :first 
+    		   (delve-make-search :name "Orphaned Pages"
+    				      :constraint [:where tags:tags :is :null]))
     (lister-insert (current-buffer) :first
 		   (delve-make-search :name "10 Last Modified"
 				      :postprocess #'delve-query-last-10-modified))
