@@ -489,14 +489,31 @@ If EMPTY-LIST is t, delete any items instead."
 	(lister-insert-sublist-below buf pos zettel)
       (user-error "No zettel found matching tag %s" tag))))
 
-(defun delve-insert-links (buf pos zettel)
-  "In BUF, insert all backlinks to ZETTEL below the item at POS."
+(defun delve-insert-all-links (buf pos zettel)
+  "In BUF, insert all links to and from ZETTEL below the item at POS."
   (let* ((backlinks (delve-query-backlinks zettel))
 	 (tolinks   (delve-query-tolinks zettel))
 	 (all       (append backlinks tolinks)))
     (if all
 	(lister-insert-sublist-below buf pos all)
-      (user-error "No links found"))))
+      (user-error "Item has no backlinks and no links to other zettel"))))
+
+;; Key "<left>"
+(defun delve-insert-to-links (buf pos zettel)
+  "In BUF, insert all links to ZETTEL below the item at POS."
+  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
+  (if-let* ((tolinks (delve-query-tolinks zettel)))
+      (lister-insert-sublist-below buf pos tolinks)
+    (user-error "Item has no links")))
+
+;; Key "<right>"
+(defun delve-insert-backlinks (buf pos zettel)
+  "In BUF, insert all links from ZETTEL below the item at POS."
+  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
+  (if-let* ((fromlinks (delve-query-backlinks zettel)))
+      (lister-insert-sublist-below buf pos fromlinks)
+    (user-error "Item has no backlinks")))
+
 
 (defun delve-execute-search (search)
   "Return the results of executing SEARCH."
@@ -518,12 +535,10 @@ If EMPTY-LIST is t, delete any items instead."
       (lister-remove-sublist-below (current-buffer) (point))
     (cl-case (type-of data)
       (delve-tag     (delve-insert-zettel-with-tag (current-buffer) (point) (delve-tag-tag data)))
-      (delve-zettel  (delve-insert-links (current-buffer) (point) data))
+      (delve-zettel  (delve-insert-all-links (current-buffer) (point) data))
       (delve-search  (lister-insert-sublist-below
 		      (current-buffer) (point)
 		      (delve-execute-search data))))))
-
-;; Other key actions
 
 (defun delve-visit-zettel (buf pos visit-function)
   "In BUF, open zettel at POS using VISIT-FUNCTION."
@@ -674,7 +689,9 @@ minibuffer string, else add it."
     (define-key map (kbd "C-l") #'delve-sublist-to-top)
     (define-key map "."  #'delve-initial-list)
     (define-key map "i" #'delve-insert-zettel)
-    (define-key map (kbd "<delete>") #'delve-delete-item)
+    (define-key map (kbd "<delete>")  #'delve-delete-item)
+    (define-key map (kbd "<left>")   #'delve-insert-backlinks)
+    (define-key map (kbd "<right>")    #'delve-insert-to-links)
     map)
   "Key map for `delve-mode'.")
 
