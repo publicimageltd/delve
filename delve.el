@@ -43,15 +43,11 @@
 
 ;; * Item data types
 
-(cl-defstruct (delve-generic-item (:constructor delve-make-generic-item)))
-
-(cl-defstruct (delve-tag (:constructor delve-make-tag)
-		      (:include delve-generic-item))
+(cl-defstruct (delve-tag (:constructor delve-make-tag))
   tag
   count)
 
-(cl-defstruct (delve-zettel (:constructor delve-make-zettel)
-			 (:include delve-generic-item))
+(cl-defstruct (delve-zettel (:constructor delve-make-zettel))
   title
   file
   tags
