@@ -446,7 +446,7 @@ If EMPTY-LIST is t, delete any items instead."
     ;; 2. Da ist ein seltsamer Bug, wenn ich diese Anweisung
     ;;   vor "delve-start-with-list" aufrufe. Hängt irgendwie mit dem
     ;;   Footer/Header zusammen. Grr.
-    ;; (lister-insert (current-buffer) :point
+    ;; (lister-insert (current-buffer) :first 
     ;; 		   (delve-make-search :name "Orphaned Pages"
     ;; 				      :constraint [:where (null tags:tags)]))
     (lister-insert (current-buffer) :first
@@ -653,11 +653,10 @@ minibuffer string, else add it."
 (defun delve-delete-item ()
   "Delete item at point."
   (interactive)
-  (if (lister-marked-items (current-buffer))
-      (lister-remove-marked-items (current-buffer))
-    (lister-remove (current-buffer) :point))
-  (when lister-highlight-mode
-    (lister-highlight-mode)))
+  (lister-display-transaction (current-buffer)
+    (if (lister-marked-items (current-buffer))
+	(lister-remove-marked-items (current-buffer))
+      (lister-remove (current-buffer) :point))))
 
 ;; * Delve Mode
 
