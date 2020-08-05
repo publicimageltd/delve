@@ -474,9 +474,11 @@ If EMPTY-LIST is t, delete any items instead."
   (unless lister-local-marker-list
     (user-error "There are not items in this buffer"))
   (pcase-let* ((buf             (current-buffer))
+	       (lister-display-transaction-p t)
 	       (`(,beg ,end _ ) (lister-sublist-boundaries buf (point))))
-    (lister-set-list buf (lister-get-all-data-tree buf beg end))
-    (lister-goto buf :first)))
+    (lister-sensor-leave buf)
+    (lister-set-list buf (lister-get-all-data-tree buf beg end)))
+  (lister-goto (current-buffer) :first))
 
 ;; Item action
 
