@@ -320,11 +320,13 @@ specific query for special usecases."
 		    titles:title                              ;; 1 title
 		    tags:tags                                 ;; 2 tags
 		    files:meta                                ;; 3 meta
-		    (as [ :SELECT (funcall count) :FROM links ;; 4 tolinks
-			 :WHERE (= links:from titles:file) ]
+		    (as [ :SELECT (funcall count) :FROM links ;; 4 #tolinks
+			 :WHERE (and (= links:type "file")
+				     (= links:from titles:file)) ]
 			tolinks)
-		    (as [ :SELECT (funcall count) :FROM links ;; 5 backlinks
-			 :WHERE (= links:to titles:file) ]
+		    (as [ :SELECT (funcall count) :FROM links ;; 5 #backlinks
+			 :WHERE (and (= links:type "file")
+				     (= links:to titles:file)) ]
 			backlinks) ]
 	   :from titles
 	   :left :join files :using [[ file ]]
@@ -412,10 +414,10 @@ specific query for special usecases."
 
 (defun delve-query-backlinks (zettel)
   "Return all zettel linking to ZETTEL."
-  (let* ((with-clause [:with backlinks :as [:select (as links:to file)
+  (let* ((with-clause [:with backlinks :as [:select (as links:from file)
 					    :from links
 					    :where (and (= links:type "file")
-							(= links:from $s1))]])
+							(= links:to $s1))]])
 	 (constraint [:join backlinks :using [[ file ]]
 		      :order-by (asc titles:title)])
 	 (args       (delve-zettel-file zettel)))
@@ -423,10 +425,10 @@ specific query for special usecases."
 
 (defun delve-query-tolinks (zettel)
   "Return all zettel linking from ZETTEL."
-  (let* ((with-clause [:with tolinks :as [:select (as links:from file)
+  (let* ((with-clause [:with tolinks :as [:select (as links:to file)
   				          :from links
 					  :where (and (= links:type "file")
-						      (= links:to $s1))]])
+						      (= links:from $s1))]])
 	 (constraint [:join tolinks :using [[ file ]]
 		      :order-by (asc titles:title)])
 	 (args       (delve-zettel-file zettel)))
