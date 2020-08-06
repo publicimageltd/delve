@@ -535,7 +535,8 @@ If EMPTY-LIST is t, delete any items instead."
       (lister-remove-sublist-below (current-buffer) (point))
     (cl-case (type-of data)
       (delve-tag     (delve-insert-zettel-with-tag (current-buffer) (point) (delve-tag-tag data)))
-      (delve-zettel  (delve-insert-all-links (current-buffer) (point) data))
+      (delve-zettel  (delve-insert-all-links (current-buffer)      (point) data))
+;;      (delve-zettel  (delve-view))
       (delve-search  (lister-insert-sublist-below
 		      (current-buffer) (point)
 		      (delve-execute-search data))))))
@@ -559,9 +560,9 @@ If EMPTY-LIST is t, delete any items instead."
   "View the item on point without leaving delve."
   (interactive)
   (save-selected-window
-    (delve-visit-zettel (current-buffer) :point #'find-file-other-window)
+    (delve-visit-zettel (current-buffer) :point #'find-file-other-window)))
     ;; this does not work, I have no clue why:
-    (org-roam-buffer-toggle-display)))
+;;    (org-roam-buffer-toggle-display)))
 
 ;; Key "i"
 (defun delve-insert-zettel  ()
