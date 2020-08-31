@@ -531,15 +531,33 @@ If EMPTY-LIST is t, delete any items instead."
 ;; Key "Enter"
 (defun delve-action (data)
   "Act on the delve object DATA."
+  (delve-open))
+
+(defun delve-toggle-sublist ()
+  "Close or open the item's sublist at point."
+  (interactive)
   (if (lister-sublist-below-p (current-buffer) (point))
-      (lister-remove-sublist-below (current-buffer) (point))
-    (cl-case (type-of data)
-      (delve-tag     (delve-insert-zettel-with-tag (current-buffer) (point) (delve-tag-tag data)))
-      (delve-zettel  (delve-insert-all-links (current-buffer)      (point) data))
-;;      (delve-zettel  (delve-view))
-      (delve-search  (lister-insert-sublist-below
-		      (current-buffer) (point)
-		      (delve-execute-search data))))))
+      (delve-close-sublist)
+    (delve-open-sublist)))
+
+(defun delve-open-sublist ()
+  "Open the item at point by inserting its result as a sublist."
+  (interactive)
+  (unless (lister-sublist-below-p (current-buffer) (point))
+    (let ((data (lister-get-data (current-buffer) :point)))
+      (cl-case (type-of data)
+	(delve-tag     (delve-insert-zettel-with-tag (current-buffer) (point) (delve-tag-tag data)))
+	(delve-zettel  (delve-insert-all-links (current-buffer)      (point) data))
+	(delve-search  (lister-insert-sublist-below
+			(current-buffer) (point)
+			(delve-execute-search data)))))))
+
+(defun delve-close-sublist ()
+  "Close the sublist below the item at point."
+  (interactive)
+  (when (lister-sublist-below-p (current-buffer) (point))
+    (lister-remove-sublist-below (current-buffer) (point))))
+
 
 (defun delve-visit-zettel (buf pos visit-function)
   "In BUF, open zettel at POS using VISIT-FUNCTION."
@@ -683,6 +701,7 @@ minibuffer string, else add it."
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map lister-mode-map)
+    (define-key map "\t" #'delve-toggle-sublist)
     (define-key map "v" #'delve-view)
     (define-key map "o" #'delve-open)
     (define-key map (kbd "<C-return>") #'delve-open)
