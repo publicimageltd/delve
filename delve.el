@@ -24,59 +24,74 @@
 
 ;;; Code:
 
+;; -----------------------------------------------------------
 ;; * Dependencies
 
-;; ;; add current buffer's directory to the load path:
-;; (require 'cl-lib)
-;; (cl-eval-when (eval)
-;;   (if (not (member default-directory load-path))
-;;       (add-to-list 'load-path "home/jv/.emacs.d/lisp/git-")))
-
-;;(setq load-prefer-newer t)
-
+(require 'cl-lib)
+(require 'org-roam)
 (require 'lister)
 (require 'lister-highlight)
-(require 'org-roam)
-(require 'cl-lib)
+(require 'delve-tata-types)
+(require 'delve-edit)
+
+;; * Silence Byte Compiler
 
 (declare-function all-the-icons-faicon "all-the-icons" (string) t)
 
-;; * Item data types
+;; * Global variables
 
-(cl-defstruct (delve-tag (:constructor delve-make-tag))
-  tag
-  count)
+(defvar delve-buffer-name "*DELVE*"
+  "Name of delve buffers.")
 
-(cl-defstruct (delve-zettel (:constructor delve-make-zettel))
-  title
-  file
-  tags
-  mtime
-  atime
-  backlinks
-  tolinks
-  subtype)
+(defvar delve-version-string "0.1"
+  "Current version of delve.")
 
-(cl-defstruct (delve-search (:constructor delve-make-search))
-  name
-  with-clause
-  constraint
-  args
-  postprocess
-  (result-subtype "ZETTEL"))
+(defvar delve-searches
+  (list (delve-make-search :name "Orphaned Pages"
+    			   :constraint [:where tags:tags :is :null])
+	(delve-make-search :name "10 Last Modified"
+			   :postprocess #'delve-db-query-last-10-modified)
+	(delve-make-search :name "10 Most Linked To"
+			   :constraint [:order-by (desc backlinks)
+					:limit 10])
+	(delve-make-search :name "10 Most Linked From"
+			   :constraint [:order-by (desc tolinks)
+					:limit 10])
+	(delve-make-search :name "10 Most Linked"
+			   :constraint [:order-by (desc (+ backlinks tolinks))
+					:limit 10]))
+  "A list of default searches offered when starting delve.")
 
-;; * Item mapper functions
+;; * Helper
+
+(defun delve--flatten (l)
+  "Flatten the list L, removing any null values.
+This is a simple copy of dash's `-flatten' using `seq'."
+  (if (and (listp l) (listp (cdr l)))
+      (seq-mapcat #'delve--flatten l)
+    (list l)))
+
+;; -----------------------------------------------------------
+;; * Item Mapper for the List Display (lister)
+
+;; -- presenting a zettel object:
 
 (defun delve-represent-tags (zettel)
-  "Return a the tags list of ZETTEL as a propertized string."
+  "Return all tags from ZETTEL as a propertized string."
   (when (delve-zettel-tags zettel)
-    (concat "(" (propertize (string-join (delve-zettel-tags zettel) ", ") 'face 'org-level-1) ") ")))
+    (concat "("
+	    (propertize
+	     (string-join (delve-zettel-tags zettel) ", ")
+	     'face 'org-level-1)
+	    ") ")))
 
 (defun delve-represent-title (zettel)
   "Return the title of ZETTEL as a propertized string."
-  (propertize (or (delve-zettel-title zettel) (delve-zettel-file zettel) "NO FILE, NO TITLE.")
-	      'face
-	      'org-document-title))
+  (propertize (or
+	       (delve-zettel-title zettel)
+	       (delve-zettel-file zettel)
+	       "NO FILE, NO TITLE.")
+	      'face 'org-document-title))
 
 (defun delve-format-time (time)
   "Return TIME in a more human readable form."
@@ -101,22 +116,39 @@
 
 (defun delve-represent-zettel (zettel)
   "Return propertized strings representing a ZETTEL object."
-  (list
-   ;;
-   (concat
-    (propertize
-     (delve-format-time (delve-zettel-mtime zettel))
-     'face 'org-document-info-keyword)
-    (delve-format-subtype zettel)
-    (delve-represent-tags zettel)
-    (propertize
-     (format "%d → " (or (delve-zettel-backlinks zettel) 0))
-     'face '(:weight bold))
-    (delve-represent-title zettel)
-    (propertize
-     (format " →  %d" (or (delve-zettel-tolinks zettel) 0))
-     'face '(:weight bold))
-    )))
+  (list  (concat
+	  ;; creation time:
+	  (propertize
+	   (delve-format-time (delve-zettel-mtime zettel))
+	   'face 'org-document-info-keyword)
+	  ;; subtype (tolink, backlink, zettel)
+	  (delve-format-subtype zettel)
+	  ;; associated tags:
+	  (delve-represent-tags zettel)
+	  ;; # of backlinks:
+	  (propertize
+	   (format "%d → " (or (delve-zettel-backlinks zettel) 0))
+	   'face '(:weight bold))
+	  ;; title:
+	  (delve-represent-title zettel)
+	  ;; # of tolinks:
+	  (propertize
+	   (format " →  %d" (or (delve-zettel-tolinks zettel) 0))
+	   'face '(:weight bold)))))
+
+;; -- presenting a search item:
+
+(defun delve-represent-search (search)
+  "Return propertized strings representing a SEARCH object."
+  (list (concat (if (featurep 'all-the-icons)
+		    (all-the-icons-faicon "search")
+		  "Search:")
+		" "
+		(propertize
+		 (delve-search-name search)
+		 'face 'org-level-2))))
+
+;; -- presenting a tag object:
 
 (defun delve-represent-tag (tag)
   "Return propertized strings representing a TAG object."
@@ -128,13 +160,8 @@
 		(when (delve-tag-count tag)
 		  (format " (%d)" (delve-tag-count tag))))))
 
-(defun delve-represent-search (search)
-  "Return propertized strings representing a SEARCH object."
-  (list (concat (if (featurep 'all-the-icons)
-		    (all-the-icons-faicon "search")
-		  "Search:")
-		" "
-		(propertize (delve-search-name search) 'face 'org-level-2))))
+
+;; the actual mapper:
 
 (defun delve-mapper (data)
   "Transform DATA into a printable list."
@@ -144,330 +171,100 @@
       (delve-search (delve-represent-search data))
       (t      (list (format "UNKNOWN TYPE: %s"  (type-of data))))))
 
-;; * Global variables
-
-(defvar delve-buffer-name "*DELVE*"
-  "Name of delve buffers.")
-
-(defvar delve-version-string "0.1"
-  "Current version of delve.")
-
-;; * Helper
-
-(defun delve--flatten (l)
-  "Flatten the list L and remove any nil's in it.
-This is a simple copy of dash's `-flatten' using `seq'."
-  (if (and (listp l) (listp (cdr l)))
-      (seq-mapcat #'delve--flatten l)
-    (list l)))
-
 ;; * Buffer basics
 
 (defun delve-new-buffer ()
   "Return a new DELVE buffer."
    (generate-new-buffer delve-buffer-name))
 
-;; * Org Roam DB
-;; TODO Move this into a separate file delve-db
+;; * Sublist handling
 
-(defvar delve-db-error-buffer "*DELVE - Database Error*"
-  "Name for a buffer displaying SQL errors.")
+(defun delve-insert-sublist-zettel-matching-tag (buf pos tag)
+  "In BUF, insert all zettel tagged TAG below the item at POS."
+  (let* ((zettel (delve-db-query-zettel-with-tag tag)))
+    (if zettel
+	(lister-insert-sublist-below buf pos zettel)
+      (user-error "No zettel found matching tag %s" tag))))
 
-(defvar delve-db-there-were-errors nil
-  "Whether an error has occured since last query.")
+(defun delve-insert-sublist-all-links-to-zettel (buf pos zettel)
+  "In BUF, insert all links to and from ZETTEL below the item at POS."
+  (let* ((backlinks (delve-db-query-backlinks zettel))
+	 (tolinks   (delve-db-query-tolinks zettel))
+	 (all       (append backlinks tolinks)))
+    (if all
+	(lister-insert-sublist-below buf pos all)
+      (user-error "Item has no backlinks and no links to other zettel"))))
 
-(defun delve-db-log-error (err &rest strings)
-  "Insert ERR and additional STRINGS in the error buffer."
-  (declare (indent 1))
-  (with-current-buffer (get-buffer-create delve-db-error-buffer)
-    (special-mode)
-    (let* ((inhibit-read-only t)
-	   (date-string (format-time-string "%D %T  "))
-	   ;; prevent logging if this is not the first error:
-	   (message-log-max (if delve-db-there-were-errors nil  message-log-max)))
-      (insert date-string
-	      (format "Error message: %s\n" (error-message-string err)))
-      (seq-doseq (s strings)
-	(when (stringp s)
-	  (insert date-string s "\n")))
-      (insert "\n"))
-    (unless delve-db-there-were-errors
-      (message "There are errors. See buffer '%s' for more information."
-	       delve-db-error-buffer)
-      (setq delve-db-there-were-errors t))))
+(defun delve-insert-sublist-to-links (buf pos zettel)
+  "In BUF, insert all links to ZETTEL below the item at POS."
+  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
+  (if-let* ((tolinks (delve-db-query-tolinks zettel)))
+      (lister-insert-sublist-below buf pos tolinks)
+    (user-error "Item has no links")))
 
-(defun delve-db-safe-query (sql &rest args)
-  "Call org roam SQL query (optionally using ARGS) in a safe way.
-Catch all errors and redirect the error messages to an error
-buffer.  If an error occurs, inform the user with a message and
-return nil."
-  (condition-case-unless-debug err
-      (apply #'org-roam-db-query sql args)
-    (error (delve-db-log-error err
-			       " Error occured when executing the query:"
-			       (format " %s" sql)
-			       (when args
-				 (format " Arguments: %s" args)))
-	   nil)))
+(defun delve-insert-sublist-backlinks (buf pos zettel)
+  "In BUF, insert all links from ZETTEL below the item at POS."
+  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
+  (if-let* ((fromlinks (delve-db-query-backlinks zettel)))
+      (lister-insert-sublist-below buf pos fromlinks)
+    (user-error "Item has no backlinks")))
 
-(defun delve-db-rearrange (pattern l)
-  "For each item in L, return a new item rearranged by PATTERN.
+(defun delve-open-sublist ()
+  "Open the item at point by inserting its result as a sublist."
+  (interactive)
+  (unless (lister-sublist-below-p (current-buffer) (point))
+    (let ((data (lister-get-data (current-buffer) :point)))
+      (cl-case (type-of data)
+	(delve-tag     (delve-insert-sublist-zettel-matching-tag (current-buffer) (point) (delve-tag-tag data)))
+	(delve-zettel  (delve-insert-sublist-all-links-to-zettel (current-buffer)      (point) data))
+	(delve-search  (lister-insert-sublist-below
+			(current-buffer) (point)
+			(delve-execute-search data)))))))
 
-Each element of PATTERN can be either a symbol, an integer, a
-list with an integer and a function name, or a list with an
-integer and a sexp.
+(defun delve-close-sublist ()
+  "Close the sublist below the item at point."
+  (interactive)
+  (when (lister-sublist-below-p (current-buffer) (point))
+    (lister-remove-sublist-below (current-buffer) (point))))
 
-If the element in PATTERN is a symbol or a string, just pass it
-through.
+(defun delve-toggle-sublist ()
+  "Close or open the item's sublist at point."
+  (interactive)
+  (if (lister-sublist-below-p (current-buffer) (point))
+      (delve-close-sublist)
+    (delve-open-sublist)))
 
-If the element in PATTERN is an integer, use it as an index to
-return the correspondingly indexed element of the original item.
+;; * Special Searches
 
-If the element in PATTERN is a list, use the first element of
-this list as the index and the second as a mapping function.  In
-this case, insert the corresponding item after passing it to the
-function.
+(defun delve-execute-search (search)
+  "Return the results of executing SEARCH."
+  (if-let* ((res (delve-db-query-all-zettel
+	       (delve-search-result-subtype search)
+	       (delve-search-constraint search)
+	       (delve-search-args search)
+	       (delve-search-with-clause search))))
+      (if (and res (delve-search-postprocess search))
+	  (funcall (delve-search-postprocess search) res)
+	res)
+    (message "Query returned no results")
+    nil))
 
-A third option is to use a list with an index and a sexp.  Like
-the function in the second variant above, the sexp is used as a
-mapping function.  The sexp will be eval'd with the variable `it'
-bound to the original item's element.
-
-Examples:
-
- (delve-db-rearrange [1 0] '((a b) (a b)))   -> ((b a) (b a))
- (delve-db-rearrange [0] '((a b c) (a b c))) ->  ((a) (a))
-
- (delve-db-rearrange [1 (0 1+)] '((1 0) (1 0)))      -> ((0 2) (0 2))
- (delve-db-rearrange [1 (0 (1+ it))] '((1 0) (1 0))) -> ((0 2) (0 2))
-
- (delve-db-rearrange [:count 1] '((0 20) (1 87))) -> ((:count 20) (:count 87))
- (delve-db-rearrang [:count 1 :string \"hi\"] '((0 20) (1 87)))
-  -> ((:count 20 :string \"hi\")
-      (:count 87 :string \"hi\"))"
-  (seq-map (lambda (item)
-	     (seq-mapcat (lambda (index-or-list)
-			   (list
-			    (if (or (symbolp index-or-list)
-				    (stringp index-or-list))
-				index-or-list
-			      (if (listp index-or-list)
-				  (progn
-				    (with-no-warnings
-				      (defvar it)) ;; force dynamic binding for calling the sexp
-				    (let* ((fn-or-sexp (cadr index-or-list))
-					   (it         (seq-elt item (car index-or-list))))
-				      (if (listp fn-or-sexp)
-					  (eval fn-or-sexp)
-					(funcall fn-or-sexp it))))
-				(seq-elt item index-or-list)))))
-			 pattern))
-	   l))
-
-(defun delve-db-rearrange-into (make-fn keyed-pattern l)
-  "Rearrange each item in L and pass the result to MAKE-FN.
-KEYED-PATTERN is an extension of the pattern used by
-`delve-db-rearrange'.  The extended pattern also requires a
-keyword for each element.  The object is created by using the
-keywords and the associated result value as key-value-pairs
-passed to MAKE-FN."
-  (seq-map (lambda (item)
-	     (apply make-fn item))
-	   (delve-db-rearrange keyed-pattern l)))
-  
-;; * Org Roam Queries
-
-;; One query to rule them all:
-
-;; SELECT titles.file, titles.title, tags.tags, files.meta,
-;;        (SELECT COUNT() FROM links WHERE links.[from]=titles.file) AS tolinks,
-;; 	   (SELECT COUNT() FROM links WHERE links.[to] = titles.file) AS backlinks
-;; FROM  titles
-;; LEFT JOIN files USING (file)
-;; LEFT JOIN tags USING (file)
-
-(defun delve-query-all-zettel (&optional subtype constraints args with-clause)
-  "Return all zettel items with all fields.
-The zettel objects will be of subtype SUBTYPE.
-
-The result list can be modified using WITH-CLAUSE, CONSTRAINTS
-and ARGS.  The final query is constructed like this:
- 
- WITH-CLAUSE + main query + CONSTRAINTS
-
-This final query is passed to the SQL database.  If CONSTRAINTS or
-WITH-CLAUSE contain pseudo variable symbols like `$s1' or `$r1',
-use ARGS to fill their values in when constructing the query.
-
-The main query provides the fields `titles:file', `titles:title',
-`tags:tags', `files:meta', `tolinks' (an integer) and
-`backlinks' (an integer), which can be referred to in the
-CONSTRAINTS clause.
-
-Useful values for CONSTRAINTS  are e.g.
-
-  [:where (like fieldname string) ]
-  [:limit 10 ] or
-  [:order-by (asc fieldname) ]
-
-For examples using the WITH-CLAUSE, see `delve-query-backlinks'.
-
-The unconstraint query can be a bit slow because is collects the
-number of backlinks for each item; consider building a more
-specific query for special usecases."
-  (let* ((base-query
-	  [:select [ titles:file                              ;; 0 file
-		    titles:title                              ;; 1 title
-		    tags:tags                                 ;; 2 tags
-		    files:meta                                ;; 3 meta
-		    (as [ :SELECT (funcall count) :FROM links ;; 4 #tolinks
-			 :WHERE (and (= links:type "file")
-				     (= links:from titles:file)) ]
-			tolinks)
-		    (as [ :SELECT (funcall count) :FROM links ;; 5 #backlinks
-			 :WHERE (and (= links:type "file")
-				     (= links:to titles:file)) ]
-			backlinks) ]
-	   :from titles
-	   :left :join files :using [[ file ]]
-	   :left :join tags :using  [[ file ]] ]))
-    (with-temp-message "Querying database..."
-      (thread-last (delve-db-safe-query (vconcat with-clause base-query constraints) args)
-	(delve-db-rearrange-into 'delve-make-zettel
-				 `[ :file 0
-				   :subtype ,subtype
-				   :title 1
-				   :tags 2
-				   :mtime (3 (plist-get it :mtime))
-				   :atime (3 (plist-get it :atime))
-				   :tolinks 4
-				   :backlinks 5 ])))))
-
-;; Queries returning plain lists:
-
-(defun delve-db-roam-tags ()
-  "Return a list of all #+ROAM_TAGS."
-  (thread-last (delve-db-safe-query [:select :distinct tags:tags :from tags])
-    (delve--flatten)
-    (seq-uniq)
-    (seq-sort #'string-lessp)))
-
-(defun delve-db-count-tag (tag)
-  "Count the occurences of TAG in the org roam db."
-  (pcase-let* ((`((( _ ) ,n))
-		(delve-db-safe-query [:select [ tags:tags
-					  (as (funcall count tags:tags) n) ]
-					:from tags
-					:where (like tags:tags $r1)]
-				     (format "%%%s%%" tag))))
-    n))
-
-(defun delve-query-roam-tags ()
-  "Return a list of tags of all #+ROAM_TAGS."
-  (let* ((tags (delve-db-roam-tags)))
-    (seq-map (lambda (tag)
-	       (delve-make-tag :tag tag
-			       :count (delve-db-count-tag tag)))
-	     tags)))
-
-
-(defun delve-db-count-backlinks (file)
-  "Return the number of files linking to FILE."
-  (caar (delve-db-safe-query [:select
-			[ (as (funcall count links:from) n) ]
-			:from links
-			:where (= links:to $s1)]
-		       file)))
-
-(defun delve-db-count-tolinks (file)
-  "Return the number of files linked from FILE."
-  (caar (delve-db-safe-query [:select
-			[ (as (funcall count links:to) n) ]
-			:from links
-			:where (= links:from $s1)]
-		       file)))
-
-;; Sorting query results:
-
-(defun delve-query-sort-by-mtime (zettel)
-  "Sort ZETTEL by mtime, last one first."
-  (cl-sort zettel (lambda (e1 e2) (time-less-p e2 e1))
-	   :key #'delve-zettel-mtime))
-
-(defun delve-query-last-10-modified (zettel)
-  "Return the last 10 modified ZETTEL."
-  (seq-take (delve-query-sort-by-mtime zettel) 10))
-
-;; Databvase queries resulting in delve types:
-
-(defun delve-query-zettel-with-tag (tag)
-  "Return a list of all zettel tagged TAG."
-  (delve-query-all-zettel "ZETTEL" [:where (like tags:tags $r1)
-				    :order-by (asc titles:title)]
-			  (format "%%%s%%" tag)))
-
-(defun delve-query-zettel-matching-title (term)
-  "Return a list of all zettel with the title matching TERM."
-  (delve-query-all-zettel "ZETTEL" [:where (like titles:title $r1)
-				    :order-by (asc titles:title)]
-			  (format "%%%s%%" term)))
-
-(defun delve-query-backlinks (zettel)
-  "Return all zettel linking to ZETTEL."
-  (let* ((with-clause [:with backlinks :as [:select (as links:from file)
-					    :from links
-					    :where (and (= links:type "file")
-							(= links:to $s1))]])
-	 (constraint [:join backlinks :using [[ file ]]
-		      :order-by (asc titles:title)])
-	 (args       (delve-zettel-file zettel)))
-    (delve-query-all-zettel "BACKLINK" constraint args with-clause)))
-
-(defun delve-query-tolinks (zettel)
-  "Return all zettel linking from ZETTEL."
-  (let* ((with-clause [:with tolinks :as [:select (as links:to file)
-  				          :from links
-					  :where (and (= links:type "file")
-						      (= links:from $s1))]])
-	 (constraint [:join tolinks :using [[ file ]]
-		      :order-by (asc titles:title)])
-	 (args       (delve-zettel-file zettel)))
-    (delve-query-all-zettel "TOLINK" constraint args with-clause)))
 
 ;; * Delve actions and keys
 
-;; Set or reset the global list of the buffer
-
-;; Key "."
 (defun delve-initial-list (&optional empty-list)
-  "Populate the current delve buffer with a useful list of tags.
-If EMPTY-LIST is t, delete any items instead."
+  "Populate the current delve buffer with predefined items.
+If EMPTY-LIST is t, offer a completely empty list instead."
   (interactive "P")
-  (if empty-list 
+  (if empty-list
       (lister-set-list (current-buffer) nil)
-    (lister-set-list (current-buffer) (delve-query-roam-tags))
-    (lister-insert (current-buffer) :first 
-    		   (delve-make-search :name "Orphaned Pages"
-    				      :constraint [:where tags:tags :is :null]))
-    (lister-insert (current-buffer) :first
-		   (delve-make-search :name "10 Last Modified"
-				      :postprocess #'delve-query-last-10-modified))
-    (lister-insert (current-buffer) :first
-		   (delve-make-search :name "10 Most Linked To"
-				      :constraint [:order-by (desc backlinks)
-							     :limit 10]))
-    (lister-insert (current-buffer) :first
-		   (delve-make-search :name "10 Most Linked From"
-				      :constraint [:order-by (desc tolinks)
-							     :limit 10]))
-    (lister-insert (current-buffer) :first
-		   (delve-make-search :name "10 Most Linked"
-				      :constraint [:order-by (desc (+ backlinks tolinks))
-							     :limit 10]))
-  (when (equal (window-buffer) (current-buffer))
-    (recenter))))
+    ;; 
+    (lister-set-list (current-buffer) (delve-query-db-roam-tags))
+    (cl-dolist (search delve-searches)
+      (lister-insert (current-buffer) :first search))
+    (when (equal (window-buffer) (current-buffer))
+      (recenter))))
 
-;; Key "C-l"
 (defun delve-sublist-to-top ()
   "Replace all items with the current sublist at point."
   (interactive)
@@ -480,83 +277,8 @@ If EMPTY-LIST is t, delete any items instead."
     (lister-set-list buf (lister-get-all-data-tree buf beg end)))
   (lister-goto (current-buffer) :first))
 
-;; Item action
-
-(defun delve-insert-zettel-with-tag (buf pos tag)
-  "In BUF, insert all zettel tagged TAG below the item at POS."
-  (let* ((zettel (delve-query-zettel-with-tag tag)))
-    (if zettel
-	(lister-insert-sublist-below buf pos zettel)
-      (user-error "No zettel found matching tag %s" tag))))
-
-(defun delve-insert-all-links (buf pos zettel)
-  "In BUF, insert all links to and from ZETTEL below the item at POS."
-  (let* ((backlinks (delve-query-backlinks zettel))
-	 (tolinks   (delve-query-tolinks zettel))
-	 (all       (append backlinks tolinks)))
-    (if all
-	(lister-insert-sublist-below buf pos all)
-      (user-error "Item has no backlinks and no links to other zettel"))))
-
-;; Key "<left>"
-(defun delve-insert-to-links (buf pos zettel)
-  "In BUF, insert all links to ZETTEL below the item at POS."
-  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
-  (if-let* ((tolinks (delve-query-tolinks zettel)))
-      (lister-insert-sublist-below buf pos tolinks)
-    (user-error "Item has no links")))
-
-;; Key "<right>"
-(defun delve-insert-backlinks (buf pos zettel)
-  "In BUF, insert all links from ZETTEL below the item at POS."
-  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
-  (if-let* ((fromlinks (delve-query-backlinks zettel)))
-      (lister-insert-sublist-below buf pos fromlinks)
-    (user-error "Item has no backlinks")))
 
 
-(defun delve-execute-search (search)
-  "Return the results of executing SEARCH."
-  (if-let* ((res (delve-query-all-zettel
-	       (delve-search-result-subtype search)
-	       (delve-search-constraint search)
-	       (delve-search-args search)
-	       (delve-search-with-clause search))))
-      (if (and res (delve-search-postprocess search))
-	  (funcall (delve-search-postprocess search) res)
-	res)
-    (message "Query returned no results")
-    nil))
-
-;; Key "Enter"
-(defun delve-action (data)
-  "Act on the delve object DATA."
-  (delve-open))
-
-(defun delve-toggle-sublist ()
-  "Close or open the item's sublist at point."
-  (interactive)
-  (if (lister-sublist-below-p (current-buffer) (point))
-      (delve-close-sublist)
-    (delve-open-sublist)))
-
-(defun delve-open-sublist ()
-  "Open the item at point by inserting its result as a sublist."
-  (interactive)
-  (unless (lister-sublist-below-p (current-buffer) (point))
-    (let ((data (lister-get-data (current-buffer) :point)))
-      (cl-case (type-of data)
-	(delve-tag     (delve-insert-zettel-with-tag (current-buffer) (point) (delve-tag-tag data)))
-	(delve-zettel  (delve-insert-all-links (current-buffer)      (point) data))
-	(delve-search  (lister-insert-sublist-below
-			(current-buffer) (point)
-			(delve-execute-search data)))))))
-
-(defun delve-close-sublist ()
-  "Close the sublist below the item at point."
-  (interactive)
-  (when (lister-sublist-below-p (current-buffer) (point))
-    (lister-remove-sublist-below (current-buffer) (point))))
 
 
 (defun delve-visit-zettel (buf pos visit-function)
@@ -566,7 +288,6 @@ If EMPTY-LIST is t, delete any items instead."
       (user-error "Item at point is no zettel"))
     (funcall visit-function (delve-zettel-file data))))
 
-;; Key "o"
 (defun delve-open ()
   "Open the item on point, leaving delve."
   (interactive)
@@ -586,7 +307,7 @@ If EMPTY-LIST is t, delete any items instead."
 (defun delve-insert-zettel  ()
   "Choose a zettel and insert it in the current delve buffer."
   (interactive)
-  (let* ((zettel (delve-query-all-zettel "ZETTEL" [:order-by (asc titles:title)]))
+  (let* ((zettel (delve-db-query-all-zettel "ZETTEL" [:order-by (asc titles:title)]))
 	 (completion (seq-map (lambda (z) (cons (concat (delve-represent-tags z)
 							(delve-represent-title z))
 						z))
@@ -698,6 +419,10 @@ minibuffer string, else add it."
 
 ;; * Delve Mode
 
+(defun delve-action (data)
+  "Act on the delve object DATA."
+  (delve-open))
+
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map lister-mode-map)
@@ -710,8 +435,8 @@ minibuffer string, else add it."
     (define-key map "."  #'delve-initial-list)
     (define-key map "i" #'delve-insert-zettel)
     (define-key map (kbd "<delete>")  #'delve-delete-item)
-    (define-key map (kbd "<left>")   #'delve-insert-backlinks)
-    (define-key map (kbd "<right>")    #'delve-insert-to-links)
+    (define-key map (kbd "<left>")   #'delve-insert-sublist-backlinks)
+    (define-key map (kbd "<right>")    #'delve-insert-sublist-to-links)
     map)
   "Key map for `delve-mode'.")
 
