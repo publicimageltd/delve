@@ -18,7 +18,7 @@
       (expect (type-of tolink) :to-be 'delve-tolink)
       (expect (type-of backlink) :to-be 'delve-backlink)))
   (it "Check for result type of searches."
-    (let* ((search-zettel (delve-search-for-zettel)))
+    (let* ((search-zettel (delve-make-search-for-zettel)))
       (expect (delve-search-for-zettel-result-subtype search-zettel)
 	      :to-be 'delve-zettel))))
 

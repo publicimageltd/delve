@@ -27,6 +27,8 @@
 ;; * Dependencies:
 
 (require 'org-element)
+(require 'delve-db)
+(require 'org-roam)
 
 ;; * Global Variables
 
@@ -62,14 +64,14 @@
 ;; GEÄNDERT, aufrufende Funktionen sind noch nicht angepasst
 (defun delve-edit-parsed-tags (org-tree)
   "Return all ROAM_TAGs in ORG-TREE."
-  (let ((tags "")
+  (let ((tags ""))
     (org-element-map org-tree 'keyword
       (lambda (key)
 	(when (and (eq (org-element-type (org-element-property :parent key)) 'section)
 		   (string= (org-element-property :key key) "ROAM_TAGS"))
 	  (setq tags (concat tags (org-element-property :value key))))))
     (unless (string-empty-p tags)
-      (split-string tags " " t t)))))
+      (split-string tags " " t t))))
 
 (defun delve-edit-parsed-title-end (org-tree)
   "Return the position after the TITLE keyword."
@@ -88,35 +90,34 @@
 
 (defun delve-edit-do-add-tag (buf org-tree tag)
   "Add TAG as roam tag in BUF, using ORG-TREE."
-  (let* ((existing-tags (delve-edit-parsed-tags org-tree))
-	 (one-more-pos  (plist-get (car existing-tags) :end))
-	 (new-keyword   (unless one-more-pos
+  (with-current-buffer buf
+    (let* ((existing-tags (delve-edit-parsed-tags org-tree))
+	   (one-more-pos  (plist-get (car existing-tags) :end))
+	   (new-keyword   (unless one-more-pos
 			  (or (delve-edit-parsed-title-end org-tree)
 			      (point-min)))))
-    (goto-char (or new-keyword (1- one-more-pos)))
-    (when new-keyword
-      (insert "#+ROAM_TAGS:"))
-    (insert " ")
-    (insert (string-trim tag))
-    (when new-keyword
-      (insert "\n"))))
+      (goto-char (or new-keyword (1- one-more-pos)))
+      (when new-keyword
+	(insert "#+ROAM_TAGS:"))
+      (insert " ")
+      (insert (string-trim tag))
+      (when new-keyword
+	(insert "\n")))))
 
 (defun delve-edit-do-remove-tag (buf org-tree tag)
   "Remove roam tags matching TAGS from BUF, using ORG-TREE."
-  (let* ((existing-tags   (delve-edit-parsed-tags org-tree))
-	 (tag-2b-removed  (car
-			   (cl-member tag existing-tags
+  (with-current-buffer buf
+    (let* ((existing-tags   (delve-edit-parsed-tags org-tree))
+	   (tag-2b-removed  (car
+			     (cl-member tag existing-tags
 				      :test #'string=
 				      :key (lambda (it)
 					     (plist-get it :value))))))
-    (unless tag-2b-removed
-      (error "Tag not in use"))
-    
-    (delete-region (plist-get tag-2b-removed :begin)
-		   (plist-get tag-2b-removed :end))))
-    
-    
-
+      (unless tag-2b-removed
+	(error "Tag not in use"))
+      
+      (delete-region (plist-get tag-2b-removed :begin)
+		     (plist-get tag-2b-removed :end)))))
 
 (defun delve-edit-prompt-add-tag (zettel)
   "Interactively add a tag to ZETTEL."

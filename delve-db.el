@@ -38,6 +38,15 @@
 (defvar delve-db-there-were-errors nil
   "Indicate if last query has caused an error.")
 
+;; * Helper
+
+(defun delve--flatten (l)
+  "Flatten the list L, removing any null values.
+This is a simple copy of dash's `-flatten' using `seq'."
+  (if (and (listp l) (listp (cdr l)))
+      (seq-mapcat #'delve--flatten l)
+    (list l)))
+
 ;; * API for Safe Queries
 
 ;; Wrap all queries in a logging system.
@@ -81,20 +90,24 @@ return nil."
 (defun delve-db-rearrange (pattern l)
   "For each item in L, return a new item rearranged by PATTERN.
 
-Each element of PATTERN can be either a symbol, an integer, a
-list with an integer and a function name, or a list with an
-integer and a sexp.
+Each item in L has to be a sequence (no atoms).
 
-If the element in PATTERN is a symbol or a string, just pass it
-through.
+For each item in L, construct a return value (a list) by
+successively parsing all elements in PATTERN. The elements of
+PATTERN can be either a symbol, an integer, a list with an
+integer and a function name, or a list with an integer and a
+sexp.
 
-If the element in PATTERN is an integer, use it as an index to
-return the correspondingly indexed element of the original item.
+If the element in PATTERN is a symbol or a string, add it to the
+return value unmodified.
+
+If the element in PATTERN is an integer, return the zero-indexed
+value of the item currently processed.
 
 If the element in PATTERN is a list, use the first element of
-this list as the index and the second as a mapping function.  In
-this case, insert the corresponding item after passing it to the
-function.
+this list as an index and the second as a mapping function. In
+this case, add the result of of calling the function with the
+indexed value to the return value.
 
 A third option is to use a list with an index and a sexp.  Like
 the function in the second variant above, the sexp is used as a
@@ -156,18 +169,26 @@ passed to MAKE-FN."
 ;; LEFT JOIN files USING (file)
 ;; LEFT JOIN tags USING (file)
 
-(defun delve-db-query-all-zettel (&optional subtype constraints args with-clause)
-  "Return all zettel items with all fields.
-The zettel objects will be of subtype SUBTYPE.
+(defun delve-db-query-all-zettel (make-fn &optional constraints args with-clause)
+  "Query the org roam DB for pages and return them as zettel objects.
 
-The result list can be modified using WITH-CLAUSE, CONSTRAINTS
-and ARGS.  The final query is constructed like this:
+MAKE-FN is a constructor function to create and populate the
+zettel objects. Useful values are `delve-make-zettel',
+`delve-make-backlink' and `delve-make-tolink'.
+
+The result is created by using a query with quite some SQL magic
+putting together all informations such as file names, links, etc.
+This main query can be modified using the vectors WITH-CLAUSE,
+CONSTRAINTS and ARGS. The final SQL query is constructed like
+this:
  
  WITH-CLAUSE + main query + CONSTRAINTS
 
-This final query is passed to the SQL database.  If CONSTRAINTS or
-WITH-CLAUSE contain pseudo variable symbols like `$s1' or `$r1',
-use ARGS to fill their values in when constructing the query.
+This final query is passed to `org-roam-db-query', and from there
+to `emacsql'. See there for the correct format for formulating
+the clauses. If CONSTRAINTS or WITH-CLAUSE contain pseudo
+variable symbols like `$s1' or `$r1', optional arguments ARGS are
+used to fill their values in when constructing the query.
 
 The main query provides the fields `titles:file', `titles:title',
 `tags:tags', `files:meta', `tolinks' (an integer) and
@@ -182,7 +203,7 @@ Useful values for CONSTRAINTS  are e.g.
 
 For examples using the WITH-CLAUSE, see `delve-db-query-backlinks'.
 
-The unconstraint query can be a bit slow because is collects the
+The unconstraint query can be quite slow because is collects the
 number of backlinks for each item; consider building a more
 specific query for special usecases."
   (let* ((base-query
@@ -202,16 +223,17 @@ specific query for special usecases."
 	   :left :join files :using [[ file ]]
 	   :left :join tags :using  [[ file ]] ]))
     (with-temp-message "Querying database..."
-      (thread-last (delve-db-safe-query (vconcat with-clause base-query constraints) args)
-	(delve-db-rearrange-into 'delve-make-zettel
+      (thread-last (delve-db-safe-query
+		    (vconcat with-clause base-query constraints)
+		    args)
+	(delve-db-rearrange-into make-fn
 				 `[ :file 0
-				   :subtype ,subtype
-				   :title 1
-				   :tags 2
-				   :mtime (3 (plist-get it :mtime))
-				   :atime (3 (plist-get it :atime))
-				   :tolinks 4
-				   :backlinks 5 ])))))
+				    :title 1
+				    :tags 2
+				    :mtime (3 (plist-get it :mtime))
+				    :atime (3 (plist-get it :atime))
+				    :tolinks 4
+				    :backlinks 5 ])))))
 
 ;; * Queries returning plain lisp lists:
 
@@ -262,14 +284,16 @@ specific query for special usecases."
 
 (defun delve-db-query-zettel-with-tag (tag)
   "Return all zettel tagged TAG."
-  (delve-db-query-all-zettel "ZETTEL" [:where (like tags:tags $r1)
-				    :order-by (asc titles:title)]
+  (delve-db-query-all-zettel 'delve-make-zettel
+			     [:where (like tags:tags $r1)
+			      :order-by (asc titles:title)]
 			  (format "%%%s%%" tag)))
 
 (defun delve-db-query-zettel-matching-title (term)
   "Return all zettel with title matching TERM."
-  (delve-db-query-all-zettel "ZETTEL" [:where (like titles:title $r1)
-				    :order-by (asc titles:title)]
+  (delve-db-query-all-zettel 'delve-make-zettel
+			     [:where (like titles:title $r1)
+			      :order-by (asc titles:title)]
 			  (format "%%%s%%" term)))
 
 (defun delve-db-query-backlinks (zettel)
@@ -281,7 +305,8 @@ specific query for special usecases."
 	 (constraint [:join backlinks :using [[ file ]]
 		      :order-by (asc titles:title)])
 	 (args       (delve-zettel-file zettel)))
-    (delve-db-query-all-zettel "BACKLINK" constraint args with-clause)))
+    (delve-db-query-all-zettel 'delve-make-backlink
+			       constraint args with-clause)))
 
 (defun delve-db-query-tolinks (zettel)
   "Return all zettel linking from ZETTEL."
@@ -292,7 +317,8 @@ specific query for special usecases."
 	 (constraint [:join tolinks :using [[ file ]]
 		      :order-by (asc titles:title)])
 	 (args       (delve-zettel-file zettel)))
-    (delve-db-query-all-zettel "TOLINK" constraint args with-clause)))
+    (delve-db-query-all-zettel 'delve-make-tolink
+			       constraint args with-clause)))
 
 ;; * Sorting query results:
 

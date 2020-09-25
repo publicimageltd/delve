@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+
 ;; -----------------------------------------------------------
 ;; * Dependencies
 
@@ -31,7 +32,7 @@
 (require 'org-roam)
 (require 'lister)
 (require 'lister-highlight)
-(require 'delve-tata-types)
+(require 'delve-data-types)
 (require 'delve-edit)
 
 ;; * Silence Byte Compiler
@@ -47,29 +48,20 @@
   "Current version of delve.")
 
 (defvar delve-searches
-  (list (delve-make-search :name "Orphaned Pages"
+  (list (delve-make-search-for-zettel :name "Orphaned Pages"
     			   :constraint [:where tags:tags :is :null])
-	(delve-make-search :name "10 Last Modified"
+	(delve-make-search-for-zettel :name "10 Last Modified"
 			   :postprocess #'delve-db-query-last-10-modified)
-	(delve-make-search :name "10 Most Linked To"
+	(delve-make-search-for-zettel :name "10 Most Linked To"
 			   :constraint [:order-by (desc backlinks)
 					:limit 10])
-	(delve-make-search :name "10 Most Linked From"
+	(delve-make-search-for-zettel :name "10 Most Linked From"
 			   :constraint [:order-by (desc tolinks)
 					:limit 10])
-	(delve-make-search :name "10 Most Linked"
+	(delve-make-search-for-zettel :name "10 Most Linked"
 			   :constraint [:order-by (desc (+ backlinks tolinks))
 					:limit 10]))
   "A list of default searches offered when starting delve.")
-
-;; * Helper
-
-(defun delve--flatten (l)
-  "Flatten the list L, removing any null values.
-This is a simple copy of dash's `-flatten' using `seq'."
-  (if (and (listp l) (listp (cdr l)))
-      (seq-mapcat #'delve--flatten l)
-    (list l)))
 
 ;; -----------------------------------------------------------
 ;; * Item Mapper for the List Display (lister)
@@ -101,18 +93,21 @@ This is a simple copy of dash's `-flatten' using `seq'."
 	(format-time-string "%b %d " time)
       (format-time-string " %R " time))))
 
-(defun delve-format-subtype (zettel)
-  "Return the subtype of ZETTEL prettified."
-  (let* ((subtype (delve-zettel-subtype zettel)))
-    (concat
-     (if (not (featurep 'all-the-icons))
-	 (propertize subtype 'face 'font-lock-constant-face)
-       (pcase subtype
-	 ("ZETTEL"    (all-the-icons-faicon "list-alt"))
-	 ("TOLINK"    (all-the-icons-faicon "caret-left"))
-	 ("BACKLINK"  (all-the-icons-faicon "caret-right"))
-	 (_           (delve-zettel-subtype zettel))))
-     " ")))
+(defun delve-format-subtype (generic-zettel)
+  "Return the subtype of GENERIC-ZETTEL prettified."
+  (let* ((subtype (type-of generic-zettel))
+	 (typestr (if (featurep 'all-the-icons)
+		      (pcase subtype
+			('delve-zettel   (all-the-icons-faicon "list-alt"))
+			('delve-tolink   (all-the-icons-faicon "caret-left"))
+			('delve-backlink (all-the-icons-faicon "caret-right"))
+			(_              "*"))
+		    (pcase subtype
+		      ('delve-zettel    "  ZETTEL")
+		      ('delve-tolink    "  TOLINK")
+		      ('delve-backlink  "BACKLINK")
+		      (_               "subtype?")))))
+    (concat (propertize typestr 'face 'font-lock-constant-face) " ")))
 
 (defun delve-represent-zettel (zettel)
   "Return propertized strings representing a ZETTEL object."
@@ -145,7 +140,7 @@ This is a simple copy of dash's `-flatten' using `seq'."
 		  "Search:")
 		" "
 		(propertize
-		 (delve-search-name search)
+		 (delve-generic-search-name search)
 		 'face 'org-level-2))))
 
 ;; -- presenting a tag object:
@@ -165,11 +160,11 @@ This is a simple copy of dash's `-flatten' using `seq'."
 
 (defun delve-mapper (data)
   "Transform DATA into a printable list."
-  (cl-case (type-of data)
-      (delve-zettel (delve-represent-zettel data))
-      (delve-tag    (delve-represent-tag data))
-      (delve-search (delve-represent-search data))
-      (t      (list (format "UNKNOWN TYPE: %s"  (type-of data))))))
+  (pcase data
+    ((pred delve-zettel-p)         (delve-represent-zettel data))
+    ((pred delve-tag-p)            (delve-represent-tag data))
+    ((pred delve-generic-search-p) (delve-represent-search data))
+    (_        (list (format "UNKNOWN TYPE: %s"  (type-of data))))))
 
 ;; * Buffer basics
 
@@ -214,12 +209,19 @@ This is a simple copy of dash's `-flatten' using `seq'."
   (interactive)
   (unless (lister-sublist-below-p (current-buffer) (point))
     (let ((data (lister-get-data (current-buffer) :point)))
-      (cl-case (type-of data)
-	(delve-tag     (delve-insert-sublist-zettel-matching-tag (current-buffer) (point) (delve-tag-tag data)))
-	(delve-zettel  (delve-insert-sublist-all-links-to-zettel (current-buffer)      (point) data))
-	(delve-search  (lister-insert-sublist-below
-			(current-buffer) (point)
-			(delve-execute-search data)))))))
+      (pcase data
+	((pred (delve-tag-p))
+	 (delve-insert-sublist-zettel-matching-tag (current-buffer)
+						   (point)
+						   (delve-tag-tag data)))
+	((pred (delve-zettel-p))
+	 (delve-insert-sublist-all-links-to-zettel (current-buffer)
+						   (point)
+						   data))
+	((pred (delve-search-for-zettel-p)))
+	(lister-insert-sublist-below               (current-buffer)
+						   (point)
+						   (delve-execute-search data))))))
 
 (defun delve-close-sublist ()
   "Close the sublist below the item at point."
@@ -239,12 +241,16 @@ This is a simple copy of dash's `-flatten' using `seq'."
 (defun delve-execute-search (search)
   "Return the results of executing SEARCH."
   (if-let* ((res (delve-db-query-all-zettel
-	       (delve-search-result-subtype search)
-	       (delve-search-constraint search)
-	       (delve-search-args search)
-	       (delve-search-with-clause search))))
-      (if (and res (delve-search-postprocess search))
-	  (funcall (delve-search-postprocess search) res)
+		  ;; subtype:
+		  (delve-generic-search-result-makefn search)
+		  ;; constraint
+		  (delve-generic-search-constraint search)
+		  ;; args
+		  (delve-generic-search-args search)
+		  ;; with-clause 
+		  (delve-generic-search-with-clause search))))
+      (if (and res (delve-generic-search-postprocess search))
+	  (funcall (delve-generic-search-postprocess search) res)
 	res)
     (message "Query returned no results")
     nil))
@@ -259,7 +265,7 @@ If EMPTY-LIST is t, offer a completely empty list instead."
   (if empty-list
       (lister-set-list (current-buffer) nil)
     ;; 
-    (lister-set-list (current-buffer) (delve-query-db-roam-tags))
+    (lister-set-list (current-buffer) (delve-db-query-roam-tags))
     (cl-dolist (search delve-searches)
       (lister-insert (current-buffer) :first search))
     (when (equal (window-buffer) (current-buffer))
@@ -277,37 +283,19 @@ If EMPTY-LIST is t, offer a completely empty list instead."
     (lister-set-list buf (lister-get-all-data-tree buf beg end)))
   (lister-goto (current-buffer) :first))
 
-
-
-
-
-(defun delve-visit-zettel (buf pos visit-function)
-  "In BUF, open zettel at POS using VISIT-FUNCTION."
-  (let* ((data (lister-get-data buf pos)))
-    (unless (eq (type-of data) 'delve-zettel)
-      (user-error "Item at point is no zettel"))
-    (funcall visit-function (delve-zettel-file data))))
-
 (defun delve-open ()
   "Open the item on point, leaving delve."
   (interactive)
-  (delve-visit-zettel (current-buffer) :point #'find-file)
-  (org-roam-buffer-toggle-display))
+  (let* ((data (lister-get-data (current-buffer) :point)))
+    (unless (eq (type-of data) 'delve-zettel)
+      (user-error "Item at point is no zettel"))
+    (find-file (delve-zettel-file data))
+    (org-roam-buffer-toggle-display)))
 
-;; Key "v"
-(defun delve-view ()
-  "View the item on point without leaving delve."
-  (interactive)
-  (save-selected-window
-    (delve-visit-zettel (current-buffer) :point #'find-file-other-window)))
-    ;; this does not work, I have no clue why:
-;;    (org-roam-buffer-toggle-display)))
-
-;; Key "i"
 (defun delve-insert-zettel  ()
   "Choose a zettel and insert it in the current delve buffer."
   (interactive)
-  (let* ((zettel (delve-db-query-all-zettel "ZETTEL" [:order-by (asc titles:title)]))
+  (let* ((zettel (delve-db-query-all-zettel 'delve-make-zettel [:order-by (asc titles:title)]))
 	 (completion (seq-map (lambda (z) (cons (concat (delve-represent-tags z)
 							(delve-represent-title z))
 						z))
@@ -421,13 +409,13 @@ minibuffer string, else add it."
 
 (defun delve-action (data)
   "Act on the delve object DATA."
+  (ignore data)
   (delve-open))
 
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map lister-mode-map)
     (define-key map "\t" #'delve-toggle-sublist)
-    (define-key map "v" #'delve-view)
     (define-key map "o" #'delve-open)
     (define-key map (kbd "<C-return>") #'delve-open)
     (define-key map "N" #'delve-narrow-sublist)
@@ -472,19 +460,26 @@ Calling `delve-toggle' switches to this buffer.")
     (delve-mode)
     (lister-highlight-mode)
     (delve-initial-list))
-  (switch-to-buffer delve-toggle-buffer)
-  (delete-other-windows))
+  (switch-to-buffer delve-toggle-buffer))
 
 ;;;###autoload
-(defun delve-toggle ()
-  "Toggle the display of the delve buffer."
-  (interactive)
-  (if (and delve-toggle-buffer
-	   (buffer-live-p delve-toggle-buffer))
+(defun delve-toggle (&optional force-reinit)
+  "Toggle the display of the delve buffer.
+With interactive prefix or optional argument FORCE-REINIT, switch
+to a reinitialized delve buffer."
+  (interactive "P")
+  (if (and
+       (not force-reinit)
+       delve-toggle-buffer
+       (buffer-live-p delve-toggle-buffer))
+      ;; toggle an existing buffer:
       (if (equal (current-buffer) delve-toggle-buffer)
 	  (bury-buffer)
-	(switch-to-buffer delve-toggle-buffer)
-	(delete-other-windows))
+	(switch-to-buffer delve-toggle-buffer))
+    ;; or create a new one:
+    (when delve-toggle-buffer
+      (kill-buffer delve-toggle-buffer)
+      (setq delve-toggle-buffer nil))
     (delve)))
 
 ;; (bind-key "<f2>" 'delve-toggle)

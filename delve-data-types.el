@@ -51,7 +51,9 @@
 	       (:constructor delve-make-backlink)
 	       (:include delve-generic)))
 
-;; Searches
+
+
+;;; Searches
 
 (cl-defstruct (delve-generic-search (:constructor delve-make-search))
   name
@@ -59,12 +61,12 @@
   constraint
   args
   postprocess
-  result-subtype)
+  result-makefn)
 
 (cl-defstruct (delve-search-for-zettel
 	       (:constructor delve-make-search-for-zettel)
 	       (:include delve-generic-search
-			 (result-subtype 'delve-zettel))))
+			 (result-makefn 'delve-make-zettel))))
 
 (provide 'delve-data-types)
 ;;; delve-data-types.el ends here
