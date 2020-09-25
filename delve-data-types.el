@@ -20,17 +20,19 @@
 
 ;;; Commentary:
 
+;; Defines same basic types for the delve zettelkasten explorer.
+
 ;;; Code:
 
 (require 'cl-lib)
 
-;; * Item data types
+;;; * Item data types
 
 (cl-defstruct (delve-tag (:constructor delve-make-tag))
   tag
   count)
 
-(cl-defstruct (delve-generic (:constructor delve-make-generic))
+(cl-defstruct (delve-zettel (:constructor delve-make-zettel))
   title
   file
   tags
@@ -39,23 +41,23 @@
   backlinks
   tolinks)
 
-(cl-defstruct (delve-zettel
-	       (:constructor delve-make-zettel)
-	       (:include delve-generic)))
+(cl-defstruct (delve-page
+	       (:constructor delve-make-page)
+	       (:include delve-zettel)))
 
 (cl-defstruct (delve-tolink 
 	       (:constructor delve-make-tolink)
-	       (:include delve-generic)))
+	       (:include delve-zettel)))
 
 (cl-defstruct (delve-backlink
 	       (:constructor delve-make-backlink)
-	       (:include delve-generic)))
+	       (:include delve-zettel)))
 
 
 
 ;;; Searches
 
-(cl-defstruct (delve-generic-search (:constructor delve-make-search))
+ (cl-defstruct (delve-generic-search (:constructor delve-make-generic-search))
   name
   with-clause
   constraint
@@ -63,10 +65,10 @@
   postprocess
   result-makefn)
 
-(cl-defstruct (delve-search-for-zettel
-	       (:constructor delve-make-search-for-zettel)
+(cl-defstruct (delve-page-search
+	       (:constructor delve-make-page-search)
 	       (:include delve-generic-search
-			 (result-makefn 'delve-make-zettel))))
+			 (result-makefn 'delve-make-page))))
 
 (provide 'delve-data-types)
 ;;; delve-data-types.el ends here

@@ -282,16 +282,16 @@ specific query for special usecases."
 			       :count (delve-db-count-tag tag)))
 	     tags)))
 
-(defun delve-db-query-zettel-with-tag (tag)
-  "Return all zettel tagged TAG."
-  (delve-db-query-all-zettel 'delve-make-zettel
+(defun delve-db-query-pages-with-tag (tag)
+  "Return all pages tagged TAG."
+  (delve-db-query-all-zettel 'delve-make-page
 			     [:where (like tags:tags $r1)
 			      :order-by (asc titles:title)]
 			  (format "%%%s%%" tag)))
 
-(defun delve-db-query-zettel-matching-title (term)
-  "Return all zettel with title matching TERM."
-  (delve-db-query-all-zettel 'delve-make-zettel
+(defun delve-db-query-pages-matching-title (term)
+  "Return all pages with title matching TERM."
+  (delve-db-query-all-zettel 'delve-make-page
 			     [:where (like titles:title $r1)
 			      :order-by (asc titles:title)]
 			  (format "%%%s%%" term)))
@@ -304,7 +304,7 @@ specific query for special usecases."
 							(= links:to $s1))]])
 	 (constraint [:join backlinks :using [[ file ]]
 		      :order-by (asc titles:title)])
-	 (args       (delve-generic-file zettel)))
+	 (args       (delve-zettel-file zettel)))
     (delve-db-query-all-zettel 'delve-make-backlink
 			       constraint args with-clause)))
 
@@ -316,7 +316,7 @@ specific query for special usecases."
 						      (= links:from $s1))]])
 	 (constraint [:join tolinks :using [[ file ]]
 		      :order-by (asc titles:title)])
-	 (args       (delve-generic-file zettel)))
+	 (args       (delve-zettel-file zettel)))
     (delve-db-query-all-zettel 'delve-make-tolink
 			       constraint args with-clause)))
 
@@ -325,7 +325,7 @@ specific query for special usecases."
 (defun delve-db-query-sort-by-mtime (zettel)
   "Sort ZETTEL by mtime, last one first."
   (cl-sort zettel (lambda (e1 e2) (time-less-p e2 e1))
-	   :key #'delve-generic-mtime))
+	   :key #'delve-zettel-mtime))
 
 (defun delve-db-query-last-10-modified (zettel)
   "Return the last 10 modified ZETTEL."

@@ -48,17 +48,17 @@
   "Current version of delve.")
 
 (defvar delve-searches
-  (list (delve-make-search-for-zettel :name "Orphaned Pages"
+  (list (delve-make-page-search :name "Orphaned Pages"
     			   :constraint [:where tags:tags :is :null])
-	(delve-make-search-for-zettel :name "10 Last Modified"
+	(delve-make-page-search :name "10 Last Modified"
 			   :postprocess #'delve-db-query-last-10-modified)
-	(delve-make-search-for-zettel :name "10 Most Linked To"
+	(delve-make-page-search :name "10 Most Linked To"
 			   :constraint [:order-by (desc backlinks)
 					:limit 10])
-	(delve-make-search-for-zettel :name "10 Most Linked From"
+	(delve-make-page-search :name "10 Most Linked From"
 			   :constraint [:order-by (desc tolinks)
 					:limit 10])
-	(delve-make-search-for-zettel :name "10 Most Linked"
+	(delve-make-page-search :name "10 Most Linked"
 			   :constraint [:order-by (desc (+ backlinks tolinks))
 					:limit 10]))
   "A list of default searches offered when starting delve.")
@@ -68,20 +68,20 @@
 
 ;; -- presenting a zettel object:
 
-(defun delve-represent-tags (generic-zettel)
+(defun delve-represent-tags (zettel)
   "Return all tags from GENERIC-ZETTEL as a propertized string."
-  (when (delve-generic-tags generic-zettel)
+  (when (delve-zettel-tags zettel)
     (concat "("
 	    (propertize
-	     (string-join (delve-generic-tags generic-zettel) ", ")
+	     (string-join (delve-zettel-tags zettel) ", ")
 	     'face 'org-level-1)
 	    ") ")))
 
-(defun delve-represent-title (generic-zettel)
-  "Return the title of GENERIC-ZETTEL as a propertized string."
+(defun delve-represent-title (zettel)
+  "Return the title of ZETTEL as a propertized string."
   (propertize (or
-	       (delve-generic-title generic-zettel)
-	       (delve-generic-file generic-zettel)
+	       (delve-zettel-title zettel)
+	       (delve-zettel-file zettel)
 	       "NO FILE, NO TITLE.")
 	      'face 'org-document-title))
 
@@ -93,43 +93,43 @@
 	(format-time-string "%b %d " time)
       (format-time-string " %R " time))))
 
-(defun delve-format-subtype (generic-zettel)
-  "Return the subtype of GENERIC-ZETTEL prettified."
-  (let* ((subtype (type-of generic-zettel))
+(defun delve-format-subtype (zettel)
+  "Return the subtype of ZETTEL prettified."
+  (let* ((subtype (type-of zettel))
 	 (typestr (if (featurep 'all-the-icons)
 		      (pcase subtype
-			('delve-zettel   (all-the-icons-faicon "list-alt"))
+			('delve-page     (all-the-icons-faicon "list-alt"))
 			('delve-tolink   (all-the-icons-faicon "caret-left"))
 			('delve-backlink (all-the-icons-faicon "caret-right"))
 			(_              "*"))
 		    (pcase subtype
-		      ('delve-zettel    "  ZETTEL")
+		      ('delve-page      "    PAGE")
 		      ('delve-tolink    "  TOLINK")
 		      ('delve-backlink  "BACKLINK")
 		      (_               "subtype?")))))
     (concat (propertize typestr 'face 'font-lock-constant-face) " ")))
 
-(defun delve-represent-generic-zettel (generic-zettel)
-  "Return GENERIC-ZETTEL as a pretty propertized string.
-GENERIC-ZETTEL can be either a zettel, a backlink or a tolink."
+(defun delve-represent-zettel (zettel)
+  "Return ZETTEL as a pretty propertized string.
+ZETTEL can be either a page, a backlink or a tolink."
   (list  (concat
 	  ;; creation time:
 	  (propertize
-	   (delve-format-time (delve-generic-mtime generic-zettel))
+	   (delve-format-time (delve-zettel-mtime zettel))
 	   'face 'org-document-info-keyword)
-	  ;; subtype (tolink, backlink, generic-zettel)
-	  (delve-format-subtype generic-zettel)
+	  ;; subtype (tolink, backlink, zettel)
+	  (delve-format-subtype zettel)
 	  ;; associated tags:
-	  (delve-represent-tags generic-zettel)
+	  (delve-represent-tags zettel)
 	  ;; # of backlinks:
 	  (propertize
-	   (format "%d → " (or (delve-generic-backlinks generic-zettel) 0))
+	   (format "%d → " (or (delve-zettel-backlinks zettel) 0))
 	   'face '(:weight bold))
 	  ;; title:
-	  (delve-represent-title generic-zettel)
+	  (delve-represent-title zettel)
 	  ;; # of tolinks:
 	  (propertize
-	   (format " →  %d" (or (delve-generic-tolinks generic-zettel) 0))
+	   (format " →  %d" (or (delve-zettel-tolinks zettel) 0))
 	   'face '(:weight bold)))))
 
 ;; -- presenting a search item:
@@ -162,7 +162,7 @@ GENERIC-ZETTEL can be either a zettel, a backlink or a tolink."
 (defun delve-mapper (data)
   "Transform DATA into a printable list."
   (pcase data
-    ((pred delve-generic-p)        (delve-represent-generic-zettel data))
+    ((pred delve-zettel-p)         (delve-represent-zettel data))
     ((pred delve-tag-p)            (delve-represent-tag data))
     ((pred delve-generic-search-p) (delve-represent-search data))
     (_        (list (format "UNKNOWN TYPE: %s"  (type-of data))))))
@@ -175,14 +175,14 @@ GENERIC-ZETTEL can be either a zettel, a backlink or a tolink."
 
 ;; * Sublist handling
 
-(defun delve-insert-sublist-zettel-matching-tag (buf pos tag)
-  "In BUF, insert all zettel tagged TAG below the item at POS."
-  (let* ((zettel (delve-db-query-zettel-with-tag tag)))
-    (if zettel
-	(lister-insert-sublist-below buf pos zettel)
-      (user-error "No zettel found matching tag %s" tag))))
+(defun delve-insert-sublist-pages-matching-tag (buf pos tag)
+  "In BUF, insert all pages tagged TAG below the item at POS."
+  (let* ((pages (delve-db-query-pages-with-tag tag)))
+    (if pages
+	(lister-insert-sublist-below buf pos pages)
+      (user-error "No pages found matching tag %s" tag))))
 
-(defun delve-insert-sublist-all-links-to-zettel (buf pos zettel)
+(defun delve-insert-sublist-all-links (buf pos zettel)
   "In BUF, insert all links to and from ZETTEL below the item at POS."
   (let* ((backlinks (delve-db-query-backlinks zettel))
 	 (tolinks   (delve-db-query-tolinks zettel))
@@ -212,14 +212,14 @@ GENERIC-ZETTEL can be either a zettel, a backlink or a tolink."
     (let ((data (lister-get-data (current-buffer) :point)))
       (pcase data
 	((pred delve-tag-p)
-	 (delve-insert-sublist-zettel-matching-tag (current-buffer)
+	 (delve-insert-sublist-pages-matching-tag (current-buffer)
 						   (point)
 						   (delve-tag-tag data)))
-	((pred delve-generic-p)
-	 (delve-insert-sublist-all-links-to-zettel (current-buffer)
+	((pred delve-zettel-p)
+	 (delve-insert-sublist-all-links (current-buffer)
 						   (point)
 						   data))
-	((pred delve-search-for-zettel-p)
+	((pred delve-generic-search-p)
 	 (lister-insert-sublist-below              (current-buffer)
 						   (point)
 						   (delve-execute-search data)))))))
@@ -288,15 +288,16 @@ If EMPTY-LIST is t, offer a completely empty list instead."
   "Open the item on point, leaving delve."
   (interactive)
   (let* ((data (lister-get-data (current-buffer) :point)))
-    (unless (eq (type-of data) 'delve-generic)
+    (unless (eq (type-of data) 'delve-zettel)
       (user-error "Item at point is no zettel"))
-    (find-file (delve-generic-file data))
+    (find-file (delve-zettel-file data))
     (org-roam-buffer-toggle-display)))
 
 (defun delve-insert-zettel  ()
   "Choose a zettel and insert it in the current delve buffer."
   (interactive)
-  (let* ((zettel (delve-db-query-all-zettel 'delve-make-zettel [:order-by (asc titles:title)]))
+  (let* ((zettel (delve-db-query-all-zettel 'delve-make-page
+					    [:order-by (asc titles:title)]))
 	 (completion (seq-map (lambda (z) (cons (concat (delve-represent-tags z)
 							(delve-represent-title z))
 						z))
@@ -356,7 +357,7 @@ Also higlight the minibuffer prompt if regexp is invalid."
   (condition-case err
       (string-match-p regexp
 		      (cl-case (type-of item)
-			(delve-generic (delve-generic-title item))
+			(delve-zettel  (delve-zettel-title item))
 			(delve-tag     (delve-tag-tag item))
 			(string        item) ;; for debugging
 			(t             "")))
