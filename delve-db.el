@@ -304,7 +304,7 @@ specific query for special usecases."
 							(= links:to $s1))]])
 	 (constraint [:join backlinks :using [[ file ]]
 		      :order-by (asc titles:title)])
-	 (args       (delve-zettel-file zettel)))
+	 (args       (delve-generic-file zettel)))
     (delve-db-query-all-zettel 'delve-make-backlink
 			       constraint args with-clause)))
 
@@ -316,7 +316,7 @@ specific query for special usecases."
 						      (= links:from $s1))]])
 	 (constraint [:join tolinks :using [[ file ]]
 		      :order-by (asc titles:title)])
-	 (args       (delve-zettel-file zettel)))
+	 (args       (delve-generic-file zettel)))
     (delve-db-query-all-zettel 'delve-make-tolink
 			       constraint args with-clause)))
 
@@ -325,7 +325,7 @@ specific query for special usecases."
 (defun delve-db-query-sort-by-mtime (zettel)
   "Sort ZETTEL by mtime, last one first."
   (cl-sort zettel (lambda (e1 e2) (time-less-p e2 e1))
-	   :key #'delve-zettel-mtime))
+	   :key #'delve-generic-mtime))
 
 (defun delve-db-query-last-10-modified (zettel)
   "Return the last 10 modified ZETTEL."

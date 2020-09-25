@@ -68,20 +68,20 @@
 
 ;; -- presenting a zettel object:
 
-(defun delve-represent-tags (zettel)
-  "Return all tags from ZETTEL as a propertized string."
-  (when (delve-zettel-tags zettel)
+(defun delve-represent-tags (generic-zettel)
+  "Return all tags from GENERIC-ZETTEL as a propertized string."
+  (when (delve-generic-tags generic-zettel)
     (concat "("
 	    (propertize
-	     (string-join (delve-zettel-tags zettel) ", ")
+	     (string-join (delve-generic-tags generic-zettel) ", ")
 	     'face 'org-level-1)
 	    ") ")))
 
-(defun delve-represent-title (zettel)
-  "Return the title of ZETTEL as a propertized string."
+(defun delve-represent-title (generic-zettel)
+  "Return the title of GENERIC-ZETTEL as a propertized string."
   (propertize (or
-	       (delve-zettel-title zettel)
-	       (delve-zettel-file zettel)
+	       (delve-generic-title generic-zettel)
+	       (delve-generic-file generic-zettel)
 	       "NO FILE, NO TITLE.")
 	      'face 'org-document-title))
 
@@ -109,26 +109,27 @@
 		      (_               "subtype?")))))
     (concat (propertize typestr 'face 'font-lock-constant-face) " ")))
 
-(defun delve-represent-zettel (zettel)
-  "Return propertized strings representing a ZETTEL object."
+(defun delve-represent-generic-zettel (generic-zettel)
+  "Return GENERIC-ZETTEL as a pretty propertized string.
+GENERIC-ZETTEL can be either a zettel, a backlink or a tolink."
   (list  (concat
 	  ;; creation time:
 	  (propertize
-	   (delve-format-time (delve-zettel-mtime zettel))
+	   (delve-format-time (delve-generic-mtime generic-zettel))
 	   'face 'org-document-info-keyword)
-	  ;; subtype (tolink, backlink, zettel)
-	  (delve-format-subtype zettel)
+	  ;; subtype (tolink, backlink, generic-zettel)
+	  (delve-format-subtype generic-zettel)
 	  ;; associated tags:
-	  (delve-represent-tags zettel)
+	  (delve-represent-tags generic-zettel)
 	  ;; # of backlinks:
 	  (propertize
-	   (format "%d → " (or (delve-zettel-backlinks zettel) 0))
+	   (format "%d → " (or (delve-generic-backlinks generic-zettel) 0))
 	   'face '(:weight bold))
 	  ;; title:
-	  (delve-represent-title zettel)
+	  (delve-represent-title generic-zettel)
 	  ;; # of tolinks:
 	  (propertize
-	   (format " →  %d" (or (delve-zettel-tolinks zettel) 0))
+	   (format " →  %d" (or (delve-generic-tolinks generic-zettel) 0))
 	   'face '(:weight bold)))))
 
 ;; -- presenting a search item:
@@ -161,7 +162,7 @@
 (defun delve-mapper (data)
   "Transform DATA into a printable list."
   (pcase data
-    ((pred delve-zettel-p)         (delve-represent-zettel data))
+    ((pred delve-generic-p)        (delve-represent-generic-zettel data))
     ((pred delve-tag-p)            (delve-represent-tag data))
     ((pred delve-generic-search-p) (delve-represent-search data))
     (_        (list (format "UNKNOWN TYPE: %s"  (type-of data))))))
@@ -210,18 +211,18 @@
   (unless (lister-sublist-below-p (current-buffer) (point))
     (let ((data (lister-get-data (current-buffer) :point)))
       (pcase data
-	((pred (delve-tag-p))
+	((pred delve-tag-p)
 	 (delve-insert-sublist-zettel-matching-tag (current-buffer)
 						   (point)
 						   (delve-tag-tag data)))
-	((pred (delve-zettel-p))
+	((pred delve-generic-p)
 	 (delve-insert-sublist-all-links-to-zettel (current-buffer)
 						   (point)
 						   data))
-	((pred (delve-search-for-zettel-p)))
-	(lister-insert-sublist-below               (current-buffer)
+	((pred delve-search-for-zettel-p)
+	 (lister-insert-sublist-below              (current-buffer)
 						   (point)
-						   (delve-execute-search data))))))
+						   (delve-execute-search data)))))))
 
 (defun delve-close-sublist ()
   "Close the sublist below the item at point."
@@ -287,9 +288,9 @@ If EMPTY-LIST is t, offer a completely empty list instead."
   "Open the item on point, leaving delve."
   (interactive)
   (let* ((data (lister-get-data (current-buffer) :point)))
-    (unless (eq (type-of data) 'delve-zettel)
+    (unless (eq (type-of data) 'delve-generic)
       (user-error "Item at point is no zettel"))
-    (find-file (delve-zettel-file data))
+    (find-file (delve-generic-file data))
     (org-roam-buffer-toggle-display)))
 
 (defun delve-insert-zettel  ()
@@ -355,10 +356,10 @@ Also higlight the minibuffer prompt if regexp is invalid."
   (condition-case err
       (string-match-p regexp
 		      (cl-case (type-of item)
-			(delve-zettel (delve-zettel-title item))
-			(delve-tag    (delve-tag-tag item))
-			(string       item) ;; for debugging
-			(t            "")))
+			(delve-generic (delve-generic-title item))
+			(delve-tag     (delve-tag-tag item))
+			(string        item) ;; for debugging
+			(t             "")))
     (error
      (ignore err) ;; silence byte compiler
      (delve-narrow-propertize-minibuffer-prompt 'isearch-fail)
