@@ -41,6 +41,9 @@
 
 ;; * Global variables
 
+(defvar delve-auto-delete-roam-buffer t
+  "Delete visible *org roam* buffer when switchung to DELVE.")
+
 (defvar delve-buffer-name "*DELVE*"
   "Name of delve buffers.")
 
@@ -288,7 +291,6 @@ If EMPTY-LIST is t, offer a completely empty list instead."
   "Open the item on point, leaving delve."
   (interactive)
   (let* ((data (lister-get-data (current-buffer) :point)))
-    ;; TODO this has to be something like "derived type"?
     (unless (delve-zettel-p data)
       (user-error "Item at point is no zettel"))
     (find-file (delve-zettel-file data))
@@ -483,7 +485,10 @@ to a reinitialized delve buffer."
     (when delve-toggle-buffer
       (kill-buffer delve-toggle-buffer)
       (setq delve-toggle-buffer nil))
-    (delve)))
+    (delve))
+  (when delve-auto-delete-roam-buffer
+    (when-let* ((win (get-buffer-window org-roam-buffer)))
+      (delete-window win))))
 
 ;; (bind-key "<f2>" 'delve-toggle)
 
