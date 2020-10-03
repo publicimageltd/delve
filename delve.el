@@ -96,23 +96,29 @@
 	(format-time-string "%b %d " time)
       (format-time-string " %R " time))))
 
+(defvar delve-subtype-icons-alist
+  '((delve-page     :default "    PAGE" :faicon "list-alt")
+    (delve-tolink   :default "  TOLINK" :faicon "caret-left")
+    (delve-backlink :default "BACKLINK" :faicon "caret-right"))
+  "Alist associating a delve zettel subtype with a name and symbol.
+The name and the symbol are determined by the properties
+`:default' (for the name) and `:faicon' (for the symbol).
+
+If `all-the-icons' is installed, use the symbol. Else, display
+the name (a simple string).")
+
 (defun delve-format-subtype (zettel)
   "Return the subtype of ZETTEL prettified."
-  (let* ((subtype (type-of zettel))
-	 (typestr (if (featurep 'all-the-icons)
-		      (pcase subtype
-			('delve-page     (all-the-icons-faicon "list-alt"))
-			('delve-tolink   (all-the-icons-faicon "caret-left"))
-			('delve-backlink (all-the-icons-faicon "caret-right"))
-			(_              "*"))
-		    (propertize 
-		     (pcase subtype
-		       ('delve-page      "    PAGE")
-		       ('delve-tolink    "  TOLINK")
-		       ('delve-backlink  "BACKLINK")
-		       (_               "subtype?"))
-		     'face 'font-lock-constant-face))))
-    (concat typestr " ")))
+  (let* ((subtype     (type-of zettel))
+	 (type-plist  (alist-get subtype delve-subtype-icons-alist nil)))
+    (concat 
+     (if (and type-plist (featurep 'all-the-icons))
+	 (all-the-icons-faicon (plist-get type-plist :faicon))
+       (propertize (if type-plist
+		       (plist-get type-plist :default)
+		     "subtype?")
+		   'face 'font-lock-constant-face))
+     " ")))
 
 (defun delve-represent-zettel (zettel)
   "Return ZETTEL as a pretty propertized string.
