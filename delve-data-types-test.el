@@ -11,8 +11,8 @@
 
 (describe "Core Data Types:"
   (it "Distinguish data items by their type"
-    (let* ((zettel (delve-make-page))
-	   (tolink (delve-make-tolink))
+    (let* ((page     (delve-make-page))
+	   (tolink   (delve-make-tolink))
 	   (backlink (delve-make-backlink)))
       (expect (type-of page)     :to-be 'delve-page)
       (expect (type-of tolink)   :to-be 'delve-tolink)
@@ -20,7 +20,7 @@
   (it "Check for result type of searches."
     (let* ((page-search (delve-make-page-search))) 
       (expect (delve-page-search-result-makefn page-search)
-	      :to-be 'delve-page))))
+	      :to-be 'delve-make-page))))
 
 (provide 'delve-data-types-test)
 ;;; delve-data-types-test.el ends here
