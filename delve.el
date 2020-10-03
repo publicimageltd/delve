@@ -105,12 +105,14 @@
 			('delve-tolink   (all-the-icons-faicon "caret-left"))
 			('delve-backlink (all-the-icons-faicon "caret-right"))
 			(_              "*"))
-		    (pcase subtype
-		      ('delve-page      "    PAGE")
-		      ('delve-tolink    "  TOLINK")
-		      ('delve-backlink  "BACKLINK")
-		      (_               "subtype?")))))
-    (concat (propertize typestr 'face 'font-lock-constant-face) " ")))
+		    (propertize 
+		     (pcase subtype
+		       ('delve-page      "    PAGE")
+		       ('delve-tolink    "  TOLINK")
+		       ('delve-backlink  "BACKLINK")
+		       (_               "subtype?"))
+		     'face 'font-lock-constant-face))))
+    (concat typestr " ")))
 
 (defun delve-represent-zettel (zettel)
   "Return ZETTEL as a pretty propertized string.
