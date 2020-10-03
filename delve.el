@@ -288,7 +288,8 @@ If EMPTY-LIST is t, offer a completely empty list instead."
   "Open the item on point, leaving delve."
   (interactive)
   (let* ((data (lister-get-data (current-buffer) :point)))
-    (unless (eq (type-of data) 'delve-zettel)
+    ;; TODO this has to be something like "derived type"?
+    (unless (delve-zettel-p data)
       (user-error "Item at point is no zettel"))
     (find-file (delve-zettel-file data))
     (org-roam-buffer-toggle-display)))
