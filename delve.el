@@ -240,6 +240,14 @@ ZETTEL can be either a page, a backlink or a tolink."
 
 ;;; * Delve Mode: Interactive Functions, Mode Definition 
 
+(defun delve-refresh-buffer (buf)
+  "Refresh all items in BUF."
+  (interactive (list (current-buffer)))
+  (when-let* ((all-data (lister-get-all-data-tree buf)))
+    (lister-with-locked-cursor buf
+      (with-temp-message "Updating the whole buffer, that might take some time...."
+	(lister-set-list buf (delve-db-update-tree all-data))))))
+
 (defun delve-insert-sublist-to-links (buf pos zettel)
   "In BUF, insert all links to ZETTEL below the item at POS."
   (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
@@ -325,6 +333,7 @@ If EMPTY-LIST is t, offer a completely empty list instead."
     (define-key map "."                #'delve-initial-list)
     (define-key map (kbd "<left>")     #'delve-insert-sublist-backlinks)
     (define-key map (kbd "<right>")    #'delve-insert-sublist-to-links)
+    (define-key map (kbd "g")          #'delve-refresh-buffer)
     map)
   "Key map for `delve-mode'.")
 

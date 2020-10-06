@@ -331,5 +331,37 @@ specific query for special usecases."
   "Return the last 10 modified ZETTEL."
   (seq-take (delve-db-query-sort-by-mtime zettel) 10))
 
+;; * Update a complete item tree
+
+(defun delve-db-update-zettel (item make-fn)
+  "Use MAKE-FN to return zettel ITEM updated."
+  (car (delve-db-query-all-zettel make-fn
+				  [:where (= titles:file $s1)]
+				  (delve-zettel-file item))))
+
+(defun delve-db-update-item (item)
+  "Return the delve ITEM updated."
+  (cl-typecase item
+    (delve-tag (let* ((tag (delve-tag-tag item)))
+		 (delve-make-tag :tag tag
+				 :count (delve-db-count-tag tag))))
+    (delve-page     (delve-db-update-zettel item 'delve-make-page))
+    (delve-tolink   (delve-db-update-zettel item 'delve-make-tolink))
+    (delve-backlink (delve-db-update-zettel item 'delve-make-backlink))
+    (delve-page-search item)
+    (t         nil)))
+
+(defun delve-db-update-tree (tree)
+  "Return a copy of TREE with all items updated.
+If an item does not exist anymore, remove it from TREE.
+TREE has to be a nested list."
+  (when (and tree (listp tree))
+    (cl-remove-if #'null
+		  (mapcar (lambda (item)
+			    (if (listp item)
+				(delve-db-update-tree item)
+			      (delve-db-update-item item)))
+			  tree))))
+
 (provide 'delve-db)
 ;;; delve-db.el ends here
