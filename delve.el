@@ -254,12 +254,12 @@ ZETTEL can be either a page, a backlink or a tolink."
       (lister-insert-sublist-below buf pos fromlinks)
     (user-error "Item has no backlinks")))
 
-(defun delve-toggle-sublist ()
-  "Close or open the item's sublist at point."
-  (interactive)
-  (if (lister-sublist-below-p (current-buffer) (point))
-      (lister-remove-sublist-below (current-buffer) (point))
-    (delve-insert-sublist (current-buffer))))
+(defun delve-toggle-sublist (buf pos)
+  "In BUF, close or open the item's sublist at POS."
+  (interactive (list (current-buffer) (point)))
+  (if (lister-sublist-below-p buf pos)
+      (lister-remove-sublist-below buf pos)
+    (delve-insert-sublist buf)))
 
 (defun delve-initial-list (&optional empty-list)
   "Populate the current delve buffer with predefined items.
@@ -274,17 +274,16 @@ If EMPTY-LIST is t, offer a completely empty list instead."
     (when (equal (window-buffer) (current-buffer))
       (recenter))))
 
-(defun delve-sublist-to-top ()
+(defun delve-sublist-to-top (buf pos)
   "Replace all items with the current sublist at point."
-  (interactive)
+  (interactive (list (current-buffer) (point)))
   (unless lister-local-marker-list
     (user-error "There are not items in this buffer"))
-  (pcase-let* ((buf             (current-buffer))
-	       (lister-display-transaction-p t)
-	       (`(,beg ,end _ ) (lister-sublist-boundaries buf (point))))
+  (pcase-let* ((lister-display-transaction-p t)
+	       (`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
     (lister-sensor-leave buf)
     (lister-set-list buf (lister-get-all-data-tree buf beg end)))
-  (lister-goto (current-buffer) :first))
+  (lister-goto buf :first))
 
 ;; TODO Currently unused
 (defun delve-insert-zettel  ()
