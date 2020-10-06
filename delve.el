@@ -178,49 +178,14 @@ ZETTEL can be either a page, a backlink or a tolink."
     ((pred delve-generic-search-p) (delve-represent-search data))
     (_        (list (format "UNKNOWN TYPE: %s"  (type-of data))))))
 
+;; -----------------------------------------------------------
 ;; * Buffer basics
 
 (defun delve-new-buffer ()
   "Return a new DELVE buffer."
    (generate-new-buffer delve-buffer-name))
 
-;; * Lister Buffer Sublist handling
-
-(defun delve-insert-sublist-pages-matching-tag (buf pos tag)
-  "In BUF, insert all pages tagged TAG below the item at POS."
-  (let* ((pages (delve-db-query-pages-with-tag tag)))
-    (if pages
-	(lister-insert-sublist-below buf pos pages)
-      (user-error "No pages found matching tag %s" tag))))
-
-(defun delve-insert-sublist-all-links (buf pos zettel)
-  "In BUF, insert all links to and from ZETTEL below the item at POS."
-  (let* ((backlinks (delve-db-query-backlinks zettel))
-	 (tolinks   (delve-db-query-tolinks zettel))
-	 (all       (append backlinks tolinks)))
-    (if all
-	(lister-insert-sublist-below buf pos all)
-      (user-error "Item has no backlinks and no links to other zettel"))))
-
-(defun delve-open-sublist ()
-  "Open the item at point by inserting its result as a sublist."
-  (unless (lister-sublist-below-p (current-buffer) (point))
-    (let ((data (lister-get-data (current-buffer) :point)))
-      (pcase data
-	((pred delve-tag-p)
-	 (delve-insert-sublist-pages-matching-tag (current-buffer)
-						   (point)
-						   (delve-tag-tag data)))
-	((pred delve-zettel-p)
-	 (delve-insert-sublist-all-links (current-buffer)
-						   (point)
-						   data))
-	((pred delve-generic-search-p)
-	 (lister-insert-sublist-below              (current-buffer)
-						   (point)
-						   (delve-execute-search data)))))))
-
-;; * Special Searches
+;; * Insert sublists according to the item type
 
 (defun delve-execute-search (search)
   "Return the results of executing SEARCH."
@@ -238,6 +203,40 @@ ZETTEL can be either a page, a backlink or a tolink."
 	res)
     (message "Query returned no results")
     nil))
+
+(defun delve-insert-sublist-pages-matching-tag (buf pos tag)
+  "In BUF, insert all pages tagged TAG below the item at POS."
+  (let* ((pages (delve-db-query-pages-with-tag tag)))
+    (if pages
+	(lister-insert-sublist-below buf pos pages)
+      (user-error "No pages found matching tag %s" tag))))
+
+(defun delve-insert-sublist-all-links (buf pos zettel)
+  "In BUF, insert all links to and from ZETTEL below the item at POS."
+  (let* ((backlinks (delve-db-query-backlinks zettel))
+	 (tolinks   (delve-db-query-tolinks zettel))
+	 (all       (append backlinks tolinks)))
+    (if all
+	(lister-insert-sublist-below buf pos all)
+      (user-error "Item has no backlinks and no links to other zettel"))))
+
+(defun delve-insert-sublist (buf)
+  "In BUF, eval item at point and insert result as a sublist."
+  (unless (lister-sublist-below-p buf (point))
+    (let ((data (lister-get-data buf :point)))
+      (pcase data
+	((pred delve-tag-p)
+	 (delve-insert-sublist-pages-matching-tag buf
+						  (point)
+						  (delve-tag-tag data)))
+	((pred delve-zettel-p)
+	 (delve-insert-sublist-all-links buf
+					 (point)
+					 data))
+	((pred delve-generic-search-p)
+	 (lister-insert-sublist-below  buf
+				       (point)
+				       (delve-execute-search data)))))))
 
 ;;; * Delve Mode: Interactive Functions, Mode Definition 
 
@@ -260,7 +259,7 @@ ZETTEL can be either a page, a backlink or a tolink."
   (interactive)
   (if (lister-sublist-below-p (current-buffer) (point))
       (lister-remove-sublist-below (current-buffer) (point))
-    (delve-open-sublist)))
+    (delve-insert-sublist (current-buffer))))
 
 (defun delve-initial-list (&optional empty-list)
   "Populate the current delve buffer with predefined items.
