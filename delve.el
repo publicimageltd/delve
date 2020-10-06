@@ -184,7 +184,7 @@ ZETTEL can be either a page, a backlink or a tolink."
   "Return a new DELVE buffer."
    (generate-new-buffer delve-buffer-name))
 
-;; * Sublist handling
+;; * Lister Buffer Sublist handling
 
 (defun delve-insert-sublist-pages-matching-tag (buf pos tag)
   "In BUF, insert all pages tagged TAG below the item at POS."
@@ -202,23 +202,8 @@ ZETTEL can be either a page, a backlink or a tolink."
 	(lister-insert-sublist-below buf pos all)
       (user-error "Item has no backlinks and no links to other zettel"))))
 
-(defun delve-insert-sublist-to-links (buf pos zettel)
-  "In BUF, insert all links to ZETTEL below the item at POS."
-  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
-  (if-let* ((tolinks (delve-db-query-tolinks zettel)))
-      (lister-insert-sublist-below buf pos tolinks)
-    (user-error "Item has no links")))
-
-(defun delve-insert-sublist-backlinks (buf pos zettel)
-  "In BUF, insert all links from ZETTEL below the item at POS."
-  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
-  (if-let* ((fromlinks (delve-db-query-backlinks zettel)))
-      (lister-insert-sublist-below buf pos fromlinks)
-    (user-error "Item has no backlinks")))
-
 (defun delve-open-sublist ()
   "Open the item at point by inserting its result as a sublist."
-  (interactive)
   (unless (lister-sublist-below-p (current-buffer) (point))
     (let ((data (lister-get-data (current-buffer) :point)))
       (pcase data
@@ -234,19 +219,6 @@ ZETTEL can be either a page, a backlink or a tolink."
 	 (lister-insert-sublist-below              (current-buffer)
 						   (point)
 						   (delve-execute-search data)))))))
-
-(defun delve-close-sublist ()
-  "Close the sublist below the item at point."
-  (interactive)
-  (when (lister-sublist-below-p (current-buffer) (point))
-    (lister-remove-sublist-below (current-buffer) (point))))
-
-(defun delve-toggle-sublist ()
-  "Close or open the item's sublist at point."
-  (interactive)
-  (if (lister-sublist-below-p (current-buffer) (point))
-      (delve-close-sublist)
-    (delve-open-sublist)))
 
 ;; * Special Searches
 
@@ -267,8 +239,28 @@ ZETTEL can be either a page, a backlink or a tolink."
     (message "Query returned no results")
     nil))
 
+;;; * Delve Mode: Interactive Functions, Mode Definition 
 
-;; * Delve actions and keys
+(defun delve-insert-sublist-to-links (buf pos zettel)
+  "In BUF, insert all links to ZETTEL below the item at POS."
+  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
+  (if-let* ((tolinks (delve-db-query-tolinks zettel)))
+      (lister-insert-sublist-below buf pos tolinks)
+    (user-error "Item has no links")))
+
+(defun delve-insert-sublist-backlinks (buf pos zettel)
+  "In BUF, insert all links from ZETTEL below the item at POS."
+  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
+  (if-let* ((fromlinks (delve-db-query-backlinks zettel)))
+      (lister-insert-sublist-below buf pos fromlinks)
+    (user-error "Item has no backlinks")))
+
+(defun delve-toggle-sublist ()
+  "Close or open the item's sublist at point."
+  (interactive)
+  (if (lister-sublist-below-p (current-buffer) (point))
+      (lister-remove-sublist-below (current-buffer) (point))
+    (delve-open-sublist)))
 
 (defun delve-initial-list (&optional empty-list)
   "Populate the current delve buffer with predefined items.
@@ -295,15 +287,7 @@ If EMPTY-LIST is t, offer a completely empty list instead."
     (lister-set-list buf (lister-get-all-data-tree buf beg end)))
   (lister-goto (current-buffer) :first))
 
-(defun delve-open ()
-  "Open the item on point, leaving delve."
-  (interactive)
-  (let* ((data (lister-get-data (current-buffer) :point)))
-    (unless (delve-zettel-p data)
-      (user-error "Item at point is no zettel"))
-    (find-file (delve-zettel-file data))
-    (org-roam-buffer-toggle-display)))
-
+;; TODO Currently unused
 (defun delve-insert-zettel  ()
   "Choose a zettel and insert it in the current delve buffer."
   (interactive)
@@ -320,123 +304,28 @@ If EMPTY-LIST is t, offer a completely empty list instead."
     (lister-insert (current-buffer) :next (alist-get candidate completion nil nil #'string=))
     (lister-goto (current-buffer) pos)))
 
-;; Key "n"
-(defvar delve-narrow-buffer nil)
-(defvar delve-narrow-list nil)
-(defvar delve-narrow-pos nil)
-(defvar delve-narrow-input nil)
-
-(defun delve-narrow-interactive-minibuffer-setup ()
-  "Set up minibuffer for in-buffer narrowing."
-  (add-hook 'post-command-hook #'delve-narrow-update nil t))
-
-(defun delve-narrow-update ()
-  "Narrow in-buffer list.
-Reinsert the list items matching DELVE-NARROW-INPUT.  The complete
-list is stored in DELVE-NARROW-LIST.  Reinsert at buffer position
-DELVE-NARROW-POS.  Mark the minibuffer prompt if regexp is invalid."
-  (setq delve-narrow-input (minibuffer-contents-no-properties))
-  (lister-remove-this-level delve-narrow-buffer delve-narrow-pos)
-  (delve-narrow-propertize-minibuffer-prompt 'isearch-fail t)
-  (lister-insert-sublist delve-narrow-buffer
-			 delve-narrow-pos
-			 (or
-			  (delve-narrow-reduce-list
-			   delve-narrow-input
-			   delve-narrow-list)
-			  delve-narrow-list)))
-
-(defun delve-narrow-reduce-list (regexp l)
-  "Return items in L matching REGEXP, preserving nesting.
-If REGEXP is invalid, return nil."
-  (catch 'reduce
-    (reverse
-     (seq-reduce (lambda (acc elt)
-		   (if (listp elt)
-		       (if-let ((new-list (delve-narrow-reduce-list regexp elt)))
-			 (cons new-list acc)
-			 acc)
-		     (if (delve-narrow-match-p regexp elt)
-			 (cons elt acc)
-		       acc)))
-		 l
-		 nil))))
-  
-(defun delve-narrow-match-p (regexp item)
-  "Check if object ITEM match REGEXP.
-Also higlight the minibuffer prompt if regexp is invalid."
-  (condition-case err
-      (string-match-p regexp
-		      (cl-case (type-of item)
-			(delve-zettel  (delve-zettel-title item))
-			(delve-tag     (delve-tag-tag item))
-			(string        item) ;; for debugging
-			(t             "")))
-    (error
-     (ignore err) ;; silence byte compiler
-     (delve-narrow-propertize-minibuffer-prompt 'isearch-fail)
-     (throw 'reduce nil))))
-
-(defun delve-narrow-propertize-minibuffer-prompt (value &optional de-propertize)
-  "Add face property VALUE to the minibuffer prompt, or optionally remove it.
-If option DE-PROPERTIZE is set, remove the value from the
-minibuffer string, else add it."
-  (with-current-buffer (window-buffer (minibuffer-window))
-    (let* ((inhibit-field-text-motion t)
-	   (inhibit-read-only t)
-	   (fn (if de-propertize 'lister-remove-face-property 'lister-add-face-property)))
-      (funcall fn (line-beginning-position) (minibuffer-prompt-end) value))))
-
-(defun delve-narrow-sublist ()
-  "Interactively narrow the sublist at point."
+(defun delve-visit-zettel ()
+  "Visit the zettel item on point, leaving delve."
   (interactive)
-  (unless lister-local-marker-list
-    (user-error "No list to narrow"))
-  (when lister-highlight-mode
-    (lister-unhighlight-item))
-  (pcase-let ((`(,beg ,end _ ) (lister-sublist-boundaries (current-buffer) (point))))
-    ;; TODO get-all-data ignores all levels; thus they are not
-    ;; reinserted. So we should ideally call get-all-data-tree
-    ;; and make narrow-p recursively (if ITEM is a list, ....)
-    (let* ((sublist (lister-get-all-data-tree (current-buffer) beg end)))
-      (setq delve-narrow-buffer (current-buffer))
-      (setq delve-narrow-pos (lister-pos-as-integer beg))
-      (setq delve-narrow-input nil)
-      (setq delve-narrow-list sublist))
-    (minibuffer-with-setup-hook
-	#'delve-narrow-interactive-minibuffer-setup
-      (read-from-minibuffer "Narrow sublist: "))
-    (when lister-highlight-mode
-      (lister-highlight-item))))
-
-;; Key "<delete>"
-(defun delve-delete-item ()
-  "Delete item at point."
-  (interactive)
-  (lister-display-transaction (current-buffer)
-    (if (lister-marked-items (current-buffer))
-	(lister-remove-marked-items (current-buffer))
-      (lister-remove (current-buffer) :point))))
-
-;; * Delve Mode
+  (let* ((data (lister-get-data (current-buffer) :point)))
+    (unless (delve-zettel-p data)
+      (user-error "Item at point is no zettel"))
+    (find-file (delve-zettel-file data))
+    (org-roam-buffer-toggle-display)))
 
 (defun delve-action (data)
   "Act on the delve object DATA."
   (ignore data)
-  (delve-open))
+  (delve-visit-zettel))
 
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map lister-mode-map)
-    (define-key map "\t" #'delve-toggle-sublist)
-    (define-key map "o" #'delve-open)
-    (define-key map (kbd "<C-return>") #'delve-open)
-    (define-key map "N" #'delve-narrow-sublist)
-    (define-key map (kbd "C-l") #'delve-sublist-to-top)
-    (define-key map "."  #'delve-initial-list)
-    (define-key map "i" #'delve-insert-zettel)
-    (define-key map (kbd "<delete>")  #'delve-delete-item)
-    (define-key map (kbd "<left>")   #'delve-insert-sublist-backlinks)
+    ;; <RETURN> is mapped to #'delve-action (via lister-local-action)
+    (define-key map "\t"               #'delve-toggle-sublist)
+    (define-key map (kbd "C-l")        #'delve-sublist-to-top)
+    (define-key map "."                #'delve-initial-list)
+    (define-key map (kbd "<left>")     #'delve-insert-sublist-backlinks)
     (define-key map (kbd "<right>")    #'delve-insert-sublist-to-links)
     map)
   "Key map for `delve-mode'.")
