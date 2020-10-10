@@ -47,7 +47,7 @@
 (defvar delve-buffer-name "*DELVE*"
   "Name of delve buffers.")
 
-(defvar delve-version-string "0.2 (branch remote)"
+(defvar delve-version-string "0.2"
   "Current version of delve.")
 
 (defvar delve-searches
@@ -319,6 +319,31 @@ If EMPTY-LIST is t, offer a completely empty list instead."
     (find-file (delve-zettel-file data))
     (org-roam-buffer-toggle-display)))
 
+(defun delve-add-tag ()
+  "Add tags to the zettel at point."
+  (interactive)
+  (let* ((data (lister-get-data (current-buffer) :point)))
+    (unless (delve-zettel-p data)
+      (user-error "Item at point is no zettel"))
+    (delve-edit-prompt-add-tag (delve-zettel-file data))))
+
+(defun delve-remove-tag ()
+  "Remove tags from the zettel at point."
+  (interactive)
+  (let* ((data (lister-get-data (current-buffer) :point)))
+    (unless (delve-zettel-p data)
+      (user-error "Item at point is no zettel"))
+    (delve-edit-prompt-remove-tag (delve-zettel-file data))))
+
+(defun delve-update-item-at-point ()
+  "Update the item at point."
+  (interactive)
+  (let* ((new-item (delve-db-update-item (lister-get-data (current-buffer) :point))))
+    (if (null new-item)
+	(user-error "No update possible")
+      (lister-replace (current-buffer) :point new-item)
+      (message "Item updated"))))
+
 (defun delve-action (data)
   "Act on the delve object DATA."
   (ignore data)
@@ -330,9 +355,12 @@ If EMPTY-LIST is t, offer a completely empty list instead."
     ;; <RETURN> is mapped to #'delve-action (via lister-local-action)
     (define-key map "\t"               #'delve-toggle-sublist)
     (define-key map (kbd "C-l")        #'delve-sublist-to-top)
-    (define-key map "."                #'delve-initial-list)
+    (define-key map "i"                #'delve-initial-list)
+    (define-key map "."                #'delve-update-item-at-point)
     (define-key map (kbd "<left>")     #'delve-insert-sublist-backlinks)
     (define-key map (kbd "<right>")    #'delve-insert-sublist-to-links)
+    (define-key map (kbd "+")          #'delve-add-tag)
+    (define-key map (kbd" -")          #'delve-remove-tag)
     (define-key map (kbd "g")          #'delve-refresh-buffer)
     map)
   "Key map for `delve-mode'.")
