@@ -363,5 +363,42 @@ TREE has to be a nested list."
 			      (delve-db-update-item item)))
 			  tree))))
 
+;; * Merge items with same file reference into one [pseudo-] item
+
+(defun delve-db-zettel-without-slot (zettel slot)
+  "Return ZETTEL with SLOT set to nil."
+  (let ((copy (copy-sequence zettel)))
+    (setf (aref copy (cl-struct-slot-offset 'delve-zettel slot)) nil)
+    copy))
+
+(defun delve-db-is-aliased-p (z1 z2)
+  "Check if Z1 and Z2 only have different titles."
+  (equal (delve-db-zettel-without-slot z1 'title)
+	 (delve-db-zettel-without-slot z2 'title)))
+
+(defun delve-db-untitled-zettel-hash (zettel)
+  "Return a hash value for ZETTEL, ignoring the title."
+  (sxhash-equal (delve-db-zettel-without-slot zettel 'title)))
+
+(defun delve-db-define-hash-test ()
+  (define-hash-table-test 'zettel-sans-title
+    'delve-db-is-aliased-p 'delve-db-untitled-zettel-hash))
+
+(defun delve-db-merge-aliased (zettel-list)
+  "Merge aliased items in ZETTEL-LIST."
+  (let* ((hash-table (make-hash-table :test 'zettel-sans-title
+				      :size (length zettel-list))))
+    (cl-dolist (item zettel-list)
+      ;; TODO das macht nur ein "reduce", kein "merge".
+      ;; um zu mergen, müsste irgendwie der titel gerettet werden.
+      ;; also wohl (item (title1 title2 title3)
+      (puthash item item hash-table))
+    (let (res)
+      (maphash (lambda (key val)
+		 ;; TODO hier muss noch der title wieder eingefügt werden!
+		 (setq res (cons val res)))
+	       hash-table)
+      res)))
+
 (provide 'delve-db)
 ;;; delve-db.el ends here
