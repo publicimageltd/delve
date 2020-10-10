@@ -129,9 +129,9 @@ ORG-TREE is nil, use the tree from calling this function on BUF."
     (with-current-buffer buf
       (save-buffer)
       (let* ((org-tree (org-element-parse-buffer))
-	     (new-tag (completing-read "Select tag to add: "
-				       (delve-edit-get-unused-tags org-tree))))
-	(delve-edit-do-add-tag buf org-tree new-tag)
+	     (new-tag  (completing-read "Select tag to add: "
+					(delve-edit-get-unused-tags org-tree))))
+	(delve-edit-do-add-tag buf new-tag org-tree)
 	(save-buffer)))
     (unless loaded-p
       (kill-buffer buf))))
