@@ -47,7 +47,7 @@
 (defvar delve-buffer-name "*DELVE*"
   "Name of delve buffers.")
 
-(defvar delve-version-string "0.2"
+(defvar delve-version-string "0.3"
   "Current version of delve.")
 
 (defvar delve-searches
