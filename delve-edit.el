@@ -37,17 +37,8 @@
 
 ;; * Remote Editing API
 
-;; TODO
-;; Bug: "Value" enthält VIELE Tags, und BEGIN und END beziehen
-;; sich auf die Gesamtzeile. Das ist gut for "new pose" und solte
-;; daher auch so in eine Funktion gelegt werden.
-;; Aber für das Holen der existierenden Tags ist das natürlich
-;; Schwachsinn. Da nocht "splitten".
-
-
-;; NEU angefügt
 (defun delve-edit-tags-first-eol (org-tree)
-  "Get end position of the first roam tag in ORG-TREE."
+  "Using ORG-TREE, determine end of first line with roam tags."
   (let (end)
     (org-element-map org-tree 'keyword
       (lambda (key)
@@ -56,7 +47,8 @@
 	       (string= (org-element-property :key key) "ROAM_TAGS"))
 	  (unless end
 	    (setq end (org-element-property :end key))))))
-    end))
+    (when end
+      (1- end))))
 
 (defun delve-edit-get-tags (org-tree)
   "Get all ROAM_TAGS from ORG-TREE.
@@ -73,36 +65,40 @@ ORG-TREE is the result from `org-element-parse-buffer'."
 			     (split-string (org-element-property :value key)))))))
     tags))
 
-(defun delve-edit-parsed-title-end (org-tree)
+(defun delve-edit-title-eol (org-tree)
   "Return the position after the TITLE keyword."
-  (car 
-   (org-element-map org-tree 'keyword
-     (lambda (key)
-       (when (string= (org-element-property :key key) "TITLE")
-	 (org-element-property :end key))))))
-
+  (when-let* ((end
+	       (org-element-map org-tree 'keyword
+		 (lambda (key)
+		   (when (string= (org-element-property :key key) "TITLE")
+		     (org-element-property :end key))))))
+    (1- (car end))))
+    
 (defun delve-edit-get-unused-tags (org-tree)
   "Return all tags known to the db, but not found in ORG-TREE."
-  (let* ((buf-tags (mapcar (lambda (l) (plist-get l :value))
-			   (delve-edit-get-tags org-tree)))
+  (let* ((buf-tags (delve-edit-get-tags org-tree))
 	 (db-tags  (delve-db-plain-roam-tags)))
     (cl-set-difference db-tags buf-tags :test #'string=)))
 
-(defun delve-edit-do-add-tag (buf org-tree tag)
-  "Add TAG as roam tag in BUF, using ORG-TREE."
+(defun delve-edit-do-add-tag (buf tag &optional org-tree)
+  "Add TAG as roam tag(s) to BUF.
+TAG is a string or a list of strings.
+ORG-TREE should be the result of `org-element-parse-buffer'. If
+ORG-TREE is nil, use the tree from calling this function on BUF."
   (with-current-buffer buf
-    (let* ((existing-tags (delve-edit-get-tags org-tree))
-	   (one-more-pos  (plist-get (car existing-tags) :end))
-	   (new-keyword   (unless one-more-pos
-			  (or (delve-edit-parsed-title-end org-tree)
-			      (point-min)))))
-      (goto-char (or new-keyword (1- one-more-pos)))
-      (when new-keyword
-	(insert "#+ROAM_TAGS:"))
-      (insert " ")
-      (insert (string-trim tag))
-      (when new-keyword
-	(insert "\n")))))
+    (let* ((tree          (or org-tree (org-element-parse-buffer)))
+	   ;; either add to existing keyword or add new keyword
+	   (add-pos       (delve-edit-tags-first-eol tree))
+	   (new-pos       (unless add-pos
+			    (or (delve-edit-title-eol tree)
+				(point-min)))))
+      (goto-char (or new-pos add-pos))
+      (when new-pos
+	(insert "\n#+ROAM_TAGS:"))
+      (insert " ") 
+      (insert (string-join (mapcar #'string-trim 
+				   (if (listp tag) tag (list tag)))
+			   " ")))))
 
 (defun delve-edit-do-remove-tag (buf org-tree tag)
   "Remove roam tags matching TAGS from BUF, using ORG-TREE."
