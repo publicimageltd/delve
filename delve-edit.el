@@ -29,56 +29,91 @@
 (require 'org-element)
 (require 'delve-db)
 (require 'org-roam)
+(require 'cl-lib)
 
 ;; * Global Variables
 
 (defvar delve-roam-tag-history nil
   "History of selected tags for remote editing of org roam files.")
 
-;; * Remote Editing API
-
-(defun delve-edit-tags-first-eol (org-tree)
-  "Using ORG-TREE, determine end of first line with roam tags."
-  (let (end)
-    (org-element-map org-tree 'keyword
-      (lambda (key)
-	(when (and
-	       (eq (org-element-type (org-element-property :parent key)) 'section)
-	       (string= (org-element-property :key key) "ROAM_TAGS"))
-	  (unless end
-	    (setq end (org-element-property :end key))))))
-    (when end
-      (1- end))))
+;; * Parse relevant informations from org buffers
+    
+(defun delve-edit-map-keyword (org-tree keyword fn)
+  "Collect the results of FN for each KEYWORD in ORG-TREE.
+FN is called with the associated element property list as an
+argument. ORG-TREE is the result of `org-element-parse-buffer'."
+  (org-element-map org-tree 'keyword
+    (lambda (key)
+      (when (and
+	     (eq (org-element-type (org-element-property :parent key))
+		 'section)
+	     (string= (org-element-property :key key)
+		      keyword))
+	(funcall fn key)))))
 
 (defun delve-edit-get-tags (org-tree)
-  "Get all ROAM_TAGS from ORG-TREE.
-ORG-TREE is the result from `org-element-parse-buffer'."
-  (let (tags)
-    (org-element-map org-tree 'keyword
-      (lambda (key)
-	(when (and
-	       (eq (org-element-type (org-element-property :parent key))
-		   'section)
-	       (string= (org-element-property :key key)
-			"ROAM_TAGS"))
-	  (setq tags (append tags
-			     (split-string (org-element-property :value key)))))))
-    tags))
+  "Get all roam tags from ORG-TREE.
+ORG-TREE is the result of `org-element-parse-buffer'."
+    (apply #'append 
+	   (delve-edit-map-keyword org-tree "ROAM_TAGS"
+				   (lambda (key)
+ 				     (split-string (org-element-property :value key))))))
 
-(defun delve-edit-title-eol (org-tree)
-  "Return the position after the TITLE keyword."
-  (when-let* ((end
-	       (org-element-map org-tree 'keyword
-		 (lambda (key)
-		   (when (string= (org-element-property :key key) "TITLE")
-		     (org-element-property :end key))))))
-    (1- (car end))))
-    
 (defun delve-edit-get-unused-tags (org-tree)
   "Return all tags known to the db, but not found in ORG-TREE."
   (let* ((buf-tags (delve-edit-get-tags org-tree))
 	 (db-tags  (delve-db-plain-roam-tags)))
     (cl-set-difference db-tags buf-tags :test #'string=)))
+
+(defun delve-edit-get-tag-regions (org-tree)
+  "Return a list of all regions with roam tags keywords.
+ORG-TREE is the result of `org-element-parse-buffer'."
+  (delve-edit-map-keyword org-tree "ROAM_TAGS"
+			  (lambda (key)
+			    (list (org-element-property :begin key)
+				  (org-element-property :end key)))))
+
+
+(defun delve-edit-get-new-keyword-position (org-tree)
+  "Return position for the first '+ROAM_TAGS' keyword."
+  (let* ((res (delve-edit-map-keyword org-tree "TITLE" 
+				      (lambda (key)
+					(org-element-property :end key)))))
+    (car res)))
+
+;; * Edit an org buffer (add or remove tags)
+
+(defun delve-edit-pos-to-marker (buf positions)
+  "Convert POSITIONS to marker."
+  (mapcar (lambda (pos)
+	    (set-marker (make-marker) pos buf))
+	  positions))
+
+(defun delve-edit-set-tags (buf tags &optional org-tree)
+  "Set TAGS in org roam buffer BUF.
+TAGS is a list of strings. Duplicate items will be dropped. If
+TAGS is nil, effectively remove any tags in the buffer.
+
+ORG-TREE should be the result of `org-element-parse-buffer'.  If
+ORG-TREE is nil, use the tree from calling this function on BUF."
+  (with-current-buffer buf
+    (let* ((tree     (or org-tree (org-element-parse-buffer)))
+	   (regions  (delve-edit-get-tag-regions tree))
+	   (new-pos  (or (delve-edit-get-new-keyword-position tree)
+			 (point-min)))
+	   (marker   (mapcar (apply-partially #'delve-edit-pos-to-marker buf)
+			     regions)))
+      (cl-dolist (region marker)
+	(delete-region (first region) (second region)))
+      (when tags
+	(goto-char new-pos)
+	(insert "#+ROAM_TAGS: "
+		(string-join
+		 (cl-remove-duplicates
+		  (mapcar #'string-trim tags)
+		  :test #'string=)
+		 " ")
+		"\n")))))
 
 (defun delve-edit-do-add-tag (buf tag &optional org-tree)
   "Add TAG as roam tag(s) to BUF.
@@ -87,68 +122,65 @@ ORG-TREE should be the result of `org-element-parse-buffer'. If
 ORG-TREE is nil, use the tree from calling this function on BUF."
   (with-current-buffer buf
     (let* ((tree          (or org-tree (org-element-parse-buffer)))
-	   ;; either add to existing keyword or add new keyword
-	   (add-pos       (delve-edit-tags-first-eol tree))
-	   (new-pos       (unless add-pos
-			    (or (delve-edit-title-eol tree)
-				(point-min)))))
-      (goto-char (or new-pos add-pos))
-      (when new-pos
-	(insert "\n#+ROAM_TAGS:"))
-      (insert " ") 
-      (insert (string-join (mapcar #'string-trim 
-				   (if (listp tag) tag (list tag)))
-			   " ")))))
+	   (old-tags      (delve-edit-get-tags tree)))
+      (delve-edit-set-tags buf
+			   (append old-tags (if (listp tag) tag (list tag)))
+			   tree))))
 
-(defun delve-edit-do-remove-tag (buf org-tree tag)
-  "Remove roam tags matching TAGS from BUF, using ORG-TREE."
+(defun delve-edit-do-remove-tag (buf tag &optional org-tree)
+  "Remove TAG from org buffer BUF.
+TAG is a string or a list of string.
+ORG-TREE should be the result of `org-element-parse-buffer'. If
+ORG-TREE is nil, use the tree from calling this function on BUF."
   (with-current-buffer buf
-    (let* ((existing-tags   (delve-edit-get-tags org-tree))
-	   (tag-2b-removed  (car
-			     (cl-member tag existing-tags
-				      :test #'string=
-				      :key (lambda (it)
-					     (plist-get it :value))))))
-      (unless tag-2b-removed
-	(error "Tag not in use"))
-      
-      (delete-region (plist-get tag-2b-removed :begin)
-		     (plist-get tag-2b-removed :end)))))
-
+    (let* ((tree            (or org-tree (org-element-parse-buffer)))
+	   (tags            (mapcar #'string-trim
+				    (if (listp tag) tag (list tag))))
+	   (existing-tags   (delve-edit-get-tags tree))
+	   (new-tags        (cl-set-difference existing-tags tags
+					       :test #'string=)))
+      (delve-edit-set-tags buf new-tags tree))))
+	  
 ;; -----------------------------------------------------------
 ;; * Interactive Remote Editing
+
+(defmacro delve-edit-in-file (file &rest body)
+  "Execute BODY in a buffer with FILE, saving all changes.
+If FILE is already visited, use that buffer; else load it in a
+temporary buffer.
+Do not recurse this macro."
+  (declare (indent 1) (debug t))
+  `(progn 
+     (unless (org-roam--org-roam-file-p ,file)
+       (error "File nor an org roam file"))
+     (let* ((__loaded-p (get-file-buffer ,file))
+	    (__buf      (or __loaded-p (find-file-noselect ,file))))
+       (with-current-buffer __buf
+	 (save-buffer)
+	 ,@body
+	 (save-buffer))
+       (unless __loaded-p
+	 (kill-buffer __buf)))))
 
 ;;;###autoload
 (defun delve-edit-prompt-add-tag (zettel-file)
   "Interactively add a tag to ZETTEL-FILE."
   (interactive (list buffer-file-name))
-  (unless (org-roam--org-roam-file-p zettel-file)
-    (error "File not an org roam file"))
-  (let* ((loaded-p (get-file-buffer zettel-file))
-	 (buf      (or loaded-p (find-file-noselect zettel-file))))
-    (with-current-buffer buf
-      (save-buffer)
-      (let* ((org-tree (org-element-parse-buffer))
-	     (new-tag  (completing-read "Select tag to add: "
-					(delve-edit-get-unused-tags org-tree))))
-	(delve-edit-do-add-tag buf new-tag org-tree)
-	(save-buffer)))
-    (unless loaded-p
-      (kill-buffer buf))))
+  (delve-edit-in-file zettel-file 
+    (let* ((org-tree (org-element-parse-buffer))
+	   (new-tag  (completing-read "Select tag to add: "
+				      (delve-edit-get-unused-tags org-tree))))
+      (delve-edit-do-add-tag (current-buffer) new-tag org-tree))))
 
-;; TODO Add action to remove tag
 ;;;###autoload
 (defun delve-edit-prompt-remove-tag (zettel-file)
   "Interactively remove a tag from ZETTEL-FILE."
   (interactive (list buffer-file-name))
-  (unless (org-roam--org-roam-file-p zettel-file)
-    (error "File not an org roam file"))
-  (let* ((loaded-p (get-file-buffer zettel-file))
-	 (buf      (or loaded-p (find-file-noselect zettel-file))))
-    (with-current-buffer buf
-      (save-buffer)
-      )))
-  
+  (delve-edit-in-file zettel-file
+    (let* ((org-tree   (org-element-parse-buffer))
+	   (remove-tag (completing-read "Select tag to remove:"
+					(delve-edit-get-tags org-tree))))
+      (delve-edit-do-remove-tag (current-buffer) remove-tag org-tree))))
 
 (provide 'delve-edit)
 ;;; delve-edit.el ends here
