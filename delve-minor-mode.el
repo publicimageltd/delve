@@ -24,11 +24,22 @@
 ;; Bind this minor mode to org roam, i.e. by using hooks.
 
 ;;; Code:
+(require 'delve)
+
+(defun delve-minor-mode-set-toplist (zettel-file)
+  "Open ZETTEL-FILE in a new delve buffer."
+  (interactive (list (buffer-file-name)))
+  (if (org-roam--org-file-p zettel-file)
+      (delve zettel-file)
+    (user-error "%s is not an org roam file" zettel-file)))
+
+;; * Map
 
 (defvar delve-local-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "+") #'delve-edit-prompt-add-tag)
     (define-key map (kbd "-") #'delve-edit-prompt-remove-tag)
+    (define-key map (kbd "d") #'delve-minor-mode-set-toplist)
     map)
   "Local prefix map for the delve minor mode.
 Bind this map to a prefix key of your choice.")

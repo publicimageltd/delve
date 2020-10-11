@@ -282,6 +282,13 @@ If EMPTY-LIST is t, offer a completely empty list instead."
     (when (equal (window-buffer) (current-buffer))
       (recenter))))
 
+(defun delve-set-toplist (buf zettel-file)
+  "Set the sublist of ZETTEL-FILE as the only list in BUF."
+  (lister-set-list buf
+		   (list (delve-db-get-page-from-file zettel-file)))
+  (lister-goto buf :first)
+  (delve-insert-sublist buf))
+
 (defun delve-sublist-to-top (buf pos)
   "Replace all items with the current sublist at point."
   (interactive (list (current-buffer) (point)))
@@ -387,7 +394,7 @@ If EMPTY-LIST is t, offer a completely empty list instead."
 Calling `delve-toggle' switches to this buffer.")
 
 ;;;###autoload
-(defun delve ()
+(defun delve (&optional zettel-file)
   "Delve into the org roam zettelkasten."
   (interactive)
   (unless org-roam-mode
@@ -396,8 +403,10 @@ Calling `delve-toggle' switches to this buffer.")
   (with-current-buffer (setq delve-toggle-buffer (delve-new-buffer))
     (delve-mode)
     (lister-highlight-mode)
-    (delve-initial-list))
-  (switch-to-buffer delve-toggle-buffer))
+    (if zettel-file
+	(delve-set-toplist (current-buffer) zettel-file)
+      (delve-initial-list))
+  (switch-to-buffer delve-toggle-buffer)))
 
 ;;;###autoload
 (defun delve-toggle (&optional force-reinit)

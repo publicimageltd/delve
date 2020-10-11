@@ -339,6 +339,12 @@ specific query for special usecases."
 				  [:where (= titles:file $s1)]
 				  (delve-zettel-file item))))
 
+(defun delve-db-get-page-from-file (file)
+  "Return a page item associated with FILE."
+  (car (delve-db-query-all-zettel 'delve-make-page
+				  [:where (= titles:file $s1)]
+				  file)))
+
 (defun delve-db-update-item (item)
   "Return the delve ITEM updated."
   (cl-typecase item
