@@ -44,7 +44,7 @@
 (defvar delve-auto-delete-roam-buffer t
   "Delete visible *org roam* buffer when switchung to DELVE.")
 
-(defvar delve-buffer-name "*DELVE*"
+(defvar delve-buffer-name "delve:"
   "Name of delve buffers.")
 
 (defvar delve-version-string "0.3"
@@ -65,6 +65,11 @@
 			   :constraint [:order-by (desc (+ backlinks tolinks))
 					:limit 10]))
   "A list of default searches offered when starting delve.")
+
+;; * Buffer local variables for delve mode
+
+(defvar-local delve-local-initial-list nil
+  "Buffer list when first creating this delve buffer.")
 
 ;; -----------------------------------------------------------
 ;; * Item Mapper for the List Display (lister)
@@ -181,7 +186,7 @@ ZETTEL can be either a page, a backlink or a tolink."
 ;; -----------------------------------------------------------
 ;; * Buffer basics
 
-(defun delve-new-buffer ()
+(defun delve-new-buffer-deprecated ()
   "Return a new DELVE buffer."
    (generate-new-buffer delve-buffer-name))
 
@@ -222,21 +227,22 @@ ZETTEL can be either a page, a backlink or a tolink."
 
 (defun delve-insert-sublist (buf)
   "In BUF, eval item at point and insert result as a sublist."
-  (unless (lister-sublist-below-p buf (point))
-    (let ((data (lister-get-data buf :point)))
-      (pcase data
-	((pred delve-tag-p)
-	 (delve-insert-sublist-pages-matching-tag buf
-						  (point)
-						  (delve-tag-tag data)))
-	((pred delve-zettel-p)
-	 (delve-insert-sublist-all-links buf
-					 (point)
-					 data))
-	((pred delve-generic-search-p)
-	 (lister-insert-sublist-below  buf
-				       (point)
-				       (delve-execute-search data)))))))
+  (let* ((pos (with-current-buffer buf (point))))
+    (unless (lister-sublist-below-p buf pos)
+      (let ((data (lister-get-data buf :point)))
+	(pcase data
+	  ((pred delve-tag-p)
+	   (delve-insert-sublist-pages-matching-tag buf
+						    pos
+						    (delve-tag-tag data)))
+	  ((pred delve-zettel-p)
+	   (delve-insert-sublist-all-links buf
+					   pos
+					   data))
+	  ((pred delve-generic-search-p)
+	   (lister-insert-sublist-below  buf
+					 pos
+					 (delve-execute-search data))))))))
 
 ;;; * Delve Mode: Interactive Functions, Mode Definition 
 
@@ -278,7 +284,30 @@ ZETTEL can be either a page, a backlink or a tolink."
   (cl-dolist (search delve-searches)
     (lister-insert (current-buffer) :first search))
   (when (equal (window-buffer) (current-buffer))
-    (recenter)))
+    (recenter)))  
+
+(defun delve-new-buffer (items heading)
+  "Create a new delve buffer displaying ITEMS.
+HEADING will be used to construct the list title and the buffer name."
+  (let* ((buffer-title (concat delve-buffer-name " " (string-trim heading)))
+	 (list-title   (concat "DELVE" delve-version-string " - " (string-trim heading)))
+	 (buf          (generate-new-buffer buffer-title)))
+    (with-current-buffer buf
+      (delve-mode)
+      (lister-set-list buf items)
+      (setq-local delve-local-initial-list items)
+      (lister-set-header buf list-title)
+      (lister-goto buf :first)
+      (lister-highlight-mode))
+    buf))
+
+(defun delve-revert (buf)
+  "Revert delve buffer BUF to its initial list."
+  (interactive (list (current-buffer)))
+  (with-current-buffer buf
+    (lister-goto buf :first)
+    (lister-set-list buf delve-local-initial-list)))
+
 
 (defun delve-set-toplist (buf zettel-file)
   "Set the sublist of ZETTEL-FILE as the only list in BUF."
@@ -360,7 +389,7 @@ ZETTEL can be either a page, a backlink or a tolink."
     ;; <RETURN> is mapped to #'delve-action (via lister-local-action)
     (define-key map "\t"               #'delve-toggle-sublist)
     (define-key map (kbd "C-l")        #'delve-sublist-to-top)
-    (define-key map "i"                #'delve-initial-list)
+    (define-key map "r"                #'delve-revert)
     (define-key map "."                #'delve-update-item-at-point)
     (define-key map (kbd "<left>")     #'delve-insert-sublist-backlinks)
     (define-key map (kbd "<right>")    #'delve-insert-sublist-to-links)
@@ -398,13 +427,15 @@ Calling `delve-toggle' switches to this buffer.")
   (unless org-roam-mode
     (with-temp-message "Turning on org roam mode..."
       (org-roam-mode)))
-  (with-current-buffer (setq delve-toggle-buffer (delve-new-buffer))
-    (delve-mode)
-    (lister-highlight-mode)
-    (if zettel-file
-	(delve-set-toplist (current-buffer) zettel-file)
-      (delve-initial-list))
-  (switch-to-buffer delve-toggle-buffer)))
+  (let* ((items (if zettel-file
+		    (list (delve-db-get-page-from-file zettel-file))
+		  (append delve-searches (delve-db-query-roam-tags))))
+	 (heading (if zettel-file (file-name-base zettel-file) "Initial list")))
+    (setq delve-toggle-buffer (delve-new-buffer items heading))
+    (when zettel-file
+      (lister-goto delve-toggle-buffer :first)
+      (delve-insert-sublist delve-toggle-buffer))
+    (switch-to-buffer delve-toggle-buffer)))
 
 ;;;###autoload
 (defun delve-toggle (&optional force-reinit)
