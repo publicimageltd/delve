@@ -269,18 +269,16 @@ ZETTEL can be either a page, a backlink or a tolink."
       (lister-remove-sublist-below buf pos)
     (delve-insert-sublist buf)))
 
-(defun delve-initial-list (&optional empty-list)
-  "Populate the current delve buffer with predefined items.
-If EMPTY-LIST is t, offer a completely empty list instead."
-  (interactive "P")
-  (if empty-list
-      (lister-set-list (current-buffer) nil)
-    ;; 
-    (lister-set-list (current-buffer) (delve-db-query-roam-tags))
-    (cl-dolist (search delve-searches)
-      (lister-insert (current-buffer) :first search))
-    (when (equal (window-buffer) (current-buffer))
-      (recenter))))
+;; *
+
+(defun delve-initial-list ()
+  "Populate the current delve buffer with predefined items."
+  (interactive)
+  (lister-set-list (current-buffer) (delve-db-query-roam-tags))
+  (cl-dolist (search delve-searches)
+    (lister-insert (current-buffer) :first search))
+  (when (equal (window-buffer) (current-buffer))
+    (recenter)))
 
 (defun delve-set-toplist (buf zettel-file)
   "Set the sublist of ZETTEL-FILE as the only list in BUF."
