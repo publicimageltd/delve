@@ -218,7 +218,7 @@ ZETTEL can be either a page, a backlink or a tolink."
 	 (all       (append backlinks tolinks)))
     (if all
 	(lister-insert-sublist-below buf pos all)
-      (user-error "Item has no backlinks and no links to other zettel"))))
+      (message "Item has no backlinks and no links to other zettel"))))
 
 (defun delve-insert-sublist (buf)
   "In BUF, eval item at point and insert result as a sublist."
