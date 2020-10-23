@@ -305,9 +305,8 @@ HEADING will be used to construct the list title and the buffer name."
   "Revert delve buffer BUF to its initial list."
   (interactive (list (current-buffer)))
   (with-current-buffer buf
-    (lister-goto buf :first)
-    (lister-set-list buf delve-local-initial-list)))
-
+    (lister-set-list buf delve-local-initial-list)
+    (lister-goto buf :first)))
 
 (defun delve-set-toplist (buf zettel-file)
   "Set the sublist of ZETTEL-FILE as the only list in BUF."
@@ -420,9 +419,17 @@ HEADING will be used to construct the list title and the buffer name."
   "The last created lister buffer.
 Calling `delve-toggle' switches to this buffer.")
 
+(defun delve-all-buffers ()
+  "Get all buffers in `delve mode'."
+  (seq-filter (lambda (buf)
+		(with-current-buffer buf
+		  (derived-mode-p 'delve-mode)))
+	      (buffer-list)))
+
 ;;;###autoload
 (defun delve (&optional zettel-file)
-  "Delve into the org roam zettelkasten."
+  "Delve into the org roam zettelkasten.
+Use ZETTEL-FILE as starting point if not nil."
   (interactive)
   (unless org-roam-mode
     (with-temp-message "Turning on org roam mode..."
@@ -430,37 +437,65 @@ Calling `delve-toggle' switches to this buffer.")
   (let* ((items (if zettel-file
 		    (list (delve-db-get-page-from-file zettel-file))
 		  (append delve-searches (delve-db-query-roam-tags))))
-	 (heading (if zettel-file (file-name-base zettel-file) "Initial list")))
-    (setq delve-toggle-buffer (delve-new-buffer items heading))
+	 (heading (if zettel-file
+		      (org-roam--get-title-or-slug zettel-file)
+		    "Initial list"))
+	 (buf     (delve-new-buffer items heading)))
     (when zettel-file
-      (lister-goto delve-toggle-buffer :first)
-      (delve-insert-sublist delve-toggle-buffer))
-    (switch-to-buffer delve-toggle-buffer)))
+      (lister-goto buf :first)
+      (delve-insert-sublist buf))
+    (switch-to-buffer buf)
+    (when delve-auto-delete-roam-buffer
+      (when-let* ((win (get-buffer-window org-roam-buffer)))
+	(delete-window win)))))
+
+(defun delve-get-fn-documentation (fn)
+  "Return the first line of the documentation string of fn."
+  (if-let ((doc (documentation fn)))
+      (car (split-string doc "[\\\n]+"))
+    (format "undocumented function %s" fn)))
+
+(defun delve-prettify-delve-buffer-name (name)
+  "Prettify NAME."
+  (concat (if (featurep 'all-the-icons)
+	      (all-the-icons-faicon "bars")
+	    "BUFFER")
+	  " " name))
+
+(defun delve-prettify-delve-fn-doc (doc)
+  "Prettify DOC."
+  (concat (if (featurep 'all-the-icons)
+	      (all-the-icons-faicon "plus")
+	    "ACTION ")
+	  " " doc))
+
+(defun delve-complete-on-bufs-and-fns (prompt bufs fns)
+  "PROMPT user to complete on BUFS and FNs."
+  (let* ((collection (append (mapcar (lambda (buf)
+				       (cons (delve-prettify-delve-buffer-name (buffer-name buf)) buf))
+				     bufs)
+			     (mapcar (lambda (fn)
+				       (cons (delve-prettify-delve-fn-doc (delve-get-fn-documentation fn))
+					     fn))
+				     fns)))
+	 (selection  (completing-read prompt collection nil t)))
+    (cdr (assoc selection collection #'string=))))
 
 ;;;###autoload
-(defun delve-toggle (&optional force-reinit)
-  "Toggle the display of the delve buffer.
-With interactive prefix or optional argument FORCE-REINIT, switch
-to a reinitialized delve buffer."
-  (interactive "P")
-  (if (and
-       (not force-reinit)
-       delve-toggle-buffer
-       (buffer-live-p delve-toggle-buffer))
-      ;; toggle an existing buffer:
-      (if (equal (current-buffer) delve-toggle-buffer)
-	  (bury-buffer)
-	(switch-to-buffer delve-toggle-buffer))
-    ;; or create a new one:
-    (when delve-toggle-buffer
-      (kill-buffer delve-toggle-buffer)
-      (setq delve-toggle-buffer nil))
-    (delve))
-  (when delve-auto-delete-roam-buffer
-    (when-let* ((win (get-buffer-window org-roam-buffer)))
-      (delete-window win))))
-
-;; (bind-key "<f2>" 'delve-toggle)
+(defun delve-open-or-select ()
+  "Open a new delve buffers or choose between existing ones."
+  (interactive)
+  (let* ((bufs       (delve-all-buffers))
+	 (choice     (if bufs
+			 (delve-complete-on-bufs-and-fns "Select delve buffer: " bufs '(delve))
+		       'delve)))
+    (if (bufferp choice)
+	(progn 
+	  (switch-to-buffer choice)
+	  (when delve-auto-delete-roam-buffer
+	    (when-let* ((win (get-buffer-window org-roam-buffer)))
+	      (delete-window win))))
+      (funcall choice))))
 
 (provide 'delve)
 ;;; delve.el ends here

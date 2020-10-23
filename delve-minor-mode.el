@@ -33,9 +33,11 @@
 	     (org-roam--org-roam-file-p))
     (delve-minor-mode 1)))
 
-(defun delve-minor-mode-set-toplist (zettel-file)
+(defun delve-minor-mode-open-page-with-links (zettel-file)
   "Open ZETTEL-FILE in a new delve buffer."
   (interactive (list (buffer-file-name)))
+  (unless zettel-file
+    (user-error "Buffer is not visiting a file."))
   (if (org-roam--org-file-p zettel-file)
       (delve zettel-file)
     (user-error "%s is not an org roam file" zettel-file)))
@@ -46,7 +48,7 @@
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "+") #'delve-edit-prompt-add-tag)
     (define-key map (kbd "-") #'delve-edit-prompt-remove-tag)
-    (define-key map (kbd "d") #'delve-minor-mode-set-toplist)
+    (define-key map (kbd "d") #'delve-minor-mode-open-page-with-links)
     map)
   "Local prefix map for the delve minor mode.
 Bind this map to a prefix key of your choice.")
