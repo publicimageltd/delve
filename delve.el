@@ -290,7 +290,7 @@ ZETTEL can be either a page, a backlink or a tolink."
   "Create a new delve buffer displaying ITEMS.
 HEADING will be used to construct the list title and the buffer name."
   (let* ((buffer-title (concat delve-buffer-name " " (string-trim heading)))
-	 (list-title   (concat "DELVE" delve-version-string " - " (string-trim heading)))
+	 (list-title   (concat "DELVE " delve-version-string " - " (string-trim heading)))
 	 (buf          (generate-new-buffer buffer-title)))
     (with-current-buffer buf
       (delve-mode)
@@ -307,13 +307,6 @@ HEADING will be used to construct the list title and the buffer name."
   (with-current-buffer buf
     (lister-set-list buf delve-local-initial-list)
     (lister-goto buf :first)))
-
-(defun delve-set-toplist (buf zettel-file)
-  "Set the sublist of ZETTEL-FILE as the only list in BUF."
-  (lister-set-list buf
-		   (list (delve-db-get-page-from-file zettel-file)))
-  (lister-goto buf :first)
-  (delve-insert-sublist buf))
 
 (defun delve-sublist-to-top (buf pos)
   "Replace all items with the current sublist at point."
