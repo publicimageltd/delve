@@ -26,6 +26,13 @@
 ;;; Code:
 (require 'delve)
 
+(defun delve-minor-mode-maybe-activate ()
+  "Turn on delve minor mode if current buffer is in org roam."
+  (interactive)
+  (when (and (buffer-file-name)
+	     (org-roam--org-roam-file-p))
+    (delve-minor-mode 1)))
+
 (defun delve-minor-mode-set-toplist (zettel-file)
   "Open ZETTEL-FILE in a new delve buffer."
   (interactive (list (buffer-file-name)))
