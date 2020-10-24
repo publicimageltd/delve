@@ -295,15 +295,6 @@ can be an integer or the symbol `:point'."
 	(lister-remove-sublist-below buf pos)
       (delve-guess-expansion-and-insert buf pos))))
 
-(defun delve-initial-list ()
-  "Populate the current delve buffer with predefined items."
-  (interactive)
-  (lister-set-list (current-buffer) (delve-db-query-roam-tags))
-  (cl-dolist (search delve-searches)
-    (lister-insert (current-buffer) :first search))
-  (when (equal (window-buffer) (current-buffer))
-    (recenter)))  
-
 (defun delve-revert (buf)
   "Revert delve buffer BUF to its initial list."
   (interactive (list (current-buffer)))
