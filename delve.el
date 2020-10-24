@@ -243,6 +243,20 @@ POSITION is either an integer or the symbol `:point'."
 	(lister-insert-sublist-below buf pos res)
       (message "Cannot expand item; no results"))))
 
+(defun delve-guess-expansion (item)
+  "Guess and return useful expansion for ITEM."
+  (let* ((ops   (pcase item
+		  ((pred delve-tag-p)
+		   (list #'delve-operate-taglist))
+		  ((pred delve-zettel-p)
+		   (list #'delve-operate-backlinks  #'delve-operate-tolinks))
+		  ((pred delve-generic-search-p)
+		   (list #'delve-operate-on-search))
+		  (_ nil))))
+    (if ops
+	(apply #'delve-expand item ops)
+      (user-error "No useful expansion found"))))
+
 (defun delve-guess-expansion-and-insert (buf pos)
   "Guess useful expansion for item at POS and insert it.
 BUF must be a valid lister buffer populated with delve items. POS
@@ -252,18 +266,10 @@ can be an integer or the symbol `:point'."
 		     ((and (pred integerp) pos) pos)
 		     (:point (with-current-buffer buf (point)))
 		     (_ (error "Invalid value for POS: %s" pos))))
-	 (item (lister-get-data buf position))
-	 (ops   (pcase item
-		 ((pred delve-tag-p)
-		  (list #'delve-operate-taglist))
-		 ((pred delve-zettel-p)
-		  (list #'delve-operate-backlinks  #'delve-operate-tolinks))
-		 ((pred delve-generic-search-p)
-		  (list #'delve-operate-on-search))
-		 (_ nil))))
-    (if ops
-	(apply #'delve-expand-and-insert buf position ops)
-      (user-error "No useful expansion found"))))
+	 (item     (lister-get-data buf position))
+	 (sublist  (delve-guess-expansion item)))
+    (when sublist
+      (lister-insert-sublist-below buf position sublist))))
   
 ;; -----------------------------------------------------------
 ;;; * Delve Mode: Interactive Functions, Mode Definition 
@@ -426,23 +432,21 @@ HEADING will be used to construct the list title and the buffer name."
 	      (buffer-list)))
 
 ;;;###autoload
-(defun delve (&optional zettel-file)
-  "Delve into the org roam zettelkasten.
-Use ZETTEL-FILE as starting point if not nil."
+(defun delve (&optional item)
+  "Delve into the org roam zettelkasten with predefined searches.
+Optionally expand on ITEM as starting point. ITEM has to be a
+delve object, e.g. `delve-zettel'."
   (interactive)
   (unless org-roam-mode
     (with-temp-message "Turning on org roam mode..."
       (org-roam-mode)))
-  (let* ((items (if zettel-file
-		    (list (delve-db-get-page-from-file zettel-file))
-		  (append delve-searches (delve-db-query-roam-tags))))
-	 (heading (if zettel-file
-		      (org-roam--get-title-or-slug zettel-file)
+  (let* ((items   (if item
+		      (delve-guess-expansion item)
+		    (append delve-searches (delve-db-query-roam-tags))))
+	 (heading (if item
+		      (substring-no-properties (car (delve-mapper item)))
 		    "Initial list"))
 	 (buf     (delve-new-buffer items heading)))
-    (when zettel-file
-      (lister-goto buf :first)
-      (delve-guess-expansion-and-insert buf :point))
     (switch-to-buffer buf)
     (when delve-auto-delete-roam-buffer
       (when-let* ((win (get-buffer-window org-roam-buffer)))

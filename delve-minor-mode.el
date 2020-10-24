@@ -39,7 +39,7 @@
   (unless zettel-file
     (user-error "Buffer is not visiting a file."))
   (if (org-roam--org-file-p zettel-file)
-      (delve zettel-file)
+      (delve (delve-db-get-page-from-file zettel-file))
     (user-error "%s is not an org roam file" zettel-file)))
 
 ;; * Map
