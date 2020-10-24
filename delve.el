@@ -190,60 +190,82 @@ ZETTEL can be either a page, a backlink or a tolink."
   "Return a new DELVE buffer."
    (generate-new-buffer delve-buffer-name))
 
-;; * Insert sublists according to the item type
+;; -----------------------------------------------------------
+;; * Expand items by creating sublists
 
-(defun delve-execute-search (search)
+(defun delve-expand (item &rest operator-fns)
+  "Collect the result of applying all OPERATOR-FNS on ITEM."
+  (cl-loop for fn in operator-fns
+	   append (let ((res (funcall fn item)))
+		    (if (listp res) res (list res)))))
+
+(defun delve-operate-search (search)
   "Return the results of executing SEARCH."
-  (if-let* ((res (delve-db-query-all-zettel
-		  ;; subtype:
-		  (delve-generic-search-result-makefn search)
-		  ;; constraint
-		  (delve-generic-search-constraint search)
-		  ;; args
-		  (delve-generic-search-args search)
-		  ;; with-clause 
-		  (delve-generic-search-with-clause search))))
-      (if (and res (delve-generic-search-postprocess search))
-	  (funcall (delve-generic-search-postprocess search) res)
-	res)
-    (message "Query returned no results")
-    nil))
+  (let* ((res (delve-db-query-all-zettel
+	       ;; subtype:
+	       (delve-generic-search-result-makefn search)
+	       ;; constraint
+	       (delve-generic-search-constraint search)
+	       ;; args
+	       (delve-generic-search-args search)
+	       ;; with-clause 
+	       (delve-generic-search-with-clause search))))
+    (if (and res (delve-generic-search-postprocess search))
+	(funcall (delve-generic-search-postprocess search) res)
+      res)))
+		
+(defun delve-operate-backlinks (zettel)
+  "Get a list of all zettel linking to ZETTEL."
+  (delve-db-query-backlinks zettel))
 
-(defun delve-insert-sublist-pages-matching-tag (buf pos tag)
-  "In BUF, insert all pages tagged TAG below the item at POS."
-  (let* ((pages (delve-db-query-pages-with-tag tag)))
-    (if pages
-	(lister-insert-sublist-below buf pos pages)
-      (user-error "No pages found matching tag %s" tag))))
+(defun delve-operate-tolinks (zettel)
+  "Get a list of all zettel linking from ZETTEL."
+  (delve-db-query-tolinks zettel))
 
-(defun delve-insert-sublist-all-links (buf pos zettel)
-  "In BUF, insert all links to and from ZETTEL below the item at POS."
-  (let* ((backlinks (delve-db-query-backlinks zettel))
-	 (tolinks   (delve-db-query-tolinks zettel))
-	 (all       (append backlinks tolinks)))
-    (if all
-	(lister-insert-sublist-below buf pos all)
-      (message "Item has no backlinks and no links to other zettel"))))
+(defun delve-operate-taglist (tag)
+  "Get a list of all zettel with TAG."
+  (delve-db-query-pages-with-tag (delve-tag-tag tag)))
 
-(defun delve-insert-sublist (buf)
-  "In BUF, eval item at point and insert result as a sublist."
-  (let* ((pos (with-current-buffer buf (point))))
-    (unless (lister-sublist-below-p buf pos)
-      (let ((data (lister-get-data buf :point)))
-	(pcase data
-	  ((pred delve-tag-p)
-	   (delve-insert-sublist-pages-matching-tag buf
-						    pos
-						    (delve-tag-tag data)))
-	  ((pred delve-zettel-p)
-	   (delve-insert-sublist-all-links buf
-					   pos
-					   data))
-	  ((pred delve-generic-search-p)
-	   (lister-insert-sublist-below  buf
-					 pos
-					 (delve-execute-search data))))))))
+;; * Insert sublists by expanding items
 
+(defun delve-expand-and-insert (buf position &rest operator-fns)
+  "Insert result of OPERATOR-FNS applied to item at POSITION.
+BUF must be a valid lister buffer.
+
+POSITION is either an integer or the symbol `:point'."
+  (let* ((pos  (pcase position
+		 ((and (pred integerp) position) position)
+		 (:point (with-current-buffer buf (point)))
+		 (_      (error "Invalid value for POSITION: %s" position))))
+	 (item (lister-get-data buf pos))
+	 (res (apply #'delve-expand item operator-fns)))
+    (if res
+	(lister-insert-sublist-below buf pos res)
+      (message "Cannot expand item; no results"))))
+
+(defun delve-guess-expansion-and-insert (buf pos)
+  "Guess useful expansion for item at POS and insert it.
+BUF must be a valid lister buffer populated with delve items. POS
+can be an integer or the symbol `:point'."
+  (interactive (list (current-buffer) (point)))
+  (let* ((position (pcase pos
+		     ((and (pred integerp) pos) pos)
+		     (:point (with-current-buffer buf (point)))
+		     (_ (error "Invalid value for POS: %s" pos))))
+	 (item (lister-get-data buf position))
+	 (ops   (pcase item
+		 ((pred delve-tag-p)
+		  (list #'delve-operate-taglist))
+		 ((pred delve-zettel-p)
+		  (list #'delve-operate-backlinks  #'delve-operate-tolinks))
+		 ((pred delve-generic-search-p)
+		  (list #'delve-operate-on-search))
+		 (_ nil))))
+    (if ops
+	(apply #'delve-expand-and-insert buf position ops)
+      (user-error "No useful expansion found"))))
+  
+;; -----------------------------------------------------------
 ;;; * Delve Mode: Interactive Functions, Mode Definition 
 
 (defun delve-refresh-buffer (buf)
@@ -254,28 +276,24 @@ ZETTEL can be either a page, a backlink or a tolink."
       (with-temp-message "Updating the whole buffer, that might take some time...."
 	(lister-set-list buf (delve-db-update-tree all-data))))))
 
-(defun delve-insert-sublist-to-links (buf pos zettel)
-  "In BUF, insert all links to ZETTEL below the item at POS."
-  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
-  (if-let* ((tolinks (delve-db-query-tolinks zettel)))
-      (lister-insert-sublist-below buf pos tolinks)
-    (user-error "Item has no links")))
+(defun delve-expand-insert-tolinks ()
+  "Insert all tolinks from the item at point."
+  (interactive)
+  (delve-expand-and-insert (current-buffer) :point #'delve-operate-tolinks))
 
-(defun delve-insert-sublist-backlinks (buf pos zettel)
-  "In BUF, insert all links from ZETTEL below the item at POS."
-  (interactive (list (current-buffer) (point) (lister-get-data (current-buffer) :point)))
-  (if-let* ((fromlinks (delve-db-query-backlinks zettel)))
-      (lister-insert-sublist-below buf pos fromlinks)
-    (user-error "Item has no backlinks")))
+(defun delve-expand-insert-backlinks ()
+  "Insert all backlinks from the item at point."
+  (interactive)
+  (delve-expand-and-insert (current-buffer) :point #'delve-operate-backlinks))
 
-(defun delve-toggle-sublist (buf pos)
-  "In BUF, close or open the item's sublist at POS."
-  (interactive (list (current-buffer) (point)))
-  (if (lister-sublist-below-p buf pos)
-      (lister-remove-sublist-below buf pos)
-    (delve-insert-sublist buf)))
-
-;; *
+(defun delve-expand-toggle-sublist ()
+  "Close or open the item's sublist at point."
+  (interactive)
+  (let* ((buf (current-buffer))
+	 (pos (point)))
+    (if (lister-sublist-below-p buf pos)
+	(lister-remove-sublist-below buf pos)
+      (delve-guess-expansion-and-insert buf pos))))
 
 (defun delve-initial-list ()
   "Populate the current delve buffer with predefined items."
@@ -285,6 +303,13 @@ ZETTEL can be either a page, a backlink or a tolink."
     (lister-insert (current-buffer) :first search))
   (when (equal (window-buffer) (current-buffer))
     (recenter)))  
+
+(defun delve-revert (buf)
+  "Revert delve buffer BUF to its initial list."
+  (interactive (list (current-buffer)))
+  (with-current-buffer buf
+    (lister-set-list buf delve-local-initial-list)
+    (lister-goto buf :first)))
 
 (defun delve-new-buffer (items heading)
   "Create a new delve buffer displaying ITEMS.
@@ -301,15 +326,9 @@ HEADING will be used to construct the list title and the buffer name."
       (lister-highlight-mode))
     buf))
 
-(defun delve-revert (buf)
-  "Revert delve buffer BUF to its initial list."
-  (interactive (list (current-buffer)))
-  (with-current-buffer buf
-    (lister-set-list buf delve-local-initial-list)
-    (lister-goto buf :first)))
-
-(defun delve-sublist-to-top (buf pos)
-  "Replace all items with the current sublist at point."
+;; TODO noch nicht 
+(defun delve-new-from-sublist (buf pos)
+  "Open new delve buffer with the current sublist at point."
   (interactive (list (current-buffer) (point)))
   (unless lister-local-marker-list
     (user-error "There are not items in this buffer"))
@@ -379,18 +398,17 @@ HEADING will be used to construct the list title and the buffer name."
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map lister-mode-map)
     ;; <RETURN> is mapped to #'delve-action (via lister-local-action)
-    (define-key map "\t"               #'delve-toggle-sublist)
-    (define-key map (kbd "C-l")        #'delve-sublist-to-top)
+    (define-key map "\t"               #'delve-expand-toggle-sublist)
+    (define-key map (kbd "C-l")        #'delve-new-from-sublist)
     (define-key map "r"                #'delve-revert)
     (define-key map "."                #'delve-update-item-at-point)
-    (define-key map (kbd "<left>")     #'delve-insert-sublist-backlinks)
-    (define-key map (kbd "<right>")    #'delve-insert-sublist-to-links)
+    (define-key map (kbd "<left>")     #'delve-expand-insert-backlinks)
+    (define-key map (kbd "<right>")    #'delve-expand-insert-tolinks)
     (define-key map (kbd "+")          #'delve-add-tag)
     (define-key map (kbd" -")          #'delve-remove-tag)
     (define-key map (kbd "g")          #'delve-refresh-buffer)
     map)
   "Key map for `delve-mode'.")
-
 
 (define-derived-mode delve-mode
   lister-mode "Delve"
@@ -406,11 +424,8 @@ HEADING will be used to construct the list title and the buffer name."
   ;; Now add delve specific stuff:
   (setq-local lister-local-action #'delve-action))
 
-;; * Interactive entry points
-
-(defvar delve-toggle-buffer nil
-  "The last created lister buffer.
-Calling `delve-toggle' switches to this buffer.")
+;; -----------------------------------------------------------
+;; * Starting delve: entry points
 
 (defun delve-all-buffers ()
   "Get all buffers in `delve mode'."
@@ -436,7 +451,7 @@ Use ZETTEL-FILE as starting point if not nil."
 	 (buf     (delve-new-buffer items heading)))
     (when zettel-file
       (lister-goto buf :first)
-      (delve-insert-sublist buf))
+      (delve-guess-expansion-and-insert buf :point))
     (switch-to-buffer buf)
     (when delve-auto-delete-roam-buffer
       (when-let* ((win (get-buffer-window org-roam-buffer)))
@@ -448,6 +463,7 @@ Use ZETTEL-FILE as starting point if not nil."
       (car (split-string doc "[\\\n]+"))
     (format "undocumented function %s" fn)))
 
+;; TODO Only prettify with faicons if var is explicitly set (opt-in)
 (defun delve-prettify-delve-buffer-name (name)
   "Prettify NAME."
   (concat (if (featurep 'all-the-icons)
@@ -455,6 +471,7 @@ Use ZETTEL-FILE as starting point if not nil."
 	    "BUFFER")
 	  " " name))
 
+;; TODO Only prettify with faicons if var is explicitly set (opt-in)
 (defun delve-prettify-delve-fn-doc (doc)
   "Prettify DOC."
   (concat (if (featurep 'all-the-icons)
