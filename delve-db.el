@@ -163,8 +163,8 @@ passed to MAKE-FN."
 ;; into your sql editor of choice
 ;;
 ;; SELECT titles.file, titles.title, tags.tags, files.meta,
-;;        (SELECT COUNT() FROM links WHERE links.[from]=titles.file) AS tolinks,
-;; 	   (SELECT COUNT() FROM links WHERE links.[to] = titles.file) AS backlinks
+;;        (SELECT COUNT() FROM links WHERE links.[source]=titles.file) AS tolinks,
+;; 	   (SELECT COUNT() FROM links WHERE links.[dest] = titles.file) AS backlinks
 ;; FROM  titles
 ;; LEFT JOIN files USING (file)
 ;; LEFT JOIN tags USING (file)
@@ -213,11 +213,11 @@ specific query for special usecases."
 		    files:meta                                ;; 3 meta
 		    (as [ :SELECT (funcall count) :FROM links ;; 4 #tolinks
 			 :WHERE (and (= links:type "file")
-				     (= links:from titles:file)) ]
+				     (= links:source titles:file)) ]
 			tolinks)
 		    (as [ :SELECT (funcall count) :FROM links ;; 5 #backlinks
 			 :WHERE (and (= links:type "file")
-				     (= links:to titles:file)) ]
+				     (= links:dest titles:file)) ]
 			backlinks) ]
 	   :from titles
 	   :left :join files :using [[ file ]]
@@ -258,17 +258,17 @@ specific query for special usecases."
 (defun delve-db-count-backlinks (file)
   "Return the number of files linking to FILE."
   (caar (delve-db-safe-query [:select
-			[ (as (funcall count links:from) n) ]
+			[ (as (funcall count links:source) n) ]
 			:from links
-			:where (= links:to $s1)]
+			:where (= links:dest $s1)]
 		       file)))
 
 (defun delve-db-count-tolinks (file)
   "Return the number of files linked from FILE."
   (caar (delve-db-safe-query [:select
-			[ (as (funcall count links:to) n) ]
+			[ (as (funcall count links:dest) n) ]
 			:from links
-			:where (= links:from $s1)]
+			:where (= links:source $s1)]
 		       file)))
 
 
@@ -298,10 +298,10 @@ specific query for special usecases."
 
 (defun delve-db-query-backlinks (zettel)
   "Return all zettel linking to ZETTEL."
-  (let* ((with-clause [:with backlinks :as [:select (as links:from file)
+  (let* ((with-clause [:with backlinks :as [:select (as links:source file)
 					    :from links
 					    :where (and (= links:type "file")
-							(= links:to $s1))]])
+							(= links:dest $s1))]])
 	 (constraint [:join backlinks :using [[ file ]]
 		      :order-by (asc titles:title)])
 	 (args       (delve-zettel-file zettel)))
@@ -313,7 +313,7 @@ specific query for special usecases."
   (let* ((with-clause [:with tolinks :as [:select (as links:to file)
   				          :from links
 					  :where (and (= links:type "file")
-						      (= links:from $s1))]])
+						      (= links:source $s1))]])
 	 (constraint [:join tolinks :using [[ file ]]
 		      :order-by (asc titles:title)])
 	 (args       (delve-zettel-file zettel)))
