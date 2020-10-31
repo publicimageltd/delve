@@ -251,7 +251,7 @@ POSITION is either an integer or the symbol `:point'."
 		  ((pred delve-zettel-p)
 		   (list #'delve-operate-backlinks  #'delve-operate-tolinks))
 		  ((pred delve-generic-search-p)
-		   (list #'delve-operate-on-search))
+		   (list #'delve-operate-search))
 		  (_ nil))))
     (if ops
 	(apply #'delve-expand item ops)
