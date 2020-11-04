@@ -1,0 +1,41 @@
+#+TITLE: delve.el
+
+Delve is a tool to delve into your [[https://github.com/org-roam/org-roam][org roam zettelkasten]]. Currently,
+you can browse your zettelkasten by tag, or use one of the predefined
+searches. Delve inherits and extends the functionality from the now
+deprecated [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dashboard]].
+
+A nice screenshot and some explanations will follow soon.
+
+* Features
+
+ - Interactively browse the Zettelkasten according to predefined
+   searches (Last ten modified pages; top linked pages; etc.)
+ - On each Zettel item, you can show all backlinks (cursor left), all
+   links from thie Zettel (cursor right), or show both links (expand
+   with <tab>). 
+ - Pressing <ENTER> on a Zettel visits it for editing.
+ - Remote editing: Use `+` or `-` on a Zettel to add or remove a tag.
+
+* Installation
+
+Delve depends on another tool of mine called [[https://github.com/publicimageltd/lister][lister]]. But neither
+package is available at melpa yet. So you have to download both packes
+(delve and lister) in order to make this work:
+
+  #+begin_src emacs-lisp
+(use-package lister
+  :quelpa (lister :fetcher git :branch "master"
+  		  :url "https://github.com/publicimageltd/lister"))
+
+(use-package delve
+  :quelpa (delve :fetcher git :branch "master"
+		 :url "https://github.com/publicimageltd/delve")
+  :config
+  (use-package delve-minor-mode
+    :config
+    (add-hook 'org-mode-hook #'delve-minor-mode-maybe-activate))
+  :bind
+  (("<f12>" . delve-open-or-select)))
+
+  #+end_src
