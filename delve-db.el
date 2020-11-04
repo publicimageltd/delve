@@ -310,7 +310,7 @@ specific query for special usecases."
 
 (defun delve-db-query-tolinks (zettel)
   "Return all zettel linking from ZETTEL."
-  (let* ((with-clause [:with tolinks :as [:select (as links:to file)
+  (let* ((with-clause [:with tolinks :as [:select (as links:dest file)
   				          :from links
 					  :where (and (= links:type "file")
 						      (= links:source $s1))]])
