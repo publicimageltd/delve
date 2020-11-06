@@ -25,6 +25,8 @@ deprecated [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dash
 
 * Installation
 
+** Basic Installation
+
 Delve depends on another tool of mine called [[https://github.com/publicimageltd/lister][lister]]. But neither
 package is available at melpa yet. So you have to download both packes
 (delve and lister) in order to make this work:
@@ -45,3 +47,27 @@ package is available at melpa yet. So you have to download both packes
   (("<f12>" . delve-open-or-select)))
 
   #+end_src
+
+** Further Configuration
+ 
+For pretty icons, install [[https://github.com/domtronn/all-the-icons.el][all-the-icons.el]].
+
+* Keybindings
+
+Use the usual navigation keys. Additionally, the following keys apply:
+
+| Key   | Function                                                   |
+|-------+------------------------------------------------------------|
+| ENTER | Visit Zettel at point                                      |
+| TAB   | Expand on Zettel or search at point, or hide it            |
+| LEFT  | Insert list with all backlinks pointing to Zettel at point |
+| RIGHT | Insert list with all links in the Zettel at point          |
+| +     | Add tag to the Zettel at point                             |
+| -     | Remove tag from the Zettel at point                        |
+| g     | Refresh the buffer contents                                |
+| .     | Refresh the item at point                                  |
+| C-l   | Replace current list with the expanded Zettel at point     |
+| r     | Revert buffer to the original list                         |
+|-------+------------------------------------------------------------|
+
+
