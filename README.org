@@ -9,8 +9,7 @@ deprecated [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dash
 
 * Features
 
-Note that this is still a work in progress. See [[* Bugs / Problems /
-Untested Stuff ]] below.
+Note that this is still a work in progress. See [[#bugs--problems--untested-stuff]] below.
 
  - Display lists of org roam pages (=Zettel) with additional
    information on backlinks, "tolinks", and modification date.
