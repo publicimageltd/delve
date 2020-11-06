@@ -50,11 +50,18 @@ package is available at melpa yet. So you have to download both packes
 
   #+end_src
 
+This snippet above also installs the =delve-minor-mode=. It is a local
+minor mode which is only activated if the org mode file visited
+belongs to the org roam database (e.g., is placed with in the org roam
+directory). See [[#delve--minor--mode]] below.
+
 ** Further Configuration
  
 For pretty icons, install [[https://github.com/domtronn/all-the-icons.el][all-the-icons.el]].
 
 * Keybindings
+
+** Delve 
 
 Use the usual navigation keys. Additionally, the following keys apply:
 
@@ -71,6 +78,20 @@ Use the usual navigation keys. Additionally, the following keys apply:
 | C-l   | Replace current list with the expanded Zettel at point     |
 | r     | Revert buffer to the original list                         |
 |-------+------------------------------------------------------------|
+
+** Delve minor mode
+
+This is a local minor mode which adds some convenience key bindings to
+the org roam page buffer.
+
+| Key | Function                                                                 |
+|-----+--------------------------------------------------------------------------|
+| d   | Open a new delve buffer with the current page as top item, and expand it |
+| +   | Add a tag                                                                |
+| -   | Remove a tag                                                             |
+|-----+--------------------------------------------------------------------------|
+
+
 
 * Bugs / Problems / Untested Stuff
 
