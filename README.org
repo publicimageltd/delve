@@ -5,17 +5,23 @@ you can browse your zettelkasten by tag, or use one of the predefined
 searches. Delve inherits and extends the functionality from the now
 deprecated [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dashboard]].
 
-A nice screenshot and some explanations will follow soon.
+[[./screenshot_last_modified.png]]
 
 * Features
 
+ - Display lists of org roam pages (=Zettel) with additional
+   information on backlinks, "tolinks", and modification date.
+ - Expand the Zettel item (page) to see backlinks, or links pointing
+   to the zettel, or both.
  - Interactively browse the Zettelkasten according to predefined
    searches (Last ten modified pages; top linked pages; etc.)
- - On each Zettel item, you can show all backlinks (cursor left), all
-   links from thie Zettel (cursor right), or show both links (expand
-   with <tab>). 
- - Pressing <ENTER> on a Zettel visits it for editing.
- - Remote editing: Use `+` or `-` on a Zettel to add or remove a tag.
+ - Visit the Zettel at point to edit it. Delve provides an interactive
+   command to switch back and forth between the Delve buffers and the
+   org roam buffers.
+ - Remote editing: From within the tree view, add or remove tags.
+ - Additional minor mode (delve-minor-mode) for org roam pages,
+   allowing to open a new Delve buffer with the current org roam page
+   as top item.
 
 * Installation
 
@@ -25,11 +31,11 @@ package is available at melpa yet. So you have to download both packes
 
   #+begin_src emacs-lisp
 (use-package lister
-  :quelpa (lister :fetcher git :branch "master"
+  :quelpa (lister :fetcher git :branch "main"
   		  :url "https://github.com/publicimageltd/lister"))
 
 (use-package delve
-  :quelpa (delve :fetcher git :branch "master"
+  :quelpa (delve :fetcher git :branch "main"
 		 :url "https://github.com/publicimageltd/delve")
   :config
   (use-package delve-minor-mode
