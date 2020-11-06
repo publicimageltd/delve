@@ -9,6 +9,9 @@ deprecated [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dash
 
 * Features
 
+Note that this is still a work in progress. See [[* Bugs / Problems /
+Untested Stuff ]] below.
+
  - Display lists of org roam pages (=Zettel) with additional
    information on backlinks, "tolinks", and modification date.
  - Expand the Zettel item (page) to see backlinks, or links pointing
@@ -70,4 +73,14 @@ Use the usual navigation keys. Additionally, the following keys apply:
 | r     | Revert buffer to the original list                         |
 |-------+------------------------------------------------------------|
 
+* Bugs / Problems / Untested Stuff
 
+ - *Aliases* are not recognized. Sometimes this leads to undesireable
+   results, because you just see the Zettel with the same title listed
+   twice or even more often. An algorithm to effectively identify
+   duplicates is on the way.
+ - There is a general problem with *duplicate items*, not related to
+   aliases, which I could not track them down yet.
+ - You can currently *mark* items ('m') and unmark them all ('u). But
+   you can't do anything with the marked items yet.
+ 
