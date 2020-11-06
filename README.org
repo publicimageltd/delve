@@ -35,11 +35,11 @@ package is available at melpa yet. So you have to download both packes
 
   #+begin_src emacs-lisp
 (use-package lister
-  :quelpa (lister :fetcher git :branch "main"
+  :quelpa (lister :fetcher git
   		  :url "https://github.com/publicimageltd/lister"))
 
 (use-package delve
-  :quelpa (delve :fetcher git :branch "main"
+  :quelpa (delve :fetcher git 
 		 :url "https://github.com/publicimageltd/delve")
   :config
   (use-package delve-minor-mode
