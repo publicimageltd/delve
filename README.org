@@ -53,7 +53,7 @@ package is available at melpa yet. So you have to download both packes
 This snippet above also installs the =delve-minor-mode=. It is a local
 minor mode which is only activated if the org mode file visited
 belongs to the org roam database (e.g., is placed with in the org roam
-directory). See [[#delve--minor--mode]] below.
+directory). See [[#delve-minor-mode]] below.
 
 ** Further Configuration
  
