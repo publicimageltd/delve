@@ -5,7 +5,29 @@ you can browse your zettelkasten by tag, or use one of the predefined
 searches. Delve inherits and extends the functionality from the now
 deprecated [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dashboard]].
 
-[[./screenshot_last_modified.png]]
+* Obligatory screenshot and some explanation
+[[./screenshots/screenshot_last_modified.png]]
+
+On this screenshot, you can see that the user has opened the list of
+the last ten modified pages. The first page has the title *Imagination*.
+It has been modifies on November, 4th. 
+
+As you can see, there are 17 links pointing /from/ that page to some
+other page, and 19 other pages which point /to/ that page (backlinks) on
+the topic of imagination. The type of links is visualized by using
+arrows: 19 pages point to the title, the title points to 17 other
+pages.
+
+If you would want to see these links, you could move te cursor on the
+page item and press the right or the left cursor key, respectively.
+
+On the lower part of the buffer, you can see several tags like "Alias"
+(I have tagged aliased pages for debugging purposes), "Begriff"
+(German for 'concept'), "Dashboard" (pages of importance for the
+current project), 'Gedanke' (free standing thought), etc. If I want to
+see the pages with these tags, I can move the cursor to that line and
+press <TAB> to expand it. Delve will present the same type of list as
+above.
 
 * Features
 
@@ -84,14 +106,32 @@ Use the usual navigation keys. Additionally, the following keys apply:
 This is a local minor mode which adds some convenience key bindings to
 the org roam page buffer.
 
+Per default, this submap is mapped to the prefix `C-d`. This yields:
+
+
 | Key | Function                                                                 |
 |-----+--------------------------------------------------------------------------|
-| d   | Open a new delve buffer with the current page as top item, and expand it |
-| +   | Add a tag                                                                |
-| -   | Remove a tag                                                             |
+| C-d d | Open a new delve buffer with the current page as top item, and expand it |
+| C-d + | Add a tag                                                                |
+| C-d - | Remove a tag                                                             |
 |-----+--------------------------------------------------------------------------|
 
 
+Using `C-d d` in an org-roam buffer is particularly useful: It
+presents all links from the current page as a delve list. See, for
+example, the following example of a page with two backlinks (and no
+links from the page itself):
+
+[[./screenshots/example-backlinks-org-roam-page.png]]
+
+Pressing `C-d d`creates a tree representation of that buffer:
+
+[[./screenshots/example-backlinks.png]]
+
+You can see that the backlinks (on the right side in the roam buffer)
+are not part of the link lists. The links with a right arrow are those
+links with point /from/ the current page to another page; the links with
+the left arrow point /to/ the current page (backlinks).
 
 * Bugs / Problems / Untested Stuff
 
