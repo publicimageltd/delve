@@ -9,8 +9,9 @@ deprecated [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dash
 [[./screenshots/screenshot_last_modified.png]]
 
 On this screenshot, you can see that the user has opened the list of
-the last ten modified pages. The first page has the title *Imagination*.
-It has been modifies on November, 4th. 
+the last ten modified pages. The first page on that list has the title
+*Imagination*. It has been modified on November, 4th. It is the last
+modified page of the whole database.
 
 As you can see, there are 17 links pointing /from/ that page to some
 other page, and 19 other pages which point /to/ that page (backlinks) on
