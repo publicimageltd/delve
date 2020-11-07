@@ -9,9 +9,24 @@ deprecated [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dash
 [[./screenshots/screenshot_last_modified.png]]
 
 On this screenshot, you can see that the user has opened the list of
-the last ten modified pages. The first page on that list has the title
-*Imagination*. It has been modified on November, 4th. It is the last
-modified page of the whole database.
+the last ten modified pages. On the lower part of the buffer, you can
+see several tags like "Alias" (I have tagged aliased pages for
+debugging purposes), "Begriff" (German for 'concept'), "Dashboard"
+(pages of importance for the current project), 'Gedanke' (free
+standing thought), etc. If I want to see the pages with these tags, I
+can move the cursor to that line and press <TAB> to expand it. Delve
+will present the same type of list as above.
+
+There's quite some information stuffed into each line. Let's take as
+an example the first page of the list of the last 10 modified pages:
+
+[[./screenshots/detail.png]]
+
+That page has the title *Imagination*. It has been modified on November,
+4th. The icon right beside the date shows that this page is actually
+the result of a search for pages. It is tagged as a concept
+('Begriff'). Since it is on the top of this result list, it is the
+last modified page of the whole database.
 
 As you can see, there are 17 links pointing /from/ that page to some
 other page, and 19 other pages which point /to/ that page (backlinks) on
@@ -19,16 +34,22 @@ the topic of imagination. The type of links is visualized by using
 arrows: 19 pages point to the title, the title points to 17 other
 pages.
 
-If you would want to see these links, you could move te cursor on the
-page item and press the right or the left cursor key, respectively.
+If you would want to follow these links, you could move te cursor on the
+page item and press the right or the left cursor key, respectively. A
+sublist would be inserted showing all the links.
 
-On the lower part of the buffer, you can see several tags like "Alias"
-(I have tagged aliased pages for debugging purposes), "Begriff"
-(German for 'concept'), "Dashboard" (pages of importance for the
-current project), 'Gedanke' (free standing thought), etc. If I want to
-see the pages with these tags, I can move the cursor to that line and
-press <TAB> to expand it. Delve will present the same type of list as
-above.
+Here's an example of such an expanded list:
+
+[[./screenshots/detail2.png]]
+
+The top item is a page with "Criticism of AI" ("Kritik der KI"). There
+are two links pointing to that page, incidentally two article
+reference pages. These page items have a an arrow pointing to the
+right on their very left side, that marks them as "links pointing to
+the top file". The last item is a page for the concept "Artificial
+Intelligence" ("Künstliche Intelligenz"). As the item on its left side
+indicates, that's a link found in the top page ("Criticism of AI")
+itself. 
 
 * Features
 
