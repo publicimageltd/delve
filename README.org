@@ -8,9 +8,9 @@ can also use the predefined searches which attempt to highlight some
 focal points of this network (e.g., those pages which have the most
 links, or the last modified pages).
 
-Opening Delve the first time, you can browse your zettelkasten by tag,
-or use one of the predefined searches. Further functionality will be
-added.
+Opening Delve the first time, you can browse your zettelkasten by
+ROAM_TAG, or use one of the predefined searches. Further functionality
+will be added.
 
 Delve inherits and extends the functionality from the now deprecated
 [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dashboard]].
@@ -22,7 +22,7 @@ On this screenshot, you can see that the user has opened the list of
 the last ten modified pages. On the lower part of the buffer, you can
 see several tags like "Alias" (I have tagged aliased pages for
 debugging purposes), "Begriff" (German for 'concept'), "Dashboard"
-(pages of importance for the current project), 'Gedanke' (free
+(pages of importance for the current project), "Gedanke" (free
 standing thought), etc. If I want to see the pages with these tags, I
 can move the cursor to that line and press =<TAB>= to expand it. Delve
 will present the same type of list as above.
