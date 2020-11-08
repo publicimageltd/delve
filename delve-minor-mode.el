@@ -26,6 +26,18 @@
 ;;; Code:
 (require 'delve)
 
+;; * Variables
+
+(defvar delve-minor-mode-prefix-key (kbd "C-c d")
+  "When activating delve minor mode, bind `delve-local-map' to
+this key.''")
+
+(defvar delve-minor-mode-old-prefix-key-command nil
+  "Backup value of the command associated with
+  `delve-minor-mode-prefix-key' before changing it.")
+
+;; * Functions
+
 (defun delve-minor-mode-maybe-activate ()
   "Turn on delve minor mode if current buffer is in org roam."
   (interactive)
@@ -52,14 +64,6 @@
     map)
   "Local prefix map for the delve minor mode.
 Bind this map to a prefix key of your choice.")
-
-(defvar delve-minor-mode-prefix-key (kbd "C-c d")
-  "When activating delve minor mode, bind `delve-local-map' to
-this key.''")
-
-(defvar delve-minor-mode-old-prefix-key-command nil
-  "Backup value of the command associated with
-  `delve-minor-mode-prefix-key' before changing it.")
 
 (define-minor-mode delve-minor-mode
   "Easier access to some DELVE functionality."
