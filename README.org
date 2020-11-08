@@ -1,9 +1,19 @@
 #+TITLE: delve.el
 
-Delve is a tool to delve into your [[https://github.com/org-roam/org-roam][org roam zettelkasten]]. Currently,
-you can browse your zettelkasten by tag, or use one of the predefined
-searches. Delve inherits and extends the functionality from the now
-deprecated [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dashboard]].
+Delve is a tool to delve into your [[https://github.com/org-roam/org-roam][org roam zettelkasten]]. Its main
+purpose is to find pages by following links (either backlinks or
+references made in the page itself). Thus you can quickly overview the
+network of intrapage relations you have created. For this purpose, you
+can also use the predefined searches which attempt to highlight some
+focal points of this network (e.g., those pages which have the most
+links, or the last modified pages).
+
+Opening Delve the first time, you can browse your zettelkasten by tag,
+or use one of the predefined searches. Further functionality will be
+added.
+
+Delve inherits and extends the functionality from the now deprecated
+[[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dashboard]].
 
 * Obligatory screenshot and some explanation
 [[./screenshots/screenshot_last_modified.png]]
@@ -14,7 +24,7 @@ see several tags like "Alias" (I have tagged aliased pages for
 debugging purposes), "Begriff" (German for 'concept'), "Dashboard"
 (pages of importance for the current project), 'Gedanke' (free
 standing thought), etc. If I want to see the pages with these tags, I
-can move the cursor to that line and press <TAB> to expand it. Delve
+can move the cursor to that line and press =<TAB>= to expand it. Delve
 will present the same type of list as above.
 
 There's quite some information stuffed into each line. Let's take as
@@ -50,6 +60,11 @@ the top file". The last item is a page for the concept "Artificial
 Intelligence" ("Künstliche Intelligenz"). As the item on its left side
 indicates, that's a link found in the top page ("Criticism of AI")
 itself. 
+
+The most important feature is that the user can now look at each of
+these linked pages again, and investigate /their/ links. So we could
+now, for example, look at what pages link to "Artificial Intelligence"
+or what references are made within this page, without leaving Delve.
 
 * Features
 
@@ -128,7 +143,7 @@ Use the usual navigation keys. Additionally, the following keys apply:
 This is a local minor mode which adds some convenience key bindings to
 the org roam page buffer.
 
-Per default, this submap is mapped to the prefix `C-d`. This yields:
+Per default, this submap is mapped to the prefix =C-d=. This yields:
 
 
 | Key | Function                                                                 |
@@ -139,14 +154,14 @@ Per default, this submap is mapped to the prefix `C-d`. This yields:
 |-----+--------------------------------------------------------------------------|
 
 
-Using `C-d d` in an org-roam buffer is particularly useful: It
+Using =C-d d= in an org-roam buffer is particularly useful: It
 presents all links from the current page as a delve list. See, for
 example, the following example of a page with two backlinks (and no
 links from the page itself):
 
 [[./screenshots/example-backlinks-org-roam-page.png]]
 
-Pressing `C-d d`creates a tree representation of that buffer:
+Pressing =C-d d= creates a tree representation of that buffer:
 
 [[./screenshots/example-backlinks.png]]
 
@@ -166,6 +181,6 @@ deeper into the Zettelkasten.
    duplicates is on the way.
  - There is a general problem with *duplicate items*, not related to
    aliases, which I could not track them down yet.
- - You can currently *mark* items ('m') and unmark them all ('u). But
-   you can't do anything with the marked items yet.
+ - You can currently *mark* items (by pressing =m=) and unmark them all
+   (=u=). But you can't do anything with the marked items yet.
  
