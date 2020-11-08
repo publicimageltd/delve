@@ -150,10 +150,13 @@ Pressing `C-d d`creates a tree representation of that buffer:
 
 [[./screenshots/example-backlinks.png]]
 
-You can see that the backlinks (on the right side in the roam buffer)
-are not part of the link lists. The links with a right arrow are those
-links with point /from/ the current page to another page; the links with
-the left arrow point /to/ the current page (backlinks).
+The first two items in this list are the backlinks (in the right part
+of the org roam buffer ). The other, links with an right arrow
+pointing to the left, are those links which point /from/ the current
+page to another page (i.e., a link to the page titled "Kreativität"
+("Creativity"). Each of these linked pages is displayed with /their/
+respective links, so that the user could now expand on them to dive
+deeper into the Zettelkasten.
 
 * Bugs / Problems / Untested Stuff
 
