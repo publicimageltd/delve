@@ -3,7 +3,7 @@
 Delve is a tool to delve into your [[https://github.com/org-roam/org-roam][org roam zettelkasten]]. Its main
 purpose is to find pages by following links (either backlinks or
 references made in the page itself). Thus you can quickly overview the
-network of intrapage relations you have created. For this purpose, you
+network of interpage relations you have created. For this purpose, you
 can also use the predefined searches which attempt to highlight some
 focal points of this network (e.g., those pages which have the most
 links, or the last modified pages).
