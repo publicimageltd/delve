@@ -358,8 +358,7 @@ HEADING will be used to construct the list title and the buffer name."
   (let* ((data (lister-get-data (current-buffer) :point)))
     (unless (delve-zettel-p data)
       (user-error "Item at point is no zettel"))
-    (find-file (delve-zettel-file data))
-    (org-roam-buffer-toggle-display)))
+    (find-file (delve-zettel-file data))))
 
 (defun delve-add-tag ()
   "Add tags to the zettel at point."
