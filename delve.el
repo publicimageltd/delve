@@ -47,7 +47,7 @@
 (defvar delve-buffer-name "delve:"
   "Name of delve buffers.")
 
-(defvar delve-no-icons-in-completions t
+(defvar delve-use-icons-in-completions t
   "Turn off any icons when asking for completions.
 If Delve asks you to choose between a list of buffers or pages,
 turning this option on will avoid using icons when displaying the
@@ -467,7 +467,7 @@ delve object, e.g. `delve-zettel'."
 ;; TODO Only prettify with faicons if var is explicitly set (opt-in)
 (defun delve-prettify-delve-buffer-name (name)
   "Prettify NAME."
-  (concat (if (and (not delve-no-icons-in-completions)
+  (concat (if (and delve-use-icons-in-completions
 		   (featurep 'all-the-icons))
 	      (all-the-icons-faicon "bars")
 	    "BUFFER")
@@ -476,7 +476,7 @@ delve object, e.g. `delve-zettel'."
 ;; TODO Only prettify with faicons if var is explicitly set (opt-in)
 (defun delve-prettify-delve-fn-doc (doc)
   "Prettify DOC."
-  (concat (if (and (not delve-no-icons-in-completions)
+  (concat (if (and delve-use-icons-in-completions
 		   (featurep 'all-the-icons))
 	      (all-the-icons-faicon "plus")
 	    "ACTION ")
