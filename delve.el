@@ -48,11 +48,11 @@
   "Name of delve buffers.")
 
 (defvar delve-use-icons-in-completions nil
-  "Turn off any icons when asking for completions.
+  "Use icons when asking for completions.
 If Delve asks you to choose between a list of buffers or pages,
-turning this option on will avoid using icons when displaying the
-items to select from. This is useful if you do not use any
-completion interface like ivy, since it is hard to type an icon.")
+turning this option on will use icons when displaying the items
+to select from. This is only useful if you do use a completion
+interface like ivy, since it is hard to type an icon.")
 
 (defvar delve-version-string "0.3"
   "Current version of delve.")
