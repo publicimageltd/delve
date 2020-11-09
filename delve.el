@@ -42,10 +42,17 @@
 ;; * Global variables
 
 (defvar delve-auto-delete-roam-buffer t
-  "Delete visible *org roam* buffer when switchung to DELVE.")
+  "Delete visible *org roam* buffer when switching to DELVE.")
 
 (defvar delve-buffer-name "delve:"
   "Name of delve buffers.")
+
+(defvar delve-no-icons-in-completions t
+  "Turn off any icons when asking for completions.
+If Delve asks you to choose between a list of buffers or pages,
+turning this option on will avoid using icons when displaying the
+items to select from. This is useful if you do not use any
+completion interface like ivy, since it is hard to type an icon.")
 
 (defvar delve-version-string "0.3"
   "Current version of delve.")
@@ -460,7 +467,8 @@ delve object, e.g. `delve-zettel'."
 ;; TODO Only prettify with faicons if var is explicitly set (opt-in)
 (defun delve-prettify-delve-buffer-name (name)
   "Prettify NAME."
-  (concat (if (featurep 'all-the-icons)
+  (concat (if (and (not delve-no-icons-in-completions)
+		   (featurep 'all-the-icons))
 	      (all-the-icons-faicon "bars")
 	    "BUFFER")
 	  " " name))
@@ -468,7 +476,8 @@ delve object, e.g. `delve-zettel'."
 ;; TODO Only prettify with faicons if var is explicitly set (opt-in)
 (defun delve-prettify-delve-fn-doc (doc)
   "Prettify DOC."
-  (concat (if (featurep 'all-the-icons)
+  (concat (if (and (not delve-no-icons-in-completions)
+		   (featurep 'all-the-icons))
 	      (all-the-icons-faicon "plus")
 	    "ACTION ")
 	  " " doc))
