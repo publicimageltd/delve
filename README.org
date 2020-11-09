@@ -120,7 +120,7 @@ For pretty icons, install [[https://github.com/domtronn/all-the-icons.el][all-th
 icons when calling =delve-open-or-select=, use the following option:
 
   #+begin_src emacs-lisp
-(setq delve-use-icons-in-completions t) ;; per default nil
+(setq delve-no-icons-in-completions t) ;; per default nil
 #+end_src
 
 * Keybindings
