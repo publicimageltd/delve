@@ -464,19 +464,17 @@ delve object, e.g. `delve-zettel'."
       (car (split-string doc "[\\\n]+"))
     (format "undocumented function %s" fn)))
 
-;; TODO Only prettify with faicons if var is explicitly set (opt-in)
 (defun delve-prettify-delve-buffer-name (name)
   "Prettify NAME."
-  (concat (if (and (not delve-use-icons-in-completions)
+  (concat (if (and delve-use-icons-in-completions
 		   (featurep 'all-the-icons))
 	      (all-the-icons-faicon "bars")
 	    "BUFFER")
 	  " " name))
 
-;; TODO Only prettify with faicons if var is explicitly set (opt-in)
 (defun delve-prettify-delve-fn-doc (doc)
   "Prettify DOC."
-  (concat (if (and (not delve-use-icons-in-completions)
+  (concat (if (and delve-use-icons-in-completions
 		   (featurep 'all-the-icons))
 	      (all-the-icons-faicon "plus")
 	    "ACTION ")
