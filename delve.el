@@ -47,7 +47,7 @@
 (defvar delve-buffer-name "delve:"
   "Name of delve buffers.")
 
-(defvar delve-use-icons-in-completions t
+(defvar delve-use-icons-in-completions nil
   "Turn off any icons when asking for completions.
 If Delve asks you to choose between a list of buffers or pages,
 turning this option on will avoid using icons when displaying the
