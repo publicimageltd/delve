@@ -85,11 +85,10 @@ Note that this is still a work in progress. See [[#bugs--problems--untested-stuf
    as top item.
 
 * Installation
-
 ** Basic Installation
 
 Delve depends on another tool of mine called [[https://github.com/publicimageltd/lister][lister]]. But neither
-package is available at melpa yet. So you have to download both packes
+package is available at MELPA yet. So you have to download both packes
 (delve and lister) in order to make this work:
 
   #+begin_src emacs-lisp
@@ -113,6 +112,16 @@ This snippet above also installs the =delve-minor-mode=. It is a local
 minor mode which is only activated if the org mode file visited
 belongs to the org roam database (e.g., is placed with in the org roam
 directory). See [[#delve-minor-mode]] below.
+
+=evil-mode= users should add the following snippet to their
+configuration to use the default keybinding:
+
+#+begin_src emacs-lisp
+(evil-set-initial-state 'delve-mode 'emacs)
+#+end_src
+
+If anyone is interested in providing keybindings for evil mode, feel
+free to do a PR!
 
 ** Further Configuration
  
