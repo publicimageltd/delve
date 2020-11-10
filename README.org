@@ -89,7 +89,9 @@ Note that this is still a work in progress. See [[#bugs--problems--untested-stuf
 
 Delve depends on another tool of mine called [[https://github.com/publicimageltd/lister][lister]]. But neither
 package is available at MELPA yet. So you have to download both packes
-(delve and lister) in order to make this work:
+(=delve= and =lister=) in order to make this work. In the following
+example, [[https://github.com/quelpa/quelpa][quelpa]] is used for downloading the package. Alternatively,
+you can download it with another package manager or manually.
 
   #+begin_src emacs-lisp
 (use-package lister
