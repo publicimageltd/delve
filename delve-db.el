@@ -212,11 +212,11 @@ specific query for special usecases."
 		    tags:tags                                 ;; 2 tags
 		    files:meta                                ;; 3 meta
 		    (as [ :SELECT (funcall count) :FROM links ;; 4 #tolinks
-			 :WHERE (and (= links:type "file")
+			 :WHERE (and (or (= links:type "id") (= links:type "file"))
 				     (= links:source titles:file)) ]
 			tolinks)
 		    (as [ :SELECT (funcall count) :FROM links ;; 5 #backlinks
-			 :WHERE (and (= links:type "file")
+			 :WHERE (and (or (= links:type "id") (= links:type "file"))
 				     (= links:dest titles:file)) ]
 			backlinks) ]
 	   :from titles
@@ -300,7 +300,7 @@ specific query for special usecases."
   "Return all zettel linking to ZETTEL."
   (let* ((with-clause [:with backlinks :as [:select (as links:source file)
 					    :from links
-					    :where (and (= links:type "file")
+					    :where (and (or (= links:type "id") (= links:type "file"))
 							(= links:dest $s1))]])
 	 (constraint [:join backlinks :using [[ file ]]
 		      :order-by (asc titles:title)])
@@ -312,7 +312,7 @@ specific query for special usecases."
   "Return all zettel linking from ZETTEL."
   (let* ((with-clause [:with tolinks :as [:select (as links:dest file)
   				          :from links
-					  :where (and (= links:type "file")
+					  :where (and (or (= links:type "id") (= links:type "file"))
 						      (= links:source $s1))]])
 	 (constraint [:join tolinks :using [[ file ]]
 		      :order-by (asc titles:title)])
