@@ -198,12 +198,14 @@ deeper into the Zettelkasten.
 
 * Bugs / Problems / Untested Stuff
 
+ - I've discvovered quite some bugs in =lister=, which I am working to
+   hunt down in the background. 
  - *Aliases* are not recognized. Sometimes this leads to undesireable
    results, because you just see the Zettel with the same title listed
    twice or even more often. An algorithm to effectively identify
    duplicates is on the way.
  - There is a general problem with *duplicate items*, not related to
-   aliases, which I could not track them down yet.
+   aliases. I could not find out its source yet.
  - You can currently *mark* items (by pressing =m=) and unmark them all
    (=u=). But you can't do anything with the marked items yet.
  
