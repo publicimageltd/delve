@@ -133,14 +133,17 @@ configuration to use the default keybinding:
 (evil-set-initial-state 'delve-mode 'emacs)
 #+end_src
 
-If anyone is interested in providing keybindings for evil mode, feel
-free to do a PR!
+There is [[https://github.com/publicimageltd/delve/issues/3][an issue thread]] where you can post, comment and discuss
+possible ways to integrate =delve= into =evil=. Eventually, it will be
+merged into the source code, but since I don't use =evil=, I won't be
+hurrying it. (Remember, that's a hobby horse!)
 
 * Keybindings
 
 ** Delve 
 
-Use the usual navigation keys. Additionally, the following keys apply:
+On standard emacs, use the usual navigation keys. Additionally, the
+following keys apply:
 
 | Key   | Function                                                   |
 |-------+------------------------------------------------------------|
@@ -155,6 +158,8 @@ Use the usual navigation keys. Additionally, the following keys apply:
 | C-l   | Replace current list with the expanded Zettel at point     |
 | r     | Revert buffer to the original list                         |
 |-------+------------------------------------------------------------|
+
+For integrating =delve= into =evil=, see the [[#evil][section above]],
 
 ** Delve minor mode
 
