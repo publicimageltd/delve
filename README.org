@@ -15,6 +15,26 @@ will be added.
 Delve inherits and extends the functionality from the now deprecated
 [[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dashboard]].
 
+* Contents                                                         :noexport:
+:PROPERTIES:
+:TOC:      :include siblings
+:END:
+
+:CONTENTS:
+- [[#obligatory-screenshot-and-some-explanation][Obligatory screenshot and some explanation]]
+- [[#features][Features]]
+- [[#installation][Installation]]
+  - [[#basic-installation][Basic Installation]]
+  - [[#further-configuration][Further Configuration]]
+    - [[#pretty-icons][Pretty Icons]]
+    - [[#evil][Evil]]
+- [[#keybindings][Keybindings]]
+  - [[#delve][Delve]]
+  - [[#delve-minor-mode][Delve minor mode]]
+- [[#changelog][Changelog]]
+- [[#bugs--problems--untested-stuff][Bugs / Problems / Untested Stuff]]
+:END:
+
 * Obligatory screenshot and some explanation
 [[./screenshots/screenshot_last_modified.png]]
 
@@ -196,6 +216,18 @@ page to another page (i.e., a link to the page titled "Kreativität"
 respective links, so that the user could now expand on them to dive
 deeper into the Zettelkasten.
 
+* Changelog
+:PROPERTIES:
+:TOC:      :depth 0
+:END:
+
+** Current pre-release version
+
+*** Fixes
+ + Include ID links.
+
+** 0.3 Initial release.
+
 * Bugs / Problems / Untested Stuff
 
  - I've discvovered quite some bugs in =lister=, which I am working to
@@ -209,3 +241,10 @@ deeper into the Zettelkasten.
  - You can currently *mark* items (by pressing =m=) and unmark them all
    (=u=). But you can't do anything with the marked items yet.
  
+
+# Local Variables:
+# eval: (require 'org-make-toc)
+# before-save-hook: org-make-toc
+# org-export-with-properties: ()
+# org-export-with-title: t
+# End:
