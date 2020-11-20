@@ -440,20 +440,33 @@ HEADING will be used to construct the list title and the buffer name."
 	      (buffer-list)))
 
 ;;;###autoload
-(defun delve (&optional item)
+(defun delve (&optional item-or-list header-info)
   "Delve into the org roam zettelkasten with predefined searches.
-Optionally expand on ITEM as starting point. ITEM has to be a
-delve object, e.g. `delve-zettel'."
+Alternatively, pass the list to be displayed using the optional
+argument ITEM-OR-LIST. 
+
+If ITEM-OR-LIST is a delve object, e.g. `delve-zettel', expand on
+it. It ITEM-OR-LIST is list, treat it as a list of delve objects
+and insert them as they are.
+
+Optionally use HEADER-INFO for the title."
   (interactive)
   (unless org-roam-mode
     (with-temp-message "Turning on org roam mode..."
       (org-roam-mode)))
-  (let* ((items   (if item
-		      (delve-guess-expansion item)
-		    (append delve-searches (delve-db-query-roam-tags))))
-	 (heading (if item
-		      (substring-no-properties (car (delve-mapper item)))
-		    "Initial list"))
+  (let* ((items      (pcase item-or-list
+		       ((pred null)       (append delve-searches (delve-db-query-roam-tags)))
+		       ((pred listp)      item-or-list)
+		       ((pred delve-get-expansion-operators)  (delve-guess-expansion item-or-list))
+		       (_                 (user-error "Unknown optional argument type: %s" (typeof item-or-list)))))
+	 (heading   (or header-info
+			(if (null item-or-list)
+			    "Initial list"
+			  (if (not (listp item-or-list))
+			      (substring-no-properties
+			       (car (delve-mapper item-or-list)))
+			    (format "New list created at %s" (format-time-string "%ER"))))))
+	 ;;
 	 (buf     (delve-new-buffer items heading)))
     (switch-to-buffer buf)
     (when delve-auto-delete-roam-buffer
