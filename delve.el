@@ -463,15 +463,25 @@ new buffer with all zettel items of this sublist it belongs to."
   ;; Now add delve specific stuff:
   (setq-local lister-local-action #'delve-action))
 
-;; -----------------------------------------------------------
-;; * Starting delve: entry points
+;; * Some delve specific buffer handling 
+
+(defun delve-buffer-p (buf)
+  "Test if BUF is a delve buffer."
+  (with-current-buffer buf
+    (eq major-mode 'delve-mode)))
 
 (defun delve-all-buffers ()
   "Get all buffers in `delve mode'."
-  (seq-filter (lambda (buf)
-		(with-current-buffer buf
-		  (derived-mode-p 'delve-mode)))
-	      (buffer-list)))
+  (cl-remove-if-not #'delve-buffer-p (buffer-list)))
+
+(defun delve-kill-all-buffers ()
+  "Kill all delve buffers."
+  (interactive)
+  (cl-dolist (buf (cl-remove-if-not #'delve-buffer-p (buffer-list)))
+    (kill-buffer buf)))
+
+;; -----------------------------------------------------------
+;; * Starting delve: entry point
 
 ;;;###autoload
 (defun delve (&optional item-or-list header-info)
@@ -542,17 +552,6 @@ Optionally use HEADER-INFO for the title."
 				     fns)))
 	 (selection  (completing-read prompt collection nil t)))
     (cdr (assoc selection collection #'string=))))
-
-(defun delve-buffer-p (buf)
-  "Test if BUF is a delve buffer."
-  (with-current-buffer buf
-    (eq major-mode 'delve-mode)))
-
-(defun delve-kill-all-buffers ()
-  "Kill all delve buffers."
-  (interactive)
-  (cl-dolist (buf (cl-remove-if-not #'delve-buffer-p (buffer-list)))
-    (kill-buffer buf)))
 
 ;;;###autoload
 (defun delve-open-or-select ()
