@@ -78,19 +78,16 @@ interface like ivy, since it is hard to type an icon."
   :group 'delve)
 
 (defcustom delve-searches
-  (list (delve-make-page-search :name "Orphaned Pages"
-    			   :constraint [:where tags:tags :is :null])
-	(delve-make-page-search :name "10 Last Modified"
-			   :postprocess #'delve-db-query-last-10-modified)
-	(delve-make-page-search :name "10 Most Linked To"
-			   :constraint [:order-by (desc backlinks)
-					:limit 10])
-	(delve-make-page-search :name "10 Most Linked From"
-			   :constraint [:order-by (desc tolinks)
-					:limit 10])
-	(delve-make-page-search :name "10 Most Linked"
-			   :constraint [:order-by (desc (+ backlinks tolinks))
-					:limit 10]))
+  `((:name "Orphaned Pages"
+	   :constraint [:where tags:tags :is :null])
+    (:name "10 Last Modified"
+	   :postprocess #'delve-db-query-last-10-modified)
+    (:name "10 Most Linked To"
+	   :constraint [:order-by (desc backlinks) :limit 10])
+    (:name "10 Most Linked From"
+	   :constraint [:order-by (desc tolinks)   :limit 10])
+    (:name "10 Most Linked"
+	   :constraint [:order-by (desc (+ backlinks tolinks)) :limit 10]))
   "A list of default searches offered when starting delve."
   :type '(repeat sexp)
   :group 'delve)
@@ -483,6 +480,21 @@ new buffer with all zettel items of this sublist it belongs to."
 ;; -----------------------------------------------------------
 ;; * Starting delve: entry point
 
+(defun delve-create-searches (searches-plists)
+  "Create expandable delve search objects according to SEARCHES-PLISTS.
+SEARCHES-PLISTS is a list of property lists. Each property list
+will be passed as a keyword argument list to
+`delve-make-page-search'. Thus, all keywords for this function
+can be used. See the documentation string of
+`delve-make-page-search' for all available options.
+
+Minimally, you should set the keywords `:name' (a string) and
+`:constraint' (with a vector representing an SQL query). See
+`delve-searches' for some valid examples."
+  (cl-mapcar (lambda (the-plist)
+	       (apply #'delve-make-page-search the-plist))
+	     searches-plists))
+
 ;;;###autoload
 (defun delve (&optional item-or-list header-info)
   "Delve into the org roam zettelkasten with predefined searches.
@@ -499,7 +511,8 @@ Optionally use HEADER-INFO for the title."
     (with-temp-message "Turning on org roam mode..."
       (org-roam-mode)))
   (let* ((items      (pcase item-or-list
-		       ((pred null)       (append delve-searches (delve-db-query-roam-tags)))
+		       ((pred null)       (append (delve-create-searches delve-searches)
+						  (delve-db-query-roam-tags)))
 		       ((pred listp)      item-or-list)
 		       ((pred delve-get-expansion-operators)  (delve-guess-expansion item-or-list))
 		       (_                 (user-error "Unknown optional argument type: %s" (typeof item-or-list)))))
