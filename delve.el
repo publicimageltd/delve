@@ -47,27 +47,37 @@
 
 ;; * Customizable Global variables
 
-(defvar delve-new-buffer-add-creation-time " (%ER)"
+(defcustom delve-new-buffer-add-creation-time " (%ER)"
   "Time string to add to heading when creating new delve buffers.
-If `nil', do not add anything.")
+If `nil', do not add anything."
+  :type 'string
+  :group 'delve)
 
-(defvar delve-auto-delete-roam-buffer t
-  "Delete visible *org roam* buffer when switching to DELVE.")
+(defcustom delve-auto-delete-roam-buffer t
+  "Delete visible *org roam* buffer when switching to DELVE."
+  :type 'boolean
+  :group 'delve)
 
-(defvar delve-buffer-name "delve:"
-  "Name of delve buffers.")
+(defcustom delve-buffer-name "delve:"
+  "Prefix for delve buffer names."
+  :type 'boolean
+  :group 'delve)
 
-(defvar delve-use-icons-in-completions nil
+(defcustom delve-use-icons-in-completions nil
   "Use icons when asking for completions.
 If Delve asks you to choose between a list of buffers or pages,
 turning this option on will use icons when displaying the items
 to select from. This is only useful if you do use a completion
-interface like ivy, since it is hard to type an icon.")
+interface like ivy, since it is hard to type an icon."
+  :type 'boolean
+  :group 'delve)
 
-(defvar delve-version-string "0.3"
-  "Current version of delve.")
+(defcustom delve-version-string "0.3"
+  "Current version of delve."
+  :type 'string
+  :group 'delve)
 
-(defvar delve-searches
+(defcustom delve-searches
   (list (delve-make-page-search :name "Orphaned Pages"
     			   :constraint [:where tags:tags :is :null])
 	(delve-make-page-search :name "10 Last Modified"
@@ -81,7 +91,9 @@ interface like ivy, since it is hard to type an icon.")
 	(delve-make-page-search :name "10 Most Linked"
 			   :constraint [:order-by (desc (+ backlinks tolinks))
 					:limit 10]))
-  "A list of default searches offered when starting delve.")
+  "A list of default searches offered when starting delve."
+  :type '(repeat sexp)
+  :group 'delve)
 
 ;; * Buffer local variables for delve mode
 
