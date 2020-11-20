@@ -250,19 +250,21 @@ POSITION is either an integer or the symbol `:point'."
 	(lister-insert-sublist-below buf pos res)
       (message "Cannot expand item; no results"))))
 
+(defun delve-get-expansion-operators (item)
+  "Return a list of expansion operators to apply to ITEM."
+  (pcase item
+    ((pred delve-tag-p)
+     (list #'delve-operate-taglist))
+    ((pred delve-zettel-p)
+     (list #'delve-operate-backlinks  #'delve-operate-tolinks))
+    ((pred delve-generic-search-p)
+     (list #'delve-operate-search))
+    (_ nil)))
+
 (defun delve-guess-expansion (item)
   "Guess and return useful expansion for ITEM."
-  (let* ((ops   (pcase item
-		  ((pred delve-tag-p)
-		   (list #'delve-operate-taglist))
-		  ((pred delve-zettel-p)
-		   (list #'delve-operate-backlinks  #'delve-operate-tolinks))
-		  ((pred delve-generic-search-p)
-		   (list #'delve-operate-search))
-		  (_ nil))))
-    (if ops
-	(apply #'delve-expand item ops)
-      (user-error "No useful expansion found"))))
+  (when-let* ((ops (delve-get-expansion-operators item)))
+      (apply #'delve-expand item ops)))
 
 (defun delve-guess-expansion-and-insert (buf pos)
   "Guess useful expansion for item at POS and insert it.
