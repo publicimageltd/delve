@@ -39,10 +39,14 @@
 
 (declare-function all-the-icons-faicon "all-the-icons" (string) t)
 
-;; * Global variables
+;; * Non-Customizable Global variables
+
 (defvar delve-force-ignore-all-the-icons nil
   "Used internally: Bind this temporally to never use any icons
   when representing an item.")
+
+;; * Customizable Global variables
+
 
 (defvar delve-auto-delete-roam-buffer t
   "Delete visible *org roam* buffer when switching to DELVE.")
@@ -342,7 +346,6 @@ HEADING will be used to construct the list title and the buffer name."
       (lister-highlight-mode))
     buf))
 
-;; TODO noch nicht 
 (defun delve-new-from-sublist (buf pos)
   "Open new delve buffer with the current sublist at point."
   (interactive (list (current-buffer) (point)))
