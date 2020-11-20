@@ -220,12 +220,13 @@ have to be passed to this function.
 
 Here's an overview of keywords defining a search:
 
-| Keyword      | Meaning                                         |
-|--------------+------------------------------------------------------|
-| :name        | The display name for the seach item                  |
-| :constraint  | SQL query (a vector) constraining the generic search |
-| :postprocess | Pass result objects to this function                 |
-|--------------+------------------------------------------------------|
+| Keyword      | Meaning                                                              |
+|--------------+----------------------------------------------------------------------|
+| :name        | The display name for the seach item                                  |
+| :constraint  | SQL query (a vector) constraining the generic search                 |
+| :postprocess | Pass result objects to this function                                 |
+| :args        | Values which will be picked up in the constraint (e.g. by using $r1) |
+|--------------+----------------------------------------------------------------------|
 
 A =:constraint= clause is an SQL statement (a vector), as it is used by
 the library =emacsql=, which is used by =org-roam= under the hood. An
