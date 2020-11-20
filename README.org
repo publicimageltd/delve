@@ -23,9 +23,15 @@ Delve inherits and extends the functionality from the now deprecated
 :CONTENTS:
 - [[#obligatory-screenshot-and-some-explanation][Obligatory screenshot and some explanation]]
 - [[#features][Features]]
+- [[#important-interactive-functions][Important interactive functions]]
+  - [[#main-entry-point-delve-toggle][Main entry point: delve-toggle]]
+  - [[#basic-navigation][Basic navigation]]
+  - [[#open-a-sublist-in-a-new-delve-buffer][Open a sublist in a new delve buffer]]
+  - [[#further-useful-commands][Further useful commands]]
 - [[#installation][Installation]]
   - [[#basic-installation][Basic Installation]]
   - [[#further-configuration][Further Configuration]]
+    - [[#predefined-searches][Predefined Searches]]
     - [[#pretty-icons][Pretty Icons]]
     - [[#evil][Evil]]
 - [[#keybindings][Keybindings]]
@@ -104,6 +110,52 @@ Note that this is still a work in progress. See [[#bugs--problems--untested-stuf
    allowing to open a new Delve buffer with the current org roam page
    as top item.
 
+* Important interactive functions
+** Main entry point: delve-toggle
+
+Bind =delve-toggle= to any key. If you call that function, a list of
+predefined searches (which you can customize, of course) is presented,
+along with a list of tag searches for each ROAM_TAG in your database.
+Move to an item and press <TAB>. A list of pages matching the search
+will be inserted below the item.
+
+Press =q= to bury the delve buffer.
+
+If you then press =delve-toggle= again, you will be presented with a
+list of open delve buffers. 
+
+** Basic navigation
+
+ + Use navigation keys to move between the items.
+ + Use =<tab>= to either display the results of expanding the item at
+   point, or to remove the results again. In other words, =<tab>= is a
+   toggle.
+ + Use =<return>= to visit the zettel at point. If you are not a zettel
+   page item, nothing will happen.
+ + Use =q= to bury the buffer.
+ + Use =C-l= to create a sublist in a new buffer, depending on what item
+   you are on (see below for more explanation).
+
+** Open a sublist in a new delve buffer
+
+If you are on a searchable item (e.g. a predefined search or a tag),
+press =C-l= to create a new delve buffer which expands on just this
+item.
+
+If point is on a zettel page, create a new delve buffer with all the
+list items belonging to this list on which the cursor is positioned
+on. This effectively moves the current sublist you are in into a new
+buffer, cutting off everything else. 
+
+If point is on a zettel page and you press =C-u C-l=, that is, if you
+call =C-l= with a prefix arg, then the current zettel will be expanded
+in a new buffer. 
+
+** Further useful commands
+
+ + =M-x delve-kill-all-buffers= will kill all delve buffers. Useful if
+   you have accumulated quite some sublists.
+
 * Installation
 ** Basic Installation
 
@@ -136,6 +188,8 @@ belongs to the org roam database (e.g., is placed with in the org roam
 directory). See [[#delve-minor-mode]] below.
 
 ** Further Configuration
+*** Predefined Searches
+Delve comes with a set of predefined searches. 
 *** Pretty Icons
 For pretty icons, install [[https://github.com/domtronn/all-the-icons.el][all-the-icons.el]]. If you also want pretty
 icons when calling =delve-open-or-select=, use the following option:
@@ -225,7 +279,13 @@ deeper into the Zettelkasten.
 
 *** Enhancements
  + All sublists are now displayed in its own new delve buffer.
- + 
+ + Actions displayed when calling delve-toggle are now
+   customizable. See the documentation string of `delve-action' for
+   more details.
+ + List titles do not use icons anymore (for easier completion).
+ + Predefined searches are now defined on the fly and thus can be
+   changed easier.
+ 
 *** Fixes
  + Include ID links.
 
