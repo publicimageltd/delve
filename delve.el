@@ -277,8 +277,9 @@ can be an integer or the symbol `:point'."
 		     (_ (error "Invalid value for POS: %s" pos))))
 	 (item     (lister-get-data buf position))
 	 (sublist  (delve-guess-expansion item)))
-    (when sublist
-      (lister-insert-sublist-below buf position sublist))))
+    (if sublist
+	(lister-insert-sublist-below buf position sublist)
+      (user-error "No expansion found"))))
   
 ;; -----------------------------------------------------------
 ;;; * Delve Mode: Interactive Functions, Mode Definition 
