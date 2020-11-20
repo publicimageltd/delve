@@ -89,7 +89,7 @@ interface like ivy, since it is hard to type an icon."
     (:name "10 Most Linked"
 	   :constraint [:order-by (desc (+ backlinks tolinks)) :limit 10]))
   "A list of default searches offered when starting delve."
-  :type '(repeat sexp)
+  :type '(repeat plist)
   :group 'delve)
 
 ;; * Buffer local variables for delve mode
