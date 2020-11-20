@@ -24,7 +24,7 @@ Delve inherits and extends the functionality from the now deprecated
 - [[#obligatory-screenshot-and-some-explanation][Obligatory screenshot and some explanation]]
 - [[#features][Features]]
 - [[#important-interactive-functions][Important interactive functions]]
-  - [[#main-entry-point-delve-toggle][Main entry point: delve-toggle]]
+  - [[#main-entry-point-delve-open-or-select][Main entry point: delve-open-or-select]]
   - [[#basic-navigation][Basic navigation]]
   - [[#open-a-sublist-in-a-new-delve-buffer][Open a sublist in a new delve buffer]]
   - [[#further-useful-commands][Further useful commands]]
@@ -111,9 +111,9 @@ Note that this is still a work in progress. See [[#bugs--problems--untested-stuf
    as top item.
 
 * Important interactive functions
-** Main entry point: delve-toggle
+** Main entry point: delve-open-or-select
 
-Bind =delve-toggle= to any key. If you call that function, a list of
+Bind =delve-open-or-select= to any key. If you call that function, a list of
 predefined searches (which you can customize, of course) is presented,
 along with a list of tag searches for each ROAM_TAG in your database.
 Move to an item and press <TAB>. A list of pages matching the search
@@ -121,7 +121,7 @@ will be inserted below the item.
 
 Press =q= to bury the delve buffer.
 
-If you then press =delve-toggle= again, you will be presented with a
+If you then press =delve-open-or-select= again, you will be presented with a
 list of open delve buffers. 
 
 ** Basic navigation
@@ -331,7 +331,7 @@ deeper into the Zettelkasten.
 
 *** Enhancements
  + All sublists are now displayed in its own new delve buffer.
- + Actions displayed when calling =delve-toggle= are now
+ + Actions displayed when calling =delve-open-or-select= are now
    customizable. See the documentation string of =delve-action= for
    more details.
  + List titles do not use icons anymore (for easier completion).
