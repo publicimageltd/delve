@@ -336,8 +336,7 @@ HEADING will be used to construct the list title and the buffer name."
   (interactive (list (current-buffer) (point)))
   (unless lister-local-marker-list
     (user-error "There are not items in this buffer"))
-  (pcase-let* ((lister-display-transaction-p t)
-	       (`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
+  (pcase-let* ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
     (lister-sensor-leave buf)
     (lister-set-list buf (lister-get-all-data-tree buf beg end)))
   (lister-goto buf :first))
