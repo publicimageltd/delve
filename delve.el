@@ -47,6 +47,9 @@
 
 ;; * Customizable Global variables
 
+(defvar delve-new-buffer-add-creation-time " (%ER)"
+  "Time string to add to heading when creating new delve buffers.
+If `nil', do not add anything.")
 
 (defvar delve-auto-delete-roam-buffer t
   "Delete visible *org roam* buffer when switching to DELVE.")
@@ -123,8 +126,10 @@ interface like ivy, since it is hard to type an icon.")
 The name and the symbol are determined by the properties
 `:default' (for the name) and `:faicon' (for the symbol).
 
-If `all-the-icons' is installed, use the symbol. Else, display
-the name (a simple string).")
+If `all-the-icons' is installed, these symbols will be used when
+printing the items. Else, the `:default'-string will be
+printed.")
+
 (defun delve-get-icon-or-string (icon-name &optional descriptive-string)
   "Get icon ICON-NAME or use DESCRIPTIVE-STRING or empty string."
   (if (and (featurep 'all-the-icons)
@@ -347,14 +352,19 @@ HEADING will be used to construct the list title and the buffer name."
     buf))
 
 (defun delve-new-from-sublist (buf pos)
-  "Open new delve buffer with the current sublist at point."
+  "Create a new delve buffer using the current item(s) at point.
+If point is on a non-zettel item (e.g. tag search), open a new
+buffer with this item expanded. If point is on a zettel, create a
+new buffer with all zettel items of this sublist it belongs to."
   (interactive (list (current-buffer) (point)))
   (unless lister-local-marker-list
     (user-error "There are no items in this buffer"))
-  (pcase-let* ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
-    (lister-sensor-leave buf)
-    (lister-set-list buf (lister-get-all-data-tree buf beg end)))
-  (lister-goto buf :first))
+  (let* ((item-at-point (lister-get-data buf pos)))
+    (if (delve-zettel-p item-at-point)
+	(pcase-let* ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
+	  ;; TODO Throw an error if there actually is no sublist!
+	  (delve (lister-get-all-data-tree buf beg end) "New sublist"))
+      (delve item-at-point))))
 
 ;; TODO Currently unused
 (defun delve-insert-zettel  ()
@@ -476,10 +486,12 @@ Optionally use HEADER-INFO for the title."
 			    "Initial list"
 			  (if (not (listp item-or-list))
 			      (substring-no-properties
-			       (car (delve-mapper item-or-list)))
-			    (format "New list created at %s" (format-time-string "%ER"))))))
+			       (car (delve-mapper-for-completion item-or-list)))
+			    "New list"))))
 	 ;;
-	 (buf     (delve-new-buffer items heading)))
+	 (buf     (delve-new-buffer items (concat heading
+						  (when delve-new-buffer-add-creation-time
+						    (format-time-string delve-new-buffer-add-creation-time))))))
     (switch-to-buffer buf)
     (when delve-auto-delete-roam-buffer
       (when-let* ((win (get-buffer-window org-roam-buffer)))
@@ -519,13 +531,25 @@ Optionally use HEADER-INFO for the title."
 	 (selection  (completing-read prompt collection nil t)))
     (cdr (assoc selection collection #'string=))))
 
+(defun delve-buffer-p (buf)
+  "Test if BUF is a delve buffer."
+  (with-current-buffer buf
+    (eq major-mode 'delve-mode)))
+
+(defun delve-kill-all-buffers ()
+  "Kill all delve buffers."
+  (interactive)
+  (cl-dolist (buf (cl-remove-if-not #'delve-buffer-p (buffer-list)))
+    (kill-buffer buf)))
+
 ;;;###autoload
 (defun delve-open-or-select ()
   "Open a new delve buffers or choose between existing ones."
   (interactive)
   (let* ((bufs       (delve-all-buffers))
 	 (choice     (if bufs
-			 (delve-complete-on-bufs-and-fns "Select delve buffer: " bufs '(delve))
+			 (delve-complete-on-bufs-and-fns "Select delve buffer: " bufs '(delve
+											delve-kill-all-buffers))
 		       'delve)))
     (if (bufferp choice)
 	(progn 
