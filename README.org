@@ -271,19 +271,19 @@ hurrying it. (Remember, that's a hobby horse!)
 On standard emacs, use the usual navigation keys. Additionally, the
 following keys apply:
 
-| Key   | Function                                                   |
-|-------+------------------------------------------------------------|
-| ENTER | Visit Zettel at point                                      |
-| TAB   | Expand on Zettel or search at point, or hide it            |
-| LEFT  | Insert list with all backlinks pointing to Zettel at point |
-| RIGHT | Insert list with all links in the Zettel at point          |
-| +     | Add tag to the Zettel at point                             |
-| -     | Remove tag from the Zettel at point                        |
-| g     | Refresh the buffer contents                                |
-| .     | Refresh the item at point                                  |
-| C-l   | Replace current list with the expanded Zettel at point     |
-| r     | Revert buffer to the original list                         |
-|-------+------------------------------------------------------------|
+| Key   | Function                                                         |
+|-------+------------------------------------------------------------------|
+| ENTER | Visit Zettel at point                                            |
+| TAB   | Expand on Zettel or search at point, or hide it                  |
+| LEFT  | Insert list with all backlinks pointing to Zettel at point       |
+| RIGHT | Insert list with all links in the Zettel at point                |
+| +     | Add tag to the Zettel at point                                   |
+| -     | Remove tag from the Zettel at point                              |
+| g     | Refresh the buffer contents                                      |
+| .     | Refresh the item at point                                        |
+| C-l   | Open a new delve buffer using (or expanding) the zettel at point |
+| r     | Revert buffer to the original list                               |
+|-------+------------------------------------------------------------------|
 
 For integrating =delve= into =evil=, see the [[#evil][section above]].
 
