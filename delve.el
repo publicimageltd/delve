@@ -40,6 +40,9 @@
 (declare-function all-the-icons-faicon "all-the-icons" (string) t)
 
 ;; * Global variables
+(defvar delve-force-ignore-all-the-icons nil
+  "Used internally: Bind this temporally to never use any icons
+  when representing an item.")
 
 (defvar delve-auto-delete-roam-buffer t
   "Delete visible *org roam* buffer when switching to DELVE.")
@@ -118,14 +121,20 @@ The name and the symbol are determined by the properties
 
 If `all-the-icons' is installed, use the symbol. Else, display
 the name (a simple string).")
+(defun delve-get-icon-or-string (icon-name &optional descriptive-string)
+  "Get icon ICON-NAME or use DESCRIPTIVE-STRING or empty string."
+  (if (and (featurep 'all-the-icons)
+	   (not delve-force-ignore-all-the-icons))
+      (all-the-icons-faicon icon-name)
+    (or descriptive-string "")))
 
 (defun delve-format-subtype (zettel)
   "Return the subtype of ZETTEL prettified."
   (let* ((subtype     (type-of zettel))
 	 (type-plist  (alist-get subtype delve-subtype-icons-alist nil)))
     (concat 
-     (if (and type-plist (featurep 'all-the-icons))
-	 (all-the-icons-faicon (plist-get type-plist :faicon))
+     (if type-plist
+	 (delve-get-icon-or-string (plist-get type-plist :faicon))
        (propertize (if type-plist
 		       (plist-get type-plist :default)
 		     "subtype?")
@@ -159,9 +168,7 @@ ZETTEL can be either a page, a backlink or a tolink."
 
 (defun delve-represent-search (search)
   "Return propertized strings representing a SEARCH object."
-  (list (concat (if (featurep 'all-the-icons)
-		    (all-the-icons-faicon "search")
-		  "Search:")
+  (list (concat (delve-get-icon-or-string "search" "Search:")
 		" "
 		(propertize
 		 (delve-generic-search-name search)
@@ -171,14 +178,11 @@ ZETTEL can be either a page, a backlink or a tolink."
 
 (defun delve-represent-tag (tag)
   "Return propertized strings representing a TAG object."
-  (list (concat (if (featurep 'all-the-icons)
-		    (all-the-icons-faicon "tag")
-		  "Tag:")
+  (list (concat (delve-get-icon-or-string "tag" "Tag:")
 		" "
 		(propertize (delve-tag-tag tag) 'face 'org-level-1)
 		(when (delve-tag-count tag)
 		  (format " (%d)" (delve-tag-count tag))))))
-
 
 ;; the actual mapper:
 
@@ -189,6 +193,11 @@ ZETTEL can be either a page, a backlink or a tolink."
     ((pred delve-tag-p)            (delve-represent-tag data))
     ((pred delve-generic-search-p) (delve-represent-search data))
     (_        (list (format "UNKNOWN TYPE: %s"  (type-of data))))))
+
+(defun delve-mapper-for-completion (data)
+  "Transform DATA to an item suitable for completion."
+  (let* ((delve-force-ignore-all-the-icons t))
+    (delve-mapper data)))
 
 ;; -----------------------------------------------------------
 ;; * Buffer basics
