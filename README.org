@@ -189,7 +189,57 @@ directory). See [[#delve-minor-mode]] below.
 
 ** Further Configuration
 *** Predefined Searches
-Delve comes with a set of predefined searches. 
+Delve comes with a set of predefined searches. See the documentation
+of the variable =delve-searches= for more details. Basically, you pass a
+list of keywords which define the search. 
+
+A search is made by specialization. Delve provides a universal search
+query which would return /all/ pages, with some additional information
+such as the number of backlinks and to links. Thus to define a search,
+you basically add further constraints which defines the subset you are
+interested in. See the documentation of =delve-db-query-all-zettel= for
+the details.
+
+Here's a list of available fields available in the unconstraint query:
+
+| Field name   | Meaning                                       |
+|--------------+-----------------------------------------------|
+| titles:file  | Filename of the page                          |
+| titles:title | Title of the page                             |
+| tags:tags    | List of tags                                  |
+| files:meta   | Additional information such as mtime or atime |
+| tolinks      | Count of all links going from that page       |
+| backlinks    | Count of all links pointing to that page      |
+|--------------+-----------------------------------------------|
+
+=tags:tags= and =files:meta= are lists and have to parsed. Thus, they
+cannot be used in an SQL constraint. To use these values to produce a
+subset, you must do it with elisp by adding a =:postprocess= function.
+Searches using =:postprocess= will be relatively slow, since all pages
+have to be passed to this function.
+
+Here's an overview of keywords defining a search:
+
+| Keyword      | Meaning                                         |
+|--------------+------------------------------------------------------|
+| :name        | The display name for the seach item                  |
+| :constraint  | SQL query (a vector) constraining the generic search |
+| :postprocess | Pass result objects to this function                 |
+|--------------+------------------------------------------------------|
+
+A =:constraint= clause is an SQL statement (a vector), as it is used by
+the library =emacsql=, which is used by =org-roam= under the hood. An
+example value would be e.g. =[:where tags:tags :is null]=. This would
+return all pages with no tags associated.
+
+If you want to test the results of a search query, you could use
+something like this:
+
+#+begin_src emacs-lisp
+  (delve-operate-search 
+   (delve-make-page-search :constraint [:order-by (desc backlinks) :limit 3]))
+#+end_src
+
 *** Pretty Icons
 For pretty icons, install [[https://github.com/domtronn/all-the-icons.el][all-the-icons.el]]. If you also want pretty
 icons when calling =delve-open-or-select=, use the following option:
@@ -279,8 +329,8 @@ deeper into the Zettelkasten.
 
 *** Enhancements
  + All sublists are now displayed in its own new delve buffer.
- + Actions displayed when calling delve-toggle are now
-   customizable. See the documentation string of `delve-action' for
+ + Actions displayed when calling =delve-toggle= are now
+   customizable. See the documentation string of =delve-action= for
    more details.
  + List titles do not use icons anymore (for easier completion).
  + Predefined searches are now defined on the fly and thus can be
