@@ -132,6 +132,7 @@ list of open delve buffers.
    toggle.
  + Use =<return>= to visit the zettel at point. If you are not a zettel
    page item, nothing will happen.
+ + Use =+= and =-= to remote edit the ROAM_TAG of the page at point.
  + Use =q= to bury the buffer.
  + Use =C-l= to create a sublist in a new buffer, depending on what item
    you are on (see below for more explanation).
