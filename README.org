@@ -223,6 +223,9 @@ deeper into the Zettelkasten.
 
 ** Current pre-release version
 
+*** Enhancements
+ + All sublists are now displayed in its own new delve buffer.
+ + 
 *** Fixes
  + Include ID links.
 

@@ -77,6 +77,14 @@ interface like ivy, since it is hard to type an icon."
   :type 'string
   :group 'delve)
 
+(defcustom delve-user-actions
+  '(delve)
+  "Lists of actions to present in `delve-toggle'.
+Each action is simply an interactive function."
+  :type '(repeat function)
+  :group 'delve)
+
+
 (defcustom delve-searches
   `((:name "Orphaned Pages"
 	   :constraint [:where tags:tags :is :null])
@@ -572,8 +580,9 @@ Optionally use HEADER-INFO for the title."
   (interactive)
   (let* ((bufs       (delve-all-buffers))
 	 (choice     (if bufs
-			 (delve-complete-on-bufs-and-fns "Select delve buffer: " bufs '(delve
-											delve-kill-all-buffers))
+			 (delve-complete-on-bufs-and-fns "Select delve buffer: "
+							 bufs
+							 delve-user-actions)
 		       'delve)))
     (if (bufferp choice)
 	(progn 
