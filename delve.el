@@ -368,19 +368,26 @@ HEADING will be used to construct the list title and the buffer name."
       (lister-highlight-mode))
     buf))
 
-(defun delve-new-from-sublist (buf pos)
+(defun delve-new-from-sublist (buf pos &optional expand-zettel)
   "Create a new delve buffer using the current item(s) at point.
 If point is on a non-zettel item (e.g. tag search), open a new
-buffer with this item expanded. If point is on a zettel, create a
-new buffer with all zettel items of this sublist it belongs to."
-  (interactive (list (current-buffer) (point)))
+buffer with this item expanded. 
+
+If point is on a zettel, create a new buffer with all zettel
+items of this sublist it belongs to. 
+
+With prefix, if point is on a zettel, expand it in a new delve
+buffer."
+  (interactive (list (current-buffer) (point) current-prefix-arg))
   (unless lister-local-marker-list
     (user-error "There are no items in this buffer"))
   (let* ((item-at-point (lister-get-data buf pos)))
     (if (delve-zettel-p item-at-point)
-	(pcase-let* ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
-	  ;; TODO Throw an error if there actually is no sublist!
-	  (delve (lister-get-all-data-tree buf beg end) "New sublist"))
+	(if expand-zettel
+	    (delve item-at-point)
+	  (pcase-let* ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
+	    ;; TODO Throw an error if there actually is no sublist!
+	    (delve (lister-get-all-data-tree buf beg end) "New sublist")))
       (delve item-at-point))))
 
 ;; TODO Currently unused
