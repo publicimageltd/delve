@@ -284,7 +284,7 @@ following keys apply:
 | r     | Revert buffer to the original list                         |
 |-------+------------------------------------------------------------|
 
-For integrating =delve= into =evil=, see the [[#evil][section above]],
+For integrating =delve= into =evil=, see the [[#evil][section above]].
 
 ** Delve minor mode
 
