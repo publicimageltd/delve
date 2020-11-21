@@ -516,21 +516,29 @@ Minimally, you should set the keywords `:name' (a string) and
 Alternatively, pass the list to be displayed using the optional
 argument ITEM-OR-LIST. 
 
-If ITEM-OR-LIST is a delve object, e.g. `delve-zettel', expand on
-it. It ITEM-OR-LIST is list, treat it as a list of delve objects
-and insert them as they are.
+ITEM-OR-LIST can be a delve object or a list of delve objects. If
+ITEM-OR-LIST is a delve object, e.g. `delve-zettel', expand on it
+in the new delve buffer. If expansion yielded an empty list,
+throw an error. If ITEM-OR-LIST is list, treat it as a list of
+delve objects and insert them as they are.
 
 Optionally use HEADER-INFO for the title."
   (interactive)
   (unless org-roam-mode
     (with-temp-message "Turning on org roam mode..."
       (org-roam-mode)))
-  (let* ((items      (pcase item-or-list
-		       ((pred null)       (append (delve-create-searches delve-searches)
-						  (delve-db-query-roam-tags)))
-		       ((pred listp)      item-or-list)
-		       ((pred delve-get-expansion-operators)  (delve-guess-expansion item-or-list))
-		       (_                 (user-error "Unknown optional argument type: %s" (typeof item-or-list)))))
+  (let* ((items
+	  ;; TODO Refactor: This could become a variant of
+	  ;; "delve-guess-expansion"
+	  (or 
+	   (pcase item-or-list
+	     ((pred null)       (append (delve-create-searches delve-searches)
+					(delve-db-query-roam-tags)))
+	     ((pred listp)      item-or-list)
+	     ((pred delve-get-expansion-operators)  (delve-guess-expansion item-or-list))
+	     (_                 (user-error "Unknown optional argument type: %s" (typeof item-or-list))))
+	   (user-error "No items to be displayed")))
+	 ;;
 	 (heading   (or header-info
 			(if (null item-or-list)
 			    "Initial list"
