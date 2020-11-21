@@ -89,7 +89,7 @@ Each action is simply an interactive function."
   `((:name "Orphaned Pages"
 	   :constraint [:where tags:tags :is :null])
     (:name "10 Last Modified"
-	   :postprocess 'delve-db-query-last-10-modified)
+	   :postprocess delve-db-query-last-10-modified)
     (:name "10 Most Linked To"
 	   :constraint [:order-by (desc backlinks) :limit 10])
     (:name "10 Most Linked From"
