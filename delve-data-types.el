@@ -70,5 +70,12 @@
 	       (:include delve-generic-search
 			 (result-makefn 'delve-make-page))))
 
+;;; Error Messages
+
+(cl-defstruct (delve-error
+               (:constructor delve-make-error))
+  message
+  buffer)
+
 (provide 'delve-data-types)
 ;;; delve-data-types.el ends here

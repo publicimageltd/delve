@@ -54,12 +54,14 @@ This is a simple copy of dash's `-flatten' using `seq'."
 (defun delve-db-log-error (err &rest strings)
   "Insert ERR and additional STRINGS in the error buffer."
   (declare (indent 1))
+  ;; fill the error buffer
   (with-current-buffer (get-buffer-create delve-db-error-buffer)
     (special-mode)
     (let* ((inhibit-read-only t)
 	   (date-string (format-time-string "%D %T  "))
 	   ;; prevent logging if this is not the first error:
 	   (message-log-max (if delve-db-there-were-errors nil  message-log-max)))
+      (goto-char (point-max))
       (insert date-string
 	      (format "Error message: %s\n" (error-message-string err)))
       (seq-doseq (s strings)
@@ -69,7 +71,12 @@ This is a simple copy of dash's `-flatten' using `seq'."
     (unless delve-db-there-were-errors
       (message "There are errors. See buffer '%s' for more information."
 	       delve-db-error-buffer)
-      (setq delve-db-there-were-errors t))))
+      (setq delve-db-there-were-errors t)))
+  ;; notify the user via delve:
+  (when (derived-mode-p 'delve-mode)
+    (lister-replace (current-buffer) :point
+		    (delve-make-error :message "Useless message"
+				      :buffer (get-buffer-create delve-db-error-buffer)))))
 
 (defun delve-db-safe-query (sql &rest args)
   "Call org roam SQL query (optionally using ARGS) in a safe way.
@@ -169,6 +176,12 @@ passed to MAKE-FN."
 ;; LEFT JOIN files USING (file)
 ;; LEFT JOIN tags USING (file)
 
+;; TODO Add further optional argument "with-fields", which maps
+;; possible fields in the with-clause to a slot for make-fn. The slot
+;; name will be taken from this var, its index position will be "6"
+;; on, but that should be put on a more programmatic level. (vconcat
+;; is our friend.....) Don't forget to allow further sexps (i.e. to
+;; extract a property from the field) 
 (defun delve-db-query-all-zettel (make-fn &optional constraints args with-clause)
   "Query the org roam DB for pages and return them as zettel objects.
 
@@ -255,6 +268,7 @@ specific query for special usecases."
     n))
 
 
+;; TODO Add links:properties field and extract its outline.
 (defun delve-db-count-backlinks (file)
   "Return the number of files linking to FILE."
   (caar (delve-db-safe-query [:select

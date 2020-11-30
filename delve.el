@@ -210,6 +210,13 @@ ZETTEL can be either a page, a backlink or a tolink."
 		(when (delve-tag-count tag)
 		  (format " (%d)" (delve-tag-count tag))))))
 
+;; -- presenting an error object:
+(defun delve-represent-error (error-object)
+  "Return propertized strings reprensenting an ERROR object."
+  (list (concat (propertize "Error " 'face 'error)
+		"querying the data base! "
+		(format "Check '%s'." (buffer-name (delve-error-buffer error-object))))))
+
 ;; the actual mapper:
 
 (defun delve-mapper (data)
@@ -218,6 +225,7 @@ ZETTEL can be either a page, a backlink or a tolink."
     ((pred delve-zettel-p)         (delve-represent-zettel data))
     ((pred delve-tag-p)            (delve-represent-tag data))
     ((pred delve-generic-search-p) (delve-represent-search data))
+    ((pred delve-error-p)          (delve-represent-error data))
     (_        (list (format "UNKNOWN TYPE: %s"  (type-of data))))))
 
 (defun delve-mapper-for-completion (data)
@@ -443,7 +451,10 @@ buffer."
 (defun delve-action (data)
   "Act on the delve object DATA."
   (ignore data)
-  (delve-visit-zettel))
+  (pcase data
+    ((pred delve-error-p)  (switch-to-buffer (delve-error-buffer data)))
+    ((pred delve-zettel-p) (delve-visit-zettel))
+    (_                     (error "No action defined for this item"))))
 
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
