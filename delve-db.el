@@ -227,13 +227,13 @@ specific query for special usecases."
 		    (vconcat with-clause base-query constraints)
 		    args)
 	(delve-db-rearrange-into make-fn
-				 `[ :file 0
-				    :title 1
-				    :tags 2
-				    :mtime (3 (plist-get it :mtime))
-				    :atime (3 (plist-get it :atime))
-				    :tolinks 4
-				    :backlinks 5 ])))))
+				 [ :file 0
+				   :title 1
+				   :tags 2
+				   :mtime (3 (plist-get it :mtime))
+				   :atime (3 (plist-get it :atime))
+				   :tolinks 4
+				   :backlinks 5 ])))))
 
 ;; * Queries returning plain lisp lists:
 
