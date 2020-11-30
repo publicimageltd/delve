@@ -38,6 +38,7 @@
   tags
   mtime
   atime
+  outline
   backlinks
   tolinks)
 

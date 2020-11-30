@@ -211,11 +211,12 @@ specific query for special usecases."
 		    titles:title                              ;; 1 title
 		    tags:tags                                 ;; 2 tags
 		    files:meta                                ;; 3 meta
-		    (as [ :SELECT (funcall count) :FROM links ;; 4 #tolinks
+		    links:properties                          ;; 4 outline
+		    (as [ :SELECT (funcall count) :FROM links ;; 5 #tolinks
 			 :WHERE (and (or (= links:type "id") (= links:type "file"))
 				     (= links:source titles:file)) ]
 			tolinks)
-		    (as [ :SELECT (funcall count) :FROM links ;; 5 #backlinks
+		    (as [ :SELECT (funcall count) :FROM links ;; 6 #backlinks
 			 :WHERE (and (or (= links:type "id") (= links:type "file"))
 				     (= links:dest titles:file)) ]
 			backlinks) ]
@@ -232,8 +233,9 @@ specific query for special usecases."
 				    :tags 2
 				    :mtime (3 (plist-get it :mtime))
 				    :atime (3 (plist-get it :atime))
-				    :tolinks 4
-				    :backlinks 5 ])))))
+				    :outline (6 (plist-get it :outline))
+				    :tolinks 5
+				    :backlinks 6 ])))))
 
 ;; * Queries returning plain lisp lists:
 
