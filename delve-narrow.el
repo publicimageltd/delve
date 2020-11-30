@@ -45,7 +45,7 @@ DELVE-NARROW-POS.  Mark the minibuffer prompt if regexp is invalid."
   (setq delve-narrow-input (minibuffer-contents-no-properties))
   (lister-remove-this-level delve-narrow-buffer delve-narrow-pos)
   (delve-narrow-propertize-minibuffer-prompt 'isearch-fail t)
-  (lister-insert-sublist delve-narrow-buffer
+  (lister-insert-sequence delve-narrow-buffer
 			 delve-narrow-pos
 			 (or
 			  (delve-narrow-reduce-list
