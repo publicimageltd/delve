@@ -97,48 +97,69 @@ return nil."
 (defun delve-db-rearrange (pattern l)
   "For each item in L, return a new item rearranged by PATTERN.
 
-Each item in L has to be a sequence (no atoms).
+L is a list of lists. Return a list where each item in L is
+'rearranged' using PATTERN.
 
-For each item in L, construct a return value (a list) by
-successively parsing all elements in PATTERN. The elements of
-PATTERN can be either a symbol, an integer, a list with an
-integer and a function name, or a list with an integer and a
-sexp.
+PATTERN can be a vector or a list. Each 'rearranged' list item is
+created by collecting the results of successively parsing all
+elements of PATTERN, using it to map the original item to the
+result. See the examples below.
 
-If the element in PATTERN is a symbol or a string, add it to the
-return value unmodified.
+An element of pattern can be either a symbol, an integer, a list
+with an integer and a function name, or a list with an integer
+and a sexp.
+
+If the element in PATTERN is a symbol or a string, pass it
+unmodified to the resulting item. This is useful for adding
+keywords to the result.
 
 If the element in PATTERN is an integer, return the zero-indexed
-value of the item currently processed.
+value of the item currently processed. This is useful for
+actually rearranging the items, e.g., swapping a position.
 
 If the element in PATTERN is a list, use the first element of
-this list as an index and the second as a mapping function. In
-this case, add the result of of calling the function with the
-indexed value to the return value.
+this list as an index (see above), and the second as a symbol for
+a mapping function. Pass the indexed value through this function
+before adding it.
 
-A third option is to use a list with an index and a sexp.  Like
+A third option is to use a list with an index and a sexp. Like
 the function in the second variant above, the sexp is used as a
-mapping function.  The sexp will be eval'd with the variable `it'
-bound to the original item's element.
+mapping function. The sexp will be evaluated with the variable
+`it' bound to the original item's element, thus allowing
+anaphoric references.
 
 Examples:
 
+ ;;  swap positions 1 und 0:
  (delve-db-rearrange [1 0] '((a b) (a b)))   -> ((b a) (b a))
+
+ ;; only pick the first value:
  (delve-db-rearrange [0] '((a b c) (a b c))) ->  ((a) (a))
 
+ ;; swap positions, but also pass the first value to `1+':
  (delve-db-rearrange [1 (0 1+)] '((1 0) (1 0)))      -> ((0 2) (0 2))
+
+ ;; the same using an anaphoric sexp:
  (delve-db-rearrange [1 (0 (1+ it))] '((1 0) (1 0))) -> ((0 2) (0 2))
 
+ ;; only pick the second value, prepend the keyword `:count':
  (delve-db-rearrange [:count 1] '((0 20) (1 87))) -> ((:count 20) (:count 87))
+
+ ;; only pick the second value, prepend a keyword and a string value:
  (delve-db-rearrang [:count 1 :string \"hi\"] '((0 20) (1 87)))
   -> ((:count 20 :string \"hi\")
       (:count 87 :string \"hi\"))"
+  ;;
   (seq-map (lambda (item)
 	     (seq-mapcat (lambda (index-or-list)
 			   (list
+			    ;; FIXME This should be a pcase pattern.
+			    ;;
+			    ;; pass through keywords and strings:
 			    (if (or (symbolp index-or-list)
 				    (stringp index-or-list))
 				index-or-list
+			      ;; use lists to pass the value through a fn:
 			      (if (listp index-or-list)
 				  (progn
 				    (with-no-warnings
@@ -146,9 +167,13 @@ Examples:
 				    (let* ((fn-or-sexp (cadr index-or-list))
 					   (it         (seq-elt item (car index-or-list))))
 				      (if (listp fn-or-sexp)
+					  ;; anaphoric sexp
 					  (eval fn-or-sexp)
+					;; function name 
 					(funcall fn-or-sexp it))))
+				;; must be an integer; use it as an index:
 				(seq-elt item index-or-list)))))
+			 ;;
 			 pattern))
 	   l))
 
