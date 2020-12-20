@@ -54,6 +54,15 @@ this key.''")
       (delve (delve-db-get-page-from-file zettel-file))
     (user-error "%s is not an org roam file" zettel-file)))
 
+;; (defun delve-minor-mode-export-page (zettel-file)
+;;   "Call org export dispatcher for ZETTEL-FILE."
+;;   (interactive (list (buffer-file-name)))
+;;   (unless zettel-file
+;;     (user-error "Buffer is not visiting a file."))
+;;   (with-current-buffer zettel-file
+;;     (org-export-dispatch)))
+  
+  
 ;; * Map
 
 (defvar delve-local-map

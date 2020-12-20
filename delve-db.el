@@ -245,6 +245,12 @@ The unconstraint query can be quite slow because is collects the
 number of backlinks for each item; consider building a more
 specific query for special usecases."
   (let* ((base-query
+	  ;; TODO 1. Alle Felder mit einem @ oder so markieren.
+	  ;; 2. Den Vector einmal parsen, bevor er verwendet wird.
+	  ;; 3. Als Ergebnis des Parsens einmal den "reinen" Vektor
+	  ;; zurückgeben; als zweites eine Alist FELDNAME - INDEX.
+	  ;; 4. Dann in der "keyed pattern" alle mit einem Präfix
+	  ;; versehenen Namen durch den Index ersetzen.	
 	  [:select [ titles:file                              ;; 0 file
 		    titles:title                              ;; 1 title
 		    tags:tags                                 ;; 2 tags
