@@ -484,6 +484,7 @@ buffer."
 		t   ;; no major-mode
 		)
   ;; Now add delve specific stuff:
+  (setq-local lister-local-marking-predicate #'delve-zettel-p)
   (setq-local lister-local-action #'delve-action))
 
 ;; * Some delve specific buffer handling 
