@@ -20,7 +20,7 @@
 
 ;;; Commentary:
 
-;; This is a library for "delve".
+;; This library provides interactive editing commands for "delve".
 
 ;;; Code:
 
