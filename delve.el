@@ -359,6 +359,27 @@ If MARKER-OR-POS is nil, redraw the item at point."
       (with-temp-message "Updating the whole buffer, that might take some time...."
 	(lister-set-list buf (delve-db-update-tree all-data))))))
 
+(defun delve-refresh-tainted-items (buf)
+  "Update all items in BUF which are marked as needing update."
+  (let ((n 
+	 (lister-walk buf
+		      (lambda (data) (and (delve-zettel-p data)
+					  (delve-zettel-needs-update data)))
+		      (lambda (data)
+			(when-let* ((new-item (delve-db-update-item data)))
+			  (lister-replace (current-buffer) :point new-item))))))
+    (message (concat
+	      (if (> n 0) (format "%d" n) "No")
+	      " items redisplayed"))))
+
+(defun delve-taint-item (buf pos)
+  "In BUF, mark the item at POS as needing update."
+  (interactive (list (current-buffer) (point)))
+  (let* ((data (lister-get-data buf pos)))
+    (when (delve-zettel-p data)
+      (setf (delve-zettel-needs-update data) t)
+      (delve-redraw-item buf pos))))
+
 (defun delve-revert (buf)
   "Revert delve buffer BUF to its initial list."
   (interactive (list (current-buffer)))
