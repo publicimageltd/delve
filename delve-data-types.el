@@ -26,13 +26,21 @@
 
 (require 'cl-lib)
 
-;;; * Item data types
+;;; * Root object, for displaying additional info
 
-(cl-defstruct (delve-tag (:constructor delve-make-tag))
+(cl-defstruct (delve-basis (:constructor delve-make-basis))
+  details)
+
+;;; * Item data types
+;;; Every data type has to include delve-basis.
+
+(cl-defstruct (delve-tag (:constructor delve-make-tag)
+			 (:include delve-basis))
   tag
   count)
 
-(cl-defstruct (delve-zettel (:constructor delve-make-zettel))
+(cl-defstruct (delve-zettel (:constructor delve-make-zettel)
+			    (:include delve-basis))
   needs-update
   title
   file
@@ -54,11 +62,11 @@
 	       (:constructor delve-make-backlink)
 	       (:include delve-zettel)))
 
+;;; * Searches
+;;; Every search type has to include delve-basis.
 
-
-;;; Searches
-
- (cl-defstruct (delve-generic-search (:constructor delve-make-generic-search))
+(cl-defstruct (delve-generic-search (:constructor delve-make-generic-search)
+				    (:include delve-basis))
   name
   with-clause
   constraint
@@ -71,7 +79,12 @@
 	       (:include delve-generic-search
 			 (result-makefn 'delve-make-page))))
 
-;;; Error Messages
+;;; * Info items
+
+;; These items do not descend from delve-basis, since they are
+;; intended to be used for the display of details
+
+;;; Database Error Messages
 
 (cl-defstruct (delve-error
                (:constructor delve-make-error))
