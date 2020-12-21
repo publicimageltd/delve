@@ -238,13 +238,6 @@ ZETTEL can be either a page, a backlink or a tolink."
     (delve-mapper data)))
 
 ;; -----------------------------------------------------------
-;; * Buffer basics
-
-(defun delve-new-buffer-deprecated ()
-  "Return a new DELVE buffer."
-   (generate-new-buffer delve-buffer-name))
-
-;; -----------------------------------------------------------
 ;; * Expand items by creating sublists
 
 (defun delve-expand (item &rest operator-fns)
