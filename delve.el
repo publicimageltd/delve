@@ -171,6 +171,10 @@ printed.")
   "Return ZETTEL as a pretty propertized string.
 ZETTEL can be either a page, a backlink or a tolink."
   (list  (concat
+	  ;; needs update?
+	  (when (delve-zettel-needs-update zettel)
+	    (propertize "item changed, not up to date ->"
+			'face 'org-warning))
 	  ;; creation time:
 	  (propertize
 	   (delve-format-time (delve-zettel-mtime zettel))
@@ -327,6 +331,26 @@ can be an integer or the symbol `:point'."
 ;; -----------------------------------------------------------
 ;;; * Delve Mode: Interactive Functions, Mode Definition 
 
+;; Refresh or update the display in various ways
+
+(defun delve-update-item-at-point ()
+  "Update the item at point."
+  (interactive)
+  (let* ((new-item (delve-db-update-item
+		    (lister-get-data (current-buffer) :point))))
+    (if (null new-item)
+	(user-error "No update possible")
+;;      (setf (delve-zettel-needs-update new-item) nil)
+      (lister-replace (current-buffer) :point new-item)
+      (message "Item updated"))))
+
+(defun delve-redraw-item (buf &optional marker-or-pos)
+  "In BUF, redraw the item at MARKER-OR-POS.
+If MARKER-OR-POS is nil, redraw the item at point."
+  (when-let* ((pos  (or marker-or-pos :point))
+	      (data (lister-get-data buf pos)))
+    (lister-replace buf pos data)))
+
 (defun delve-refresh-buffer (buf)
   "Refresh all items in BUF."
   (interactive (list (current-buffer)))
@@ -334,6 +358,13 @@ can be an integer or the symbol `:point'."
     (lister-with-locked-cursor buf
       (with-temp-message "Updating the whole buffer, that might take some time...."
 	(lister-set-list buf (delve-db-update-tree all-data))))))
+
+(defun delve-revert (buf)
+  "Revert delve buffer BUF to its initial list."
+  (interactive (list (current-buffer)))
+  (with-current-buffer buf
+    (lister-set-list buf delve-local-initial-list)
+    (lister-goto buf :first)))
 
 (defun delve-expand-insert-tolinks ()
   "Insert all tolinks from the item at point."
@@ -353,28 +384,6 @@ can be an integer or the symbol `:point'."
     (if (lister-sublist-below-p buf pos)
 	(lister-remove-sublist-below buf pos)
       (delve-guess-expansion-and-insert buf pos))))
-
-(defun delve-revert (buf)
-  "Revert delve buffer BUF to its initial list."
-  (interactive (list (current-buffer)))
-  (with-current-buffer buf
-    (lister-set-list buf delve-local-initial-list)
-    (lister-goto buf :first)))
-
-(defun delve-new-buffer (items heading)
-  "Create a new delve buffer displaying ITEMS.
-HEADING will be used to construct the list title and the buffer name."
-  (let* ((buffer-title (concat delve-buffer-name " " (string-trim heading)))
-	 (list-title   (concat "DELVE " delve-version-string " - " (string-trim heading)))
-	 (buf          (generate-new-buffer buffer-title)))
-    (with-current-buffer buf
-      (delve-mode)
-      (lister-set-list buf items)
-      (setq-local delve-local-initial-list items)
-      (lister-set-header buf list-title)
-      (lister-goto buf :first)
-      (lister-highlight-mode))
-    buf))
 
 (defun delve-new-from-sublist (buf pos &optional expand-zettel)
   "Create a new delve buffer using the current item(s) at point.
@@ -423,13 +432,17 @@ buffer."
       (user-error "Item at point is no zettel"))
     (find-file (delve-zettel-file data))))
 
+;;; Remote editing
+
 (defun delve-add-tag ()
   "Add tags to the zettel at point."
   (interactive)
   (let* ((data (lister-get-data (current-buffer) :point)))
     (unless (delve-zettel-p data)
       (user-error "Item at point is no zettel"))
-    (delve-edit-prompt-add-tag (delve-zettel-file data))))
+    (delve-edit-prompt-add-tag (delve-zettel-file data))
+    (setf (delve-zettel-needs-update data) t)
+    (delve-redraw-item (current-buffer))))
 
 (defun delve-remove-tag ()
   "Remove tags from the zettel at point."
@@ -437,16 +450,11 @@ buffer."
   (let* ((data (lister-get-data (current-buffer) :point)))
     (unless (delve-zettel-p data)
       (user-error "Item at point is no zettel"))
-    (delve-edit-prompt-remove-tag (delve-zettel-file data))))
+    (delve-edit-prompt-remove-tag (delve-zettel-file data))
+    (setf (delve-zettel-needs-update data) t)
+    (delve-redraw-item (current-buffer))))
 
-(defun delve-update-item-at-point ()
-  "Update the item at point."
-  (interactive)
-  (let* ((new-item (delve-db-update-item (lister-get-data (current-buffer) :point))))
-    (if (null new-item)
-	(user-error "No update possible")
-      (lister-replace (current-buffer) :point new-item)
-      (message "Item updated"))))
+;;; The main action (when pressing enter)
 
 (defun delve-action (data)
   "Act on the delve object DATA."
@@ -455,6 +463,8 @@ buffer."
     ((pred delve-error-p)  (switch-to-buffer (delve-error-buffer data)))
     ((pred delve-zettel-p) (delve-visit-zettel))
     (_                     (error "No action defined for this item"))))
+
+;;; Delve Major Mode
 
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
@@ -488,6 +498,21 @@ buffer."
   (setq-local lister-local-action #'delve-action))
 
 ;; * Some delve specific buffer handling 
+
+(defun delve-new-buffer (items heading)
+  "Create a new delve buffer displaying ITEMS.
+HEADING will be used to construct the list title and the buffer name."
+  (let* ((buffer-title (concat delve-buffer-name " " (string-trim heading)))
+	 (list-title   (concat "DELVE " delve-version-string " - " (string-trim heading)))
+	 (buf          (generate-new-buffer buffer-title)))
+    (with-current-buffer buf
+      (delve-mode)
+      (lister-set-list buf items)
+      (setq-local delve-local-initial-list items)
+      (lister-set-header buf list-title)
+      (lister-goto buf :first)
+      (lister-highlight-mode))
+    buf))
 
 (defun delve-buffer-p (buf)
   "Test if BUF is a delve buffer."

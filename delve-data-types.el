@@ -33,6 +33,7 @@
   count)
 
 (cl-defstruct (delve-zettel (:constructor delve-make-zettel))
+  needs-update
   title
   file
   tags
