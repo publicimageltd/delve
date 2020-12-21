@@ -496,7 +496,7 @@ buffer."
     (define-key map "\t"               #'delve-expand-toggle-sublist)
     (define-key map (kbd "C-l")        #'delve-new-from-sublist)
     (define-key map "r"                #'delve-revert)
-    (define-key map "."                #'delve-update-item-at-point)
+    (define-key map "."                #'delve-refresh-tainted-items)
     (define-key map (kbd "<left>")     #'delve-expand-insert-backlinks)
     (define-key map (kbd "<right>")    #'delve-expand-insert-tolinks)
     (define-key map (kbd "+")          #'delve-add-tag)
