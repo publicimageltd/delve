@@ -361,16 +361,18 @@ If MARKER-OR-POS is nil, redraw the item at point."
 
 (defun delve-refresh-tainted-items (buf)
   "Update all items in BUF which are marked as needing update."
-  (let ((n 
-	 (lister-walk buf
-		      (lambda (data) (and (delve-zettel-p data)
-					  (delve-zettel-needs-update data)))
-		      (lambda (data)
-			(when-let* ((new-item (delve-db-update-item data)))
-			  (lister-replace (current-buffer) :point new-item))))))
-    (message (concat
-	      (if (> n 0) (format "%d" n) "No")
-	      " items redisplayed"))))
+  (interactive (list (current-buffer)))
+  (cl-labels ((tainted-zettel-p (data)
+				(and (delve-zettel-p data)
+				     (delve-zettel-needs-update data)))
+	      (update-zettel (data)
+			     (when-let*
+				 ((new-item (delve-db-update-item data)))
+			       (lister-replace (current-buffer) :point new-item))))
+    (let ((n (lister-walk buf #'tainted-zettel-p #'update-zettel)))
+      (message (concat
+		(if (> n 0) (format "%d" n) "No")
+		" items redisplayed")))))
 
 (defun delve-taint-item (buf pos)
   "In BUF, mark the item at POS as needing update."
