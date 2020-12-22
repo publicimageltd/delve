@@ -31,7 +31,12 @@
 (require 'org-roam)
 (require 'cl-lib)
 
-;; * Interactive Remote Editing
+;; * Global Variables
+
+(defvar delve-roam-tag-history nil
+  "History of selected tags for remote editing of org roam files.")
+
+;; * Interactive Remote Editing Macro
 
 (defmacro delve-edit-in-file (file &rest body)
   "Execute BODY in a buffer with FILE, saving all changes.
@@ -51,6 +56,138 @@ Do not recurse this macro."
        (unless __loaded-p
 	 (kill-buffer __buf)))))
 
+;; -----------------------------------------------------------
+;;; * Remote editing of tags
+;; -----------------------------------------------------------
+
+;; Org roam offers its own functions to add or remove tags, but they
+;; are not factored out (yet). So we build our own.
+
+;; -- parse relevant informations from org buffers
+    
+(defun delve-edit-map-keyword (org-tree keyword fn)
+  "Apply FN to each KEYWORD in ORG-TREE, collecting the results.
+FN is called with the associated element property list as an
+argument. ORG-TREE is the result of `org-element-parse-buffer'."
+  (org-element-map org-tree 'keyword
+    (lambda (key)
+      (when (and
+	     (eq (org-element-type (org-element-property :parent key))
+		 'section)
+	     (string= (org-element-property :key key)
+		      keyword))
+	(funcall fn key)))))
+
+(defun delve-edit-get-tags (org-tree)
+  "Get all roam tags from ORG-TREE.
+ORG-TREE is the result of `org-element-parse-buffer'."
+    (apply #'append 
+	   (delve-edit-map-keyword org-tree "ROAM_TAGS"
+				   (lambda (key)
+ 				     (split-string (org-element-property :value key))))))
+
+(defun delve-edit-get-unused-tags (org-tree)
+  "Return all tags known to the db, but not found in ORG-TREE."
+  (let* ((buf-tags (delve-edit-get-tags org-tree))
+	 (db-tags  (delve-db-plain-roam-tags)))
+    (cl-set-difference db-tags buf-tags :test #'string=)))
+
+(defun delve-edit-get-tag-regions (org-tree)
+  "Return a list of all regions with roam tags keywords.
+ORG-TREE is the result of `org-element-parse-buffer'. The
+resulting list will be a list of pairs, each pointing to the
+beginning and the end of the respective regions."
+  (delve-edit-map-keyword org-tree "ROAM_TAGS"
+			  (lambda (key)
+			    (list (org-element-property :begin key)
+				  (org-element-property :end key)))))
+
+
+(defun delve-edit-get-new-keyword-position (org-tree)
+  "Return position for the first '+ROAM_TAGS' keyword."
+  (let* ((res (delve-edit-map-keyword org-tree "TITLE" 
+				      (lambda (key)
+					(org-element-property :end key)))))
+    (car res)))
+
+;;  -- add or remove tags in an org buffer:
+
+(defun delve-edit-pos-to-marker (buf positions)
+  "Convert POSITIONS to marker."
+  (mapcar (lambda (pos)
+	    (set-marker (make-marker) pos buf))
+	  positions))
+
+(defun delve-edit-set-tags (buf tags &optional org-tree)
+  "Set TAGS in org roam buffer BUF.
+TAGS is a list of strings. Duplicate items will be dropped. If
+TAGS is nil, effectively remove any tags in the buffer.
+
+ORG-TREE should be the result of `org-element-parse-buffer'.  If
+ORG-TREE is nil, use the tree from calling this function on BUF."
+  (with-current-buffer buf
+    (let* ((tree     (or org-tree (org-element-parse-buffer)))
+	   (regions  (delve-edit-get-tag-regions tree))
+	   (new-pos  (or (delve-edit-get-new-keyword-position tree)
+			 (point-min)))
+	   (marker   (mapcar (apply-partially #'delve-edit-pos-to-marker buf)
+			     regions)))
+      (cl-dolist (region marker)
+	(delete-region (first region) (second region)))
+      (when tags
+	(goto-char new-pos)
+	(insert "#+ROAM_TAGS: "
+		(string-join
+		 (cl-remove-duplicates
+		  (mapcar #'string-trim tags)
+		  :test #'string=)
+		 " ")
+		"\n")))))
+
+;; -- the workhorses for adding or removing tags:
+
+(defun delve-edit-do-add-tag (buf tag &optional org-tree)
+  "Add TAG as roam tag(s) to BUF.
+TAG is a string or a list of strings.
+ORG-TREE should be the result of `org-element-parse-buffer'. If
+ORG-TREE is nil, use the tree from calling this function on BUF."
+  (with-current-buffer buf
+    (let* ((tree          (or org-tree (org-element-parse-buffer)))
+	   (old-tags      (delve-edit-get-tags tree)))
+      (delve-edit-set-tags buf
+			   (append old-tags (if (listp tag) tag (list tag)))
+			   tree))))
+
+(defun delve-edit-do-remove-tag (buf tag &optional org-tree)
+  "Remove TAG from org buffer BUF.
+TAG is a string or a list of string.
+ORG-TREE should be the result of `org-element-parse-buffer'. If
+ORG-TREE is nil, use the tree from calling this function on BUF."
+  (with-current-buffer buf
+    (let* ((tree            (or org-tree (org-element-parse-buffer)))
+	   (tags            (mapcar #'string-trim
+				    (if (listp tag) tag (list tag))))
+	   (existing-tags   (delve-edit-get-tags tree))
+	   (new-tags        (cl-set-difference existing-tags tags
+					       :test #'string=)))
+      (delve-edit-set-tags buf new-tags tree))))
+
+(defun delve-edit-add-tag (file new-tag)
+  "Add NEW-TAG to org roam FILE.
+NEW-TAG can be a string or a list of strings."
+  (delve-edit-in-file file
+    (delve-edit-do-add-tag (current-buffer) new-tag)))
+
+(defun delve-edit-remove-tag (file new-tag)
+  "Remove TAG to org roam FILE.
+TAG can be a string or a list of strings."
+  (delve-edit-in-file file
+    (delve-edit-do-remove-tag (current-buffer) new-tag)))
+
+
+;;; * Actual interactive functions
+
+;; TODO Change this back to our own functions instead of org-roam's
 ;;;###autoload
 (defun delve-edit-prompt-add-tag (zettel-file)
   "Interactively add a tag to ZETTEL-FILE."
@@ -58,6 +195,7 @@ Do not recurse this macro."
   (delve-edit-in-file zettel-file
     (org-roam-tag-add)))
 
+;; TODO Change this back to our own functions instead of org-roam's
 ;;;###autoload
 (defun delve-edit-prompt-remove-tag (zettel-file)
   "Interactively remove a tag from ZETTEL-FILE."
@@ -65,6 +203,7 @@ Do not recurse this macro."
   (delve-edit-in-file zettel-file
     (org-roam-tag-delete)))
 
+;; TODO Try to implement this with our own functions 
 ;;;###autoload
 (defun delve-edit-prompt-add-alias (zettel-file)
   "Interactively add an alias for ZETTEL-FILE"
@@ -72,6 +211,7 @@ Do not recurse this macro."
   (delve-edit-in-file zettel-file
     (org-roam-alias-add)))
 
+;; TODO Try to implement this with our own functions 
 ;;;###autoload
 (defun delve-edit-prompt-remove-alias (zettel-file)
   "Interactively remove an alias from ZETTEL-FILE"
