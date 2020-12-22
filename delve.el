@@ -369,11 +369,10 @@ Also update all marked items, if any."
 			       (when-let*
 				   ((new-item (delve-db-update-item data)))
 				 (lister-replace buf :point new-item))))
-      (lister-with-locked-cursor buf
-	(let ((n (lister-walk-all buf #'update-zettel #'tainted-zettel-p)))
-	  (message (concat
-		    (if (> n 0) (format "%d" n) "No")
-		    " items redisplayed")))))))
+      (let ((n (lister-walk-all buf #'update-zettel #'tainted-zettel-p)))
+	(message (concat
+		  (if (> n 0) (format "%d" n) "No")
+		  " items redisplayed"))))))
 
 (defun delve-revert (buf)
   "Revert delve buffer BUF to its initial list."
@@ -471,10 +470,8 @@ be passed to this additional argument."
 			(funcall edit-fn (delve-zettel-file data) choice)
 			(setf (delve-zettel-needs-update data) t)
 			(delve-redraw-item buf)))
-      (lister-with-locked-cursor buf
-	(setq n (lister-walk-marked-items buf #'add-it))))
-    ;;
-    (message "Changed %d items" n)))
+      (setq n (lister-walk-marked-items buf #'add-it))
+      (message "Changed %d items" n))))
 
 (defun delve-add-tag ()
   "Add tags to all marked zettel or the zettel at point."
