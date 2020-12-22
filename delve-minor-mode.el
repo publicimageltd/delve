@@ -67,8 +67,8 @@ this key.''")
 
 (defvar delve-local-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "+") #'delve-edit-prompt-add-tag)
-    (define-key map (kbd "-") #'delve-edit-prompt-remove-tag)
+    (define-key map (kbd "+") #'org-roam-tag-add)
+    (define-key map (kbd "-") #'org-roam-tag-delete)
     (define-key map (kbd "d") #'delve-minor-mode-open-page-with-links)
     map)
   "Local prefix map for the delve minor mode.
