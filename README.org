@@ -26,6 +26,8 @@ Delve inherits and extends the functionality from the now deprecated
 - [[#important-interactive-functions][Important interactive functions]]
   - [[#main-entry-point-delve-open-or-select][Main entry point: delve-open-or-select]]
   - [[#basic-navigation][Basic navigation]]
+  - [[#remote-editing][Remote editing]]
+    - [[#typical-workflow-changing-tags][Typical workflow: Changing tags]]
   - [[#open-a-sublist-in-a-new-delve-buffer][Open a sublist in a new delve buffer]]
   - [[#further-useful-commands][Further useful commands]]
 - [[#installation][Installation]]
@@ -105,7 +107,7 @@ Note that this is still a work in progress. See [[#bugs--problems--untested-stuf
  - Visit the Zettel at point to edit it. Delve provides an interactive
    command to switch back and forth between the Delve buffers and the
    org roam buffers.
- - Remote editing: From within the tree view, add or remove tags.
+ - Remote editing: Add or remove tags without leaving the tree view.
  - Additional minor mode (delve-minor-mode) for org roam pages,
    allowing to open a new Delve buffer with the current org roam page
    as top item.
@@ -126,16 +128,56 @@ list of open delve buffers.
 
 ** Basic navigation
 
- + Use navigation keys to move between the items.
+ + Use navigation keys to move between the items. Mark items using
+   'm' (see also keybindings below).
  + Use =<tab>= to either display the results of expanding the item at
    point, or to remove the results again. In other words, =<tab>= is a
    toggle.
  + Use =<return>= to visit the zettel at point. If you are not a zettel
    page item, nothing will happen.
- + Use =+= and =-= to remote edit the ROAM_TAG of the page at point.
+ + Use =+= and =-= to remote edit the ROAM_TAGS of the page at point. You
+   can also mark items and then remote edit all marked pages in one
+   rush.
  + Use =q= to bury the buffer.
  + Use =C-l= to create a sublist in a new buffer, depending on what item
    you are on (see below for more explanation).
+
+** Remote editing
+
+One main concept of =delve= is to allow remote editing of zettel pages.
+Thus it is possible to add or remove tags (ROAM_TAGS) without leaving
+the delve buffer. By pressing =+= or =-=, you can add or remove tags from
+the item at point. If there are any marked items, these commands apply
+to them instead.
+
+Pages which have been edited remotely are not immediately
+re-integrated into the org roam database. Thus, all items which have
+been modified are internally marked as being in need of redisplay.
+There is also a visual cue indicating that the item needs to be
+redisplayed:
+
+[[./screenshots/tainted-item.png]]
+
+All items will be updated by pressing =.= Note that this just updates
+the information from the database. If the database itself has not been
+updated you, the display will be wrong. Usually, it just takes a few
+seconds to wait until =org roam= has updated the latest changes (it is
+shown in the echo area).
+
+In order to force the redisplay of an item, press =.= on the item, or
+mark several items to redisplay them all.
+
+*** Typical workflow: Changing tags
+
+Imagine you had a lot of pages tagged with the tag '/Readme/'. Now you
+recognize that you should have rather used the tag '/Unread/'. To change
+all pages tagged '/Readme/' to '/Unread/', you can:
+
+ 1. Open the tag search for '/Readme/'.
+ 2. Move down on the first item and press =C-u m=.
+ 3. Press =+= to add the new tag '/Unread/'.
+ 4. Press =-= to remove the old tag '/Readme/'.
+ 5. Press =.= to update the display of the items.
 
 ** Open a sublist in a new delve buffer
 
@@ -150,7 +192,7 @@ buffer, cutting off everything else.
 
 If point is on a zettel page and you press =C-u C-l=, that is, if you
 call =C-l= with a prefix arg, then the current zettel will be expanded
-in a new buffer. 
+in a new buffer. This also works with searches.
 
 ** Further useful commands
 
@@ -271,19 +313,23 @@ hurrying it. (Remember, that's a hobby horse!)
 On standard emacs, use the usual navigation keys. Additionally, the
 following keys apply:
 
-| Key   | Function                                                         |
-|-------+------------------------------------------------------------------|
-| ENTER | Visit Zettel at point                                            |
-| TAB   | Expand on Zettel or search at point, or hide it                  |
-| LEFT  | Insert list with all backlinks pointing to Zettel at point       |
-| RIGHT | Insert list with all links in the Zettel at point                |
-| +     | Add tag to the Zettel at point                                   |
-| -     | Remove tag from the Zettel at point                              |
-| g     | Refresh the buffer contents                                      |
-| .     | Refresh the item at point                                        |
-| C-l   | Open a new delve buffer using (or expanding) the zettel at point |
-| r     | Revert buffer to the original list                               |
-|-------+------------------------------------------------------------------|
+| Key   | Function                                                                                       |
+|-------+------------------------------------------------------------------------------------------------|
+| ENTER | Visit zettel at point                                                                          |
+| TAB   | Expand on zettel or search at point, or hide it                                                |
+| LEFT  | Insert list with all backlinks pointing to zettel at point                                     |
+| RIGHT | Insert list with all links in the zettel at point                                              |
+| m     | Mark the item at point, or unmark it.                                                          |
+| C-u m | Mark or unmark the whole sublist to which the item at point belongs.                           |
+| u     | Remove all marks in the buffer.                                                                |
+| *     | Mark the whole buffer.                                                                         |
+| +     | Add tag to the zettel at point, or to all marked items.                                        |
+| -     | Remove tag from the zettel at point, or from all marked items.                                 |
+| g     | Update (redisplay) all items in the buffer (might take some time).                             |
+| .     | Update (redisplay) the item at point, all marked items and all items which are not up-to-date. |
+| C-l   | Open a new delve buffer using (or expanding) the zettel at point.                              |
+| r     | Revert buffer to the original list, updating it.                                               |
+|-------+------------------------------------------------------------------------------------------------|
 
 For integrating =delve= into =evil=, see the [[#evil][section above]].
 
@@ -298,8 +344,8 @@ Per default, this submap is mapped to the prefix =C-d=. This yields:
 | Key | Function                                                                 |
 |-----+--------------------------------------------------------------------------|
 | C-d d | Open a new delve buffer with the current page as top item, and expand it |
-| C-d + | Add a tag                                                                |
-| C-d - | Remove a tag                                                             |
+| C-d + | Add a tag.                                                               |
+| C-d - | Remove a tag.                                                            |
 |-----+--------------------------------------------------------------------------|
 
 
@@ -330,6 +376,9 @@ deeper into the Zettelkasten.
 ** Current pre-release version
 
 *** Enhancements
+
+ + Adding and removing tags now also applies to marked list items, not
+   only to the item at point.
  + All sublists are now displayed in its own new delve buffer.
  + Actions displayed when calling =delve-open-or-select= are now
    customizable. See the documentation string of =delve-action= for
