@@ -160,7 +160,7 @@ redisplayed:
 
 All items will be updated by pressing =.= Note that this just updates
 the information from the database. If the database itself has not been
-updated you, the display will be wrong. Usually, it just takes a few
+updated, the display will be wrong. Usually, it just takes a few
 seconds to wait until =org roam= has updated the latest changes (it is
 shown in the echo area).
 
@@ -394,16 +394,12 @@ deeper into the Zettelkasten.
 
 * Bugs / Problems / Untested Stuff
 
- - I've discvovered quite some bugs in =lister=, which I am working to
-   hunt down in the background. 
  - *Aliases* are not recognized. Sometimes this leads to undesireable
    results, because you just see the Zettel with the same title listed
    twice or even more often. An algorithm to effectively identify
    duplicates is on the way.
  - There is a general problem with *duplicate items*, not related to
    aliases. I could not find out its source yet.
- - You can currently *mark* items (by pressing =m=) and unmark them all
-   (=u=). But you can't do anything with the marked items yet.
  
 
 # Local Variables:
