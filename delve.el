@@ -357,27 +357,22 @@ If MARKER-OR-POS is nil, redraw the item at point."
 	(lister-set-list buf (delve-db-update-tree all-data))))))
 
 (defun delve-refresh-tainted-items (buf)
-  "Update all items in BUF which are marked as needing update."
+  "Update all items in BUF which are marked as needing update.
+Also update all marked items, if any."
   (interactive (list (current-buffer)))
-  (cl-labels ((tainted-zettel-p (data)
-				(and (delve-zettel-p data)
-				     (delve-zettel-needs-update data)))
-	      (update-zettel (data)
-			     (when-let*
-				 ((new-item (delve-db-update-item data)))
-			       (lister-replace (current-buffer) :point new-item))))
-    (let ((n (lister-walk-all buf #'tainted-zettel-p #'update-zettel)))
-      (message (concat
-		(if (> n 0) (format "%d" n) "No")
-		" items redisplayed")))))
-
-(defun delve-taint-item (buf pos)
-  "In BUF, mark the item at POS as needing update."
-  (interactive (list (current-buffer) (point)))
-  (let* ((data (lister-get-data buf pos)))
-    (when (delve-zettel-p data)
-      (setf (delve-zettel-needs-update data) t)
-      (delve-redraw-item buf pos))))
+  (let* ((marked-items (lister-all-marked-items buf)))
+    (cl-labels ((tainted-zettel-p (data)
+				  (and (delve-zettel-p data)
+				       (or (delve-zettel-needs-update data)
+					   (lister-get-mark-state buf :point))))
+		(update-zettel (data)
+			       (when-let*
+				   ((new-item (delve-db-update-item data)))
+				 (lister-replace buf :point new-item))))
+      (let ((n (lister-walk-all buf #'update-zettel #'tainted-zettel-p)))
+	(message (concat
+		  (if (> n 0) (format "%d" n) "No")
+		  " items redisplayed"))))))
 
 (defun delve-revert (buf)
   "Revert delve buffer BUF to its initial list."
@@ -452,45 +447,49 @@ buffer."
       (user-error "Item at point is no zettel"))
     (find-file (delve-zettel-file data))))
 
-;;; Remote editing
+;;; Remote editing: add / remove tags
+
+(defun delve-remote-edit (buf edit-fn choice)
+  "Pass CHOICE to EDIT-FN for all marked items, or the item at point.
+BUF must be a delve buffer.
+
+EDIT-FN has to accept two arguments: an org roam file, to which
+the editing will apply, and an additional argument. CHOICE will
+be passed to this additional argument."
+  (let* ((marked-items       (lister-all-marked-items buf))
+	 (zettel-at-point    (and (lister-item-p buf :point)
+				  (delve-zettel-p (lister-get-data buf :point))))
+	 (n 0))
+    (unless (or marked-items zettel-at-point)
+      (user-error "Item at point is no zettel"))
+    (when (null marked-items)
+      ;; temporarily mark item at point:
+      (lister-mark-item buf :point t))
+    ;;
+    (cl-labels ((add-it (data)
+			(funcall edit-fn (delve-zettel-file data) choice)
+			(setf (delve-zettel-needs-update data) t)
+			(delve-redraw-item buf)))
+      (setq n (lister-walk-marked-items buf #'add-it)))
+    ;;
+    (message "Changed %d items" n)))
 
 (defun delve-add-tag ()
   "Add tags to all marked zettel or the zettel at point."
   (interactive)
-  (let* ((buf          (current-buffer))
-	 (marked-items (lister-all-marked-items buf))
-	 (data         (and (lister-item-p buf :point)
-			    (lister-get-data buf :point))))
-    (unless (or marked-items data)
-      (user-error "Item at point is no zettel"))
-    (if marked-items
-	(let* ((new-tag (completing-read
-			 "Add tag on marked items: "
-			 delve-db-plain-roam-tags
-			 nil t))
-	       (n 0))
-	  (cl-labels ((add-it (data)
-			      (delve-edit-add-tag (zettel-file data) new-tag)
-			      (setf (delve-zettel-needs-update data) t)
-			      (delve-redraw-item (current-buffer))))
-	    (setq n (lister-walk-marked-items lister-buf #'add-it)))
-	  (message "Changed %d items" n))
-      ;; operate on on the item at point:
-      (delve-edit-prompt-add-tag (delve-zettel-file data))
-      (setf (delve-zettel-needs-update data) t)
-      (delve-redraw-item (current-buffer)))))
+  (let* ((new-tag (completing-read
+		   "Add tag: " (delve-db-plain-roam-tags))))
+    (delve-remote-edit (current-buffer) #'delve-edit-add-tag new-tag)))
 
 (defun delve-remove-tag ()
   "Remove tags from the zettel at point."
   (interactive)
-  (let* ((data (lister-get-data (current-buffer) :point)))
-    (unless (delve-zettel-p data)
-      (user-error "Item at point is no zettel"))
-    (delve-edit-prompt-remove-tag (delve-zettel-file data))
-    (setf (delve-zettel-needs-update data) t)
-    (delve-redraw-item (current-buffer))))
+  (let* ((tag-to-delete (completing-read
+			 "Remove tag: " (delve-db-plain-roam-tags)
+			 nil t)))
+    (delve-remote-edit (current-buffer) #'delve-edit-remove-tag tag-to-delete)))
 
-;;; The main action (when pressing enter)
+;; Act on the item at point
 
 (defun delve-action (data)
   "Act on the delve object DATA."

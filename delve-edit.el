@@ -187,22 +187,6 @@ TAG can be a string or a list of strings."
 
 ;;; * Actual interactive functions
 
-;; TODO Change this back to our own functions instead of org-roam's
-;;;###autoload
-(defun delve-edit-prompt-add-tag (zettel-file)
-  "Interactively add a tag to ZETTEL-FILE."
-  (interactive (list buffer-file-name))
-  (delve-edit-in-file zettel-file
-    (org-roam-tag-add)))
-
-;; TODO Change this back to our own functions instead of org-roam's
-;;;###autoload
-(defun delve-edit-prompt-remove-tag (zettel-file)
-  "Interactively remove a tag from ZETTEL-FILE."
-  (interactive (list buffer-file-name))
-  (delve-edit-in-file zettel-file
-    (org-roam-tag-delete)))
-
 ;; TODO Try to implement this with our own functions 
 ;;;###autoload
 (defun delve-edit-prompt-add-alias (zettel-file)
