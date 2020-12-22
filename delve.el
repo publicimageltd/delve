@@ -455,14 +455,30 @@ buffer."
 ;;; Remote editing
 
 (defun delve-add-tag ()
-  "Add tags to the zettel at point."
+  "Add tags to all marked zettel or the zettel at point."
   (interactive)
-  (let* ((data (lister-get-data (current-buffer) :point)))
-    (unless (delve-zettel-p data)
+  (let* ((buf          (current-buffer))
+	 (marked-items (lister-all-marked-items buf))
+	 (data         (and (lister-item-p buf :point)
+			    (lister-get-data buf :point))))
+    (unless (or marked-items data)
       (user-error "Item at point is no zettel"))
-    (delve-edit-prompt-add-tag (delve-zettel-file data))
-    (setf (delve-zettel-needs-update data) t)
-    (delve-redraw-item (current-buffer))))
+    (if marked-items
+	(let* ((new-tag (completing-read
+			 "Add tag on marked items: "
+			 delve-db-plain-roam-tags
+			 nil t))
+	       (n 0))
+	  (cl-labels ((add-it (data)
+			      (delve-edit-add-tag (zettel-file data) new-tag)
+			      (setf (delve-zettel-needs-update data) t)
+			      (delve-redraw-item (current-buffer))))
+	    (setq n (lister-walk-marked-items lister-buf #'add-it)))
+	  (message "Changed %d items" n))
+      ;; operate on on the item at point:
+      (delve-edit-prompt-add-tag (delve-zettel-file data))
+      (setf (delve-zettel-needs-update data) t)
+      (delve-redraw-item (current-buffer)))))
 
 (defun delve-remove-tag ()
   "Remove tags from the zettel at point."
