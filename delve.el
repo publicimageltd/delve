@@ -516,6 +516,7 @@ be passed to this additional argument."
     (define-key map (kbd "+")          #'delve-add-tag)
     (define-key map (kbd" -")          #'delve-remove-tag)
     (define-key map (kbd "g")          #'delve-refresh-buffer)
+    (define-key map (kbd "X")          #'delve-kill-buffer)
     map)
   "Key map for `delve-mode'.")
 
@@ -555,6 +556,13 @@ HEADING will be used to construct the list title and the buffer name."
   "Test if BUF is a delve buffer."
   (with-current-buffer buf
     (eq major-mode 'delve-mode)))
+
+(defun delve-kill-buffer (buf)
+  "Kill BUF w/o asking, but w/ feedback."
+  (interactive (list (current-buffer)))
+  (let* ((name (buffer-name buf)))
+    (kill-buffer buf)
+    (message "Killed buffer '%s'" name)))
 
 (defun delve-all-buffers ()
   "Get all buffers in `delve mode'."
