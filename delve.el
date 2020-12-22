@@ -216,15 +216,19 @@ ZETTEL can be either a page, a backlink or a tolink."
 
 ;; -- presenting an error object:
 (defun delve-represent-error (error-object)
-  "Return propertized strings reprensenting an ERROR object."
+  "Return propertized strings representing an ERROR object."
   (list (concat (propertize "Error " 'face 'error)
 		"querying the data base! "
 		(format "Check '%s'." (buffer-name (delve-error-buffer error-object))))))
 
 ;; the actual mapper:
 
-(defun delve-mapper (data)
-  "Transform DATA into a printable list."
+
+;; TODO Hier eine rekursive Funktion: Wir wollen alle DETAILS auch
+;; mitdemselben Mapper darstellen.
+(defun delve-mapper (data &optional no-details)
+  "Transform DATA into a printable list.
+If NO-DETAILS is set, ignore details."
   (pcase data
     ((pred delve-zettel-p)         (delve-represent-zettel data))
     ((pred delve-tag-p)            (delve-represent-tag data))
@@ -235,7 +239,7 @@ ZETTEL can be either a page, a backlink or a tolink."
 (defun delve-mapper-for-completion (data)
   "Transform DATA to an item suitable for completion."
   (let* ((delve-force-ignore-all-the-icons t))
-    (delve-mapper data)))
+    (delve-mapper data t)))
 
 ;; -----------------------------------------------------------
 ;; * Expand items by creating sublists
@@ -362,7 +366,7 @@ If MARKER-OR-POS is nil, redraw the item at point."
 			     (when-let*
 				 ((new-item (delve-db-update-item data)))
 			       (lister-replace (current-buffer) :point new-item))))
-    (let ((n (lister-walk buf #'tainted-zettel-p #'update-zettel)))
+    (let ((n (lister-walk-all buf #'tainted-zettel-p #'update-zettel)))
       (message (concat
 		(if (> n 0) (format "%d" n) "No")
 		" items redisplayed")))))
