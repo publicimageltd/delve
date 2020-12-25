@@ -338,25 +338,25 @@ For integrating =delve= into =evil=, see the [[#evil][section above]].
 This is a local minor mode which adds some convenience key bindings to
 the org roam page buffer.
 
-Per default, this submap is mapped to the prefix =C-d=. This yields:
+Per default, this submap is mapped to the prefix =C-c d=. This yields:
 
 
 | Key | Function                                                                 |
 |-----+--------------------------------------------------------------------------|
-| C-d d | Open a new delve buffer with the current page as top item, and expand it |
-| C-d + | Add a tag.                                                               |
-| C-d - | Remove a tag.                                                            |
+| C-c d d | Open a new delve buffer with the current page as top item, and expand it |
+| C-c d + | Add a tag.                                                               |
+| C-c d - | Remove a tag.                                                            |
 |-----+--------------------------------------------------------------------------|
 
 
-Using =C-d d= in an org-roam buffer is particularly useful: It
+Using =C-c d d= in an org-roam buffer is particularly useful: It
 presents all links from the current page as a delve list. See, for
 example, the following example of a page with two backlinks (and no
 links from the page itself):
 
 [[./screenshots/example-backlinks-org-roam-page.png]]
 
-Pressing =C-d d= creates a tree representation of that buffer:
+Pressing =C-c d d= creates a tree representation of that buffer:
 
 [[./screenshots/example-backlinks.png]]
 
