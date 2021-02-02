@@ -300,7 +300,6 @@ specific query for special usecases."
     n))
 
 
-;; TODO Add links:properties field and extract its outline.
 (defun delve-db-count-backlinks (file)
   "Return the number of files linking to FILE."
   (caar (delve-db-safe-query [:select

@@ -5,3 +5,7 @@ This is just a blind text.
 
 The purpose of this note file is to provide another file with the tags
 "tag1" and "tag2", allowing to test if duplicate tags are eliminated.
+
+Another purpose is to test links.
+
+So we have a [[file:reference.org][link]] to 'reference'.

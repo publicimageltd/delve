@@ -615,7 +615,7 @@ Optionally use HEADER-INFO for the title."
 					(delve-db-query-roam-tags)))
 	     ((pred listp)      item-or-list)
 	     ((pred delve-get-expansion-operators)  (delve-guess-expansion item-or-list))
-	     (_                 (user-error "Unknown optional argument type: %s" (typeof item-or-list))))
+	     (_                 (user-error "Unknown optional argument type: %s" (type-of item-or-list))))
 	   (user-error "No items to be displayed")))
 	 ;;
 	 (heading   (or header-info

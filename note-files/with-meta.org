@@ -18,4 +18,11 @@
 - references :: [[id:5093fc4e-8c63-4e60-a1da-83fc7ecd5db7][Reference]]
 - answer :: 42
 
+Some explanations:
+
+ link -> ID Link
+ references -> both times an ID Link
+
+
 Don't mind me. I am a content of this note.
+
