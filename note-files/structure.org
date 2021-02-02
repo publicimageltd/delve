@@ -1,0 +1,41 @@
+#+TITLE: Overview of implied relations to test the db
+
+
+This page gives some info on the structure of the database created.
+
+You can query the database directly once a test is run. After the
+test, the last database used will be moved at
+=/tmp/note-files-last-test-run/org-roam.db=
+
+* Links and Backlinks
+
+Execute this code black after a testrun:
+
+#+begin_src bash
+sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from links' --header --nullvalue 'NULL' -separator ','x
+#+end_src
+
+#+RESULTS:
+| source                                | dest                                    | type    | properties                |
+| /tmp/note-files-lBNn6N/reference.org  | /tmp/note-files-lBNn6N/reference2.org   | file    | (:outline nil :point 174) |
+| /tmp/note-files-lBNn6N/reference2.org | /tmp/note-files-lBNn6N/reference.org    | file    | (:outline nil :point 264) |
+| /tmp/note-files-lBNn6N/with-meta.org  | /tmp/note-files-lBNn6N/reference.org    | id      | (:outline nil :point 500) |
+| /tmp/note-files-lBNn6N/with-meta.org  | /tmp/note-files-lBNn6N/without-meta.org | id      | (:outline nil :point 421) |
+| /tmp/note-files-lBNn6N/with-meta.org  | /tmp/note-files-lBNn6N/without-meta.org | id      | (:outline nil :point 342) |
+| /tmp/note-files-lBNn6N/with-meta.org  | //en.wikipedia.org/wiki/Frappato        | website | (:outline nil :point 274) |
+
+* Tags
+
+Execute this code black after a testrun:
+
+#+begin_src bash
+sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from tags' --header --nullvalue 'NULL' -separator ','
+#+end_src
+
+#+RESULTS:
+| file                                  | tags        |
+| /tmp/note-files-lBNn6N/big-note.org   | Bignote     |
+| /tmp/note-files-lBNn6N/reference.org  | tag1" "tag2 |
+| /tmp/note-files-lBNn6N/reference2.org | tag1" "tag2 |
+
+
