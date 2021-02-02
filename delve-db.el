@@ -206,7 +206,8 @@ passed to MAKE-FN."
 ;; name will be taken from this var, its index position will be "6"
 ;; on, but that should be put on a more programmatic level. (vconcat
 ;; is our friend.....) Don't forget to allow further sexps (i.e. to
-;; extract a property from the field) 
+;; extract a property from the field)
+;;
 (defun delve-db-query-all-zettel (make-fn &optional constraints args with-clause)
   "Query the org roam DB for pages and return them as zettel objects.
 

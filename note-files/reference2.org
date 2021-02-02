@@ -1,0 +1,7 @@
+#+title: Reference2
+#+roam_tags: tag1 tag2
+
+This is just a blind text. 
+
+The purpose of this note file is to provide another file with the tags
+"tag1" and "tag2", allowing to test if duplicate tags are eliminated.
