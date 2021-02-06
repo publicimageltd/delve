@@ -126,7 +126,7 @@
     (it "counts tolinks for file with-meta.org"
       (expect
        (delve-db-count-tolinks (delve-test-get-file "with-meta.org"))
-       :to-be 4))
+       :to-be 3))
     (it "counts tolinks for file without-meta.org"
       (expect
        (delve-db-count-tolinks (delve-test-get-file "without-meta.org"))

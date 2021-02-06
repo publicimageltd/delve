@@ -38,6 +38,17 @@
 (defvar delve-db-there-were-errors nil
   "Indicate if last query has caused an error.")
 
+
+;; * Internal Variables
+;; for constructing the queries
+
+(defvar delve-db-sql--link-type-restriction
+  '(or (= links:type "id")
+       (= links:type "file"))
+  "If added to an SQL WHERE Clause, restrict links to the types
+'file' and 'id'.")
+
+
 ;; * Helper
 
 (defun delve--flatten (l)
@@ -201,12 +212,6 @@ passed to MAKE-FN."
 ;; LEFT JOIN files USING (file)
 ;; LEFT JOIN tags USING (file)
 
-;; TODO Add further optional argument "with-fields", which maps
-;; possible fields in the with-clause to a slot for make-fn. The slot
-;; name will be taken from this var, its index position will be "6"
-;; on, but that should be put on a more programmatic level. (vconcat
-;; is our friend.....) Don't forget to allow further sexps (i.e. to
-;; extract a property from the field)
 ;;
 (defun delve-db-query-all-zettel (make-fn &optional constraints args with-clause)
   "Query the org roam DB for pages and return them as zettel objects.
@@ -246,22 +251,16 @@ The unconstraint query can be quite slow because is collects the
 number of backlinks for each item; consider building a more
 specific query for special usecases."
   (let* ((base-query
-	  ;; TODO 1. Alle Felder mit einem @ oder so markieren.
-	  ;; 2. Den Vector einmal parsen, bevor er verwendet wird.
-	  ;; 3. Als Ergebnis des Parsens einmal den "reinen" Vektor
-	  ;; zurückgeben; als zweites eine Alist FELDNAME - INDEX.
-	  ;; 4. Dann in der "keyed pattern" alle mit einem Präfix
-	  ;; versehenen Namen durch den Index ersetzen.	
-	  [:select [ titles:file                              ;; 0 file
-		    titles:title                              ;; 1 title
-		    tags:tags                                 ;; 2 tags
-		    files:meta                                ;; 3 meta
-		    (as [ :SELECT (funcall count) :FROM links ;; 4 #tolinks
-			 :WHERE (and (or (= links:type "id") (= links:type "file"))
+	  `[:select [ titles:file                              ;; 0 file
+		      titles:title                              ;; 1 title
+		      tags:tags                                 ;; 2 tags
+		      files:meta                                ;; 3 meta
+		      (as [ :SELECT (funcall count) :FROM links ;; 4 #tolinks
+			 :WHERE (and ,delve-db-sql--link-type-restriction
 				     (= links:source titles:file)) ]
 			tolinks)
 		    (as [ :SELECT (funcall count) :FROM links ;; 5 #backlinks
-			 :WHERE (and (or (= links:type "id") (= links:type "file"))
+			 :WHERE (and ,delve-db-sql--link-type-restriction
 				     (= links:dest titles:file)) ]
 			backlinks) ]
 	   :from titles
@@ -302,19 +301,21 @@ specific query for special usecases."
 
 (defun delve-db-count-backlinks (file)
   "Return the number of files linking to FILE."
-  (caar (delve-db-safe-query [:select
-			[ (as (funcall count links:source) n) ]
-			:from links
-			:where (= links:dest $s1)]
-		       file)))
+  (caar (delve-db-safe-query `[:select
+			      [ (as (funcall count links:source) n) ]
+			      :from links
+			      :where (and ,delve-db-sql--link-type-restriction
+					  (= links:dest $s1))]
+			     file)))
 
 (defun delve-db-count-tolinks (file)
   "Return the number of files linked from FILE."
-  (caar (delve-db-safe-query [:select
-			[ (as (funcall count links:dest) n) ]
-			:from links
-			:where (= links:source $s1)]
-		       file)))
+  (caar (delve-db-safe-query `[:select
+			       [ (as (funcall count links:dest) n) ]
+			       :from links
+			       :where (and ,delve-db-sql--link-type-restriction
+					   (= links:source $s1))]
+			     file)))
 
 
 ;; * Database Queries Returning Delve Types:
@@ -343,10 +344,10 @@ specific query for special usecases."
 
 (defun delve-db-query-backlinks (zettel)
   "Return all zettel linking to ZETTEL."
-  (let* ((with-clause [:with backlinks :as [:select (as links:source file)
-					    :from links
-					    :where (and (or (= links:type "id") (= links:type "file"))
-							(= links:dest $s1))]])
+  (let* ((with-clause `[:with backlinks :as [:select (as links:source file)
+						     :from links
+						     :where (and ,delve-db-sql--link-type-restriction
+								 (= links:dest $s1))]])
 	 (constraint [:join backlinks :using [[ file ]]
 		      :order-by (asc titles:title)])
 	 (args       (delve-zettel-file zettel)))
@@ -355,10 +356,10 @@ specific query for special usecases."
 
 (defun delve-db-query-tolinks (zettel)
   "Return all zettel linking from ZETTEL."
-  (let* ((with-clause [:with tolinks :as [:select (as links:dest file)
-  				          :from links
-					  :where (and (or (= links:type "id") (= links:type "file"))
-						      (= links:source $s1))]])
+  (let* ((with-clause `[:with tolinks :as [:select (as links:dest file)
+  						   :from links
+						   :where (and ,delve-db-sql--link-type-restriction
+							       (= links:source $s1))]])
 	 (constraint [:join tolinks :using [[ file ]]
 		      :order-by (asc titles:title)])
 	 (args       (delve-zettel-file zettel)))
