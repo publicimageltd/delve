@@ -285,7 +285,21 @@
 	  (expect (delve-zettel-p zettel)
 		  :to-be-truthy)))))
 
-  (describe "delve-db-query-sort-by-mtime")
+  (describe "delve-db-query-sort-by-mtime"
+    :var (zettel-list)
+    (before-all
+      (setq zettel-list
+	    (cl-loop for i from 1 to 5
+		     do (sleep-for 0.1)
+		     collect (delve-make-zettel  :title (format "%d" i)
+						 :mtime (current-time)))))
+    
+    (it "sorts zettel by mtime, last one first"
+      (expect (mapcar #'delve-zettel-title
+		      (delve-db-query-sort-by-mtime zettel-list))
+	      :to-equal
+	      '("5" "4" "3" "2" "1"))))
+      
   (describe "delve-db-query-last-10-modified"))
 
   
