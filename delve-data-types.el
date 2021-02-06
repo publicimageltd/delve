@@ -41,14 +41,15 @@
 
 (cl-defstruct (delve-zettel (:constructor delve-make-zettel)
 			    (:include delve-basis))
-  needs-update
-  title
-  file
-  tags
-  mtime
-  atime
-  backlinks
-  tolinks)
+  needs-update ;; boolean
+  title        ;; zettel
+  file         ;; full path to the file 
+  tags         ;; a list of tags
+  mtime        ;; a list time stamp (HIGH LOW MICRO PICO)
+  atime        ;; a list time stamp (HIGH LOW MICRO PICO)
+  backlinks    ;; integer
+  tolinks      ;; integer
+  )
 
 (cl-defstruct (delve-page
 	       (:constructor delve-make-page)
