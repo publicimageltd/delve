@@ -56,6 +56,36 @@
     (expect (delve--flatten nil)
 	    :to-be nil)))
 
+(describe "delve-db-rearrange"
+  (it "rearranges using position index"
+    (expect (delve-db-rearrange [1 0] '((a b) (a b)))
+	    :to-equal
+	    '((b a) (b a))))
+  (it "discards non-indexed values when rearranging"
+    (expect (delve-db-rearrange [0] '((a b c) (a b c)))
+	    :to-equal
+	    '((a) (a))))
+  (it "rearranges and applies functions with arity 1"
+    (expect (delve-db-rearrange [1 (0 1+)] '((1 0) (1 0)))
+	    :to-equal
+	    '((0 2) (0 2))))
+  (it "rearranges and applies functions with anaphoric argument 'it'"
+    (expect (delve-db-rearrange [1 (0 (1+ it))] '((1 0) (1 0)))
+	    :to-equal
+	    '((0 2) (0 2))))
+  (it "adds keyword to the rearranged items:"
+    (expect (delve-db-rearrange [:count 1] '((0 20) (1 87)))
+	    :to-equal
+	    '((:count 20) (:count 87))))
+  (it "adds keywords to the rearranged items:"
+    (expect (delve-db-rearrange [:count 1 :yes 0] '((0 20) (1 87)))
+	    :to-equal
+	    '((:count 20 :yes 0) (:count 87 :yes 1))))
+  (it "it passes strings as-is when rearranging:"
+    (expect (delve-db-rearrange [:count 1 :string \"hi\"] '((0 20) (1 87)))
+	    :to-equal
+	    '((:count 20 :string \"hi\") (:count 87 :string \"hi\")))))
+
 (describe "Catching malformed queries"
   (before-all
     (delve-test-setup-db))

@@ -157,7 +157,7 @@ Examples:
  (delve-db-rearrange [:count 1] '((0 20) (1 87))) -> ((:count 20) (:count 87))
 
  ;; only pick the second value, prepend a keyword and a string value:
- (delve-db-rearrang [:count 1 :string \"hi\"] '((0 20) (1 87)))
+ (delve-db-rearrange [:count 1 :string \"hi\"] '((0 20) (1 87)))
   -> ((:count 20 :string \"hi\")
       (:count 87 :string \"hi\"))"
   ;;
