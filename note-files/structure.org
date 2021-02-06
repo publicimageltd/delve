@@ -12,30 +12,65 @@ test, the last database used will be moved at
 Execute this code black after a testrun:
 
 #+begin_src bash
-sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from links' --header --nullvalue 'NULL' -separator ','x
+sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from links' --header --nullvalue 'NULL' -separator ','
 #+end_src
 
 #+RESULTS:
 | source                                | dest                                    | type    | properties                |
-| /tmp/note-files-lBNn6N/reference.org  | /tmp/note-files-lBNn6N/reference2.org   | file    | (:outline nil :point 174) |
-| /tmp/note-files-lBNn6N/reference2.org | /tmp/note-files-lBNn6N/reference.org    | file    | (:outline nil :point 264) |
-| /tmp/note-files-lBNn6N/with-meta.org  | /tmp/note-files-lBNn6N/reference.org    | id      | (:outline nil :point 500) |
-| /tmp/note-files-lBNn6N/with-meta.org  | /tmp/note-files-lBNn6N/without-meta.org | id      | (:outline nil :point 421) |
-| /tmp/note-files-lBNn6N/with-meta.org  | /tmp/note-files-lBNn6N/without-meta.org | id      | (:outline nil :point 342) |
-| /tmp/note-files-lBNn6N/with-meta.org  | //en.wikipedia.org/wiki/Frappato        | website | (:outline nil :point 274) |
+| /tmp/note-files-UknYEt/reference.org  | /tmp/note-files-UknYEt/reference2.org   | file    | (:outline nil :point 174) |
+| /tmp/note-files-UknYEt/reference2.org | /tmp/note-files-UknYEt/reference.org    | file    | (:outline nil :point 264) |
+| /tmp/note-files-UknYEt/with-meta.org  | /tmp/note-files-UknYEt/reference.org    | id      | (:outline nil :point 500) |
+| /tmp/note-files-UknYEt/with-meta.org  | /tmp/note-files-UknYEt/without-meta.org | id      | (:outline nil :point 421) |
+| /tmp/note-files-UknYEt/with-meta.org  | /tmp/note-files-UknYEt/without-meta.org | id      | (:outline nil :point 342) |
+| /tmp/note-files-UknYEt/with-meta.org  | //en.wikipedia.org/wiki/Frappato        | website | (:outline nil :point 274) |
+
+ - "n Backlinks" is the result from counting all matches for a file in
+   the column "dest"
+
+ - "n Tolinks" is the result from counting all matches for a file in
+   the column "source"
+
+#+begin_src bash
+sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select count(links.source) from links where links.dest like "%reference.org%"' --header --nullvalue 'NULL' -separator ','x
+#+end_src
+
+#+RESULTS:
+| count(links.source) |
+|                   2 |
 
 * Tags
 
 Execute this code black after a testrun:
 
 #+begin_src bash
-sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from tags' --header --nullvalue 'NULL' -separator ','
+#sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from tags where tags.tags like "%tag1%"' --header --nullvalue 'NULL' -separator ' '
+sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from tags' --header --nullvalue 'NULL' -separator ' '
 #+end_src
 
 #+RESULTS:
-| file                                  | tags        |
-| /tmp/note-files-lBNn6N/big-note.org   | Bignote     |
-| /tmp/note-files-lBNn6N/reference.org  | tag1" "tag2 |
-| /tmp/note-files-lBNn6N/reference2.org | tag1" "tag2 |
+| file                                  | tags    |      |
+| /tmp/note-files-tlFxKi/big-note.org   | Bignote |      |
+| /tmp/note-files-tlFxKi/reference.org  | tag1    | tag2 |
+| /tmp/note-files-tlFxKi/reference2.org | tag1    | tag2 |
 
+
+* Titles
+
+Execute this code black after a testrun:
+
+#+begin_src bash
+sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from titles' -separator ','
+#+end_src
+
+#+RESULTS:
+| /tmp/note-files-cWtqRe/big-note.org        | Big note                                     |
+| /tmp/note-files-cWtqRe/note-with-alias.org | Note with an alias                           |
+| /tmp/note-files-cWtqRe/note-with-alias.org | Alias of the note with alias                 |
+| /tmp/note-files-cWtqRe/reference.org       | Reference                                    |
+| /tmp/note-files-cWtqRe/reference2.org      | Reference2                                   |
+| /tmp/note-files-cWtqRe/same-name-1.org     | Duplicating Term                             |
+| /tmp/note-files-cWtqRe/same-name-2.org     | Duplicating Term                             |
+| /tmp/note-files-cWtqRe/structure.org       | Overview of implied relations to test the db |
+| /tmp/note-files-cWtqRe/with-meta.org       | Note with META                               |
+| /tmp/note-files-cWtqRe/without-meta.org    | Note without META                            |
 

@@ -43,38 +43,221 @@
 
 ;; * Tests
 
-(describe "Specific DB queries"
+(describe "delve--flatten"
+  (it "flattens a nested list"
+    (expect (delve--flatten '(1 2 (3 4) 5))
+	    :to-equal
+	    '(1 2 3 4 5)))
+  (it "removes nil values when flattening"
+    (expect (delve--flatten '(1 2 (3 nil) nil))
+	    :to-equal
+	    '(1 2 3)))
+  (it "returns nil when passed nil"
+    (expect (delve--flatten nil)
+	    :to-be nil)))
+
+(describe "Catching malformed queries"
   (before-all
     (delve-test-setup-db))
   (after-all
     (delve-test-teardown-db))
-  ;;
-  (it "returns all #+ROAM_TAGS in a plain list"
-    (expect (delve-db-plain-roam-tags)
-	    :to-have-same-items-as
-	    '("tag1" "tag2" "Bignote")))
-  (it "returns all #+ROAM_TAGS as delve objects"
-    (let* ((result (delve-db-query-roam-tags)))
-      (dolist (obj result)
-	(expect (delve-tag-p obj) :to-be-truthy))
-      (expect (sort (mapcar (lambda (it) (delve-tag-count it)) result) #'>)
-	      :to-equal
-	      ;; 2 times "tag1"; 2 times "tag2"; 1 time "Bignote"
-	      '(2 2 1))))
-  (it "counts tags using delve-db-count-tag"
-    (expect 
-     (seq-map #'delve-db-count-tag '("tag1" "tag2" "Bignote"))
-     :to-equal
-     '(2 2 1)))
-  (it "counts file backlinks using delve-db-count-backlinks (no IDs yet!)"
-    (expect
-     (delve-db-count-backlinks (delve-test-get-file "reference.org"))
-     :to-be
-     2)
-    (expect
-     (delve-db-count-backlinks (delve-test-get-file "reference2.org"))
-     :to-be
-     1)))
 
+  (describe "delve-db-safe-query"
+    :var ((query [:select * :from thistabledoesnotexist]))
+      (it "throws no error if query is invalid"
+	(expect (let ((inhibit-message t)
+		      (debug-on-error nil))
+		  (delve-db-safe-query query))
+		:not :to-throw))
+      (it "sets delve-db-there-were-errors after an error"
+	(expect delve-db-there-were-errors :not :to-be nil))
+      (it "has created an error buffer"
+	(expect (get-buffer delve-db-error-buffer)
+		:not :to-be nil))
+      (it "inserts the malformed query in the error buffer"
+	(expect (with-current-buffer (get-buffer delve-db-error-buffer)
+		  (buffer-string))
+		:to-match
+		(concat ".*" (regexp-quote (format "%s" query)))))
+      (it "returns results as a list of lists"
+	(expect (delve-db-safe-query [:select "Hallo"])
+		:to-equal
+		'(("Hallo"))))))
+
+(describe "Counting queries"
+  (before-all
+    (delve-test-setup-db))
+  (after-all
+    (delve-test-teardown-db))
+    
+  (describe "delve-db-count-tag"
+    (it "returns 0 if no tag is found"
+      (expect (delve-db-count-tag "diesertagexistiertnicht")
+	      :to-be 0))
+    (it "returns correct count for all tags"
+      (expect 
+       (seq-map #'delve-db-count-tag '("tag1" "tag2" "Bignote"))
+       :to-equal
+       '(2 2 1))))
+
+  (describe "delve-db-count-backlinks"
+    (it "counts backlinks for file reference.org"
+      (expect
+       (delve-db-count-backlinks (delve-test-get-file "reference.org"))
+       :to-be 2))
+    (it "counts backlinks for file with-meta.org"
+      (expect
+       (delve-db-count-backlinks (delve-test-get-file "with-meta.org"))
+       :to-be 0))
+    (it "counts backlinks for file without-meta.org"
+      (expect
+       (delve-db-count-backlinks (delve-test-get-file "without-meta.org"))
+       :to-be 2))
+    (it "counts backlinks for file reference2.org"
+      (expect
+       (delve-db-count-backlinks (delve-test-get-file "reference2.org"))
+       :to-be 1)))
+
+  (describe "delve-db-count-tolinks"
+    (it "counts tolinks for file reference.org"
+      (expect
+       (delve-db-count-tolinks (delve-test-get-file "reference.org"))
+       :to-be 1))
+    (it "counts tolinks for file with-meta.org"
+      (expect
+       (delve-db-count-tolinks (delve-test-get-file "with-meta.org"))
+       :to-be 4))
+    (it "counts tolinks for file without-meta.org"
+      (expect
+       (delve-db-count-tolinks (delve-test-get-file "without-meta.org"))
+       :to-be 0))
+    (it "counts tolinks for file reference2.org"
+      (expect
+       (delve-db-count-tolinks (delve-test-get-file "reference2.org"))
+       :to-be  1))))
+
+(describe "Queries returning plain items"
+  (before-all
+    (delve-test-setup-db))
+  (after-all
+    (delve-test-teardown-db))
+
+   (describe "delve-db-plain-roam-tags"
+     (it "returns all #+ROAM_TAGS in a plain list"
+       (expect (delve-db-plain-roam-tags)
+	       :to-have-same-items-as
+	       '("tag1" "tag2" "Bignote")))))
+
+(describe "Queries returning delve objects"
+  (before-all
+    (delve-test-setup-db))
+  (after-all
+    (delve-test-teardown-db))
+
+  (describe "delve-db-get-page-from-file"
+    :var (result file-name)
+    (before-all
+      (let ((inhibit-message t))
+	(setq file-name (delve-test-get-file "reference.org"))
+	(setq result (delve-db-get-page-from-file file-name))))
+
+    (it "returns a non-nil value"
+      (expect result :not :to-be nil))
+    (it "returns a zettel object"
+      (expect (delve-zettel-p result)))
+    (it "returns a page object"
+      (expect (delve-page-p result)))
+    (it "returns a page with the correct file name"
+      (expect (delve-page-file result)
+	      :to-match
+	      file-name)))
+  
+  (describe "delve-db-query-roam-tags"
+    (it "returns all #+ROAM_TAGS as delve objects"
+      (let* ((result (delve-db-query-roam-tags)))
+	(dolist (obj result)
+	  (expect (delve-tag-p obj) :to-be-truthy))))
+    (it "returns the correct count with each tag object"
+      (let* ((result (delve-db-query-roam-tags)))       
+	(expect (mapcar (lambda (it) (delve-tag-count it)) result)
+		:to-have-same-items-as '(2 2 1)))))
+
+  (describe "delve-db-query-pages-with-tag"
+    (describe "for all pages tagged with 'tag1'"
+      :var (result)
+      (before-all
+	(let ((inhibit-message t))
+	  (setq result (delve-db-query-pages-with-tag "tag1"))))
+      
+      (it "returns a non-nil value"
+	(expect result :not :to-be nil))
+      (it "returns a list of pages"
+	(dolist (page result)
+	  (expect (delve-page-p page) :to-be-truthy)))
+      (it "returns the correct pages"
+	(expect (mapcar (lambda (it) (delve-page-file it))
+			result)
+		:to-equal
+		(mapcar #'delve-test-get-file
+			'("reference.org" "reference2.org"))))))
+  
+  (describe "delve-db-query-pages-matching-title"
+    (describe "for all pages matching 'Reference'"
+      :var (result)
+      (before-all
+	(let ((inhibit-message t))
+	  (setq result (delve-db-query-pages-matching-title "Reference"))))
+
+      (it "returns a non-nil value"
+	(expect result :not :to-be nil))
+      (it "returns a list of pages"
+	(dolist (page result)
+	  (expect (delve-page-p page) :to-be-truthy)))
+      (it "returns the correctly titled pages"
+	(dolist (page result)
+	  (expect (delve-page-title page)
+		  :to-match
+		  "Reference")))))
+  
+  (describe "delve-db-query-backlinks"
+    (describe "backlinks for 'reference.org'"
+      :var (result file-name)
+      (before-all
+	(let ((inhibit-message t))
+	  (setq file-name (delve-test-get-file "reference.org"))
+	  (setq result (delve-db-query-backlinks
+			(delve-db-get-page-from-file file-name)))))
+
+      (it "returns a non-nil value"
+	(expect result :not :to-be nil))
+      (it "returns exact 2 items"
+	(expect (length result) :to-be 2))
+      (it "returns zettel objects"
+	(dolist (zettel result)
+	  (expect (delve-zettel-p zettel)
+		  :to-be-truthy)))))
+  
+  (describe "delve-db-query-tolinks"
+    (describe "tolinks for 'with-meta.org'"
+      :var (result file-name)
+      (before-all
+	(let ((inhibit-message t))
+	  (setq file-name (delve-test-get-file "with-meta.org"))
+	  (setq result (delve-db-query-tolinks
+			(delve-db-get-page-from-file file-name)))))
+
+      (it "returns a non-nil value"
+	(expect result :not :to-be nil))
+      (it "returns exact 3 items"
+	(expect (length result) :to-be 3))
+      (it "returns zettel objects"
+	(dolist (zettel result)
+	  (expect (delve-zettel-p zettel)
+		  :to-be-truthy)))))
+
+  (describe "delve-db-query-sort-by-mtime")
+  (describe "delve-db-query-last-10-modified"))
+
+  
 (provide 'delve-test-db)
 ;;; delve-test-db.el ends here

@@ -46,7 +46,7 @@
 
 (defun delve-test-get-file (file-name)
   "Get reference file FILE NAME from the test data base.
-This requires `delve-test-setup-db' to be called."
+This requires `delve-test-setup-db' to have been called."
   (if delve-test-environment
       (concat
        (file-name-as-directory org-roam-directory)
@@ -62,7 +62,8 @@ This requires `delve-test-setup-db' to be called."
 (defun delve-test-setup-db ()
   "Provide a temporary org roam db to work with."
   (let* ((original-dir (delve-test-orig-notes-dir))
-	 (new-dir      (delve-test-temp-notes-dir)))
+	 (new-dir      (delve-test-temp-notes-dir))
+	 (inhibit-message t))
     (copy-directory original-dir new-dir nil nil t)
     (setq org-roam-directory new-dir)
     (setq org-roam-db-location (concat
