@@ -1,4 +1,4 @@
-;;; delve-test.el --- Tests for delve main                -*- lexical-binding: t; -*-
+;;; test-delve.el --- Tests for delve main                -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2020  
 
