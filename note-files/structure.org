@@ -59,7 +59,7 @@ sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from tags' --header 
 Execute this code black after a testrun:
 
 #+begin_src bash
-sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from titles' -separator ','
+sqlite3 /tmp/note-files-last-test-run/org-roam.db 'select * from titles' -separator ',' --header
 #+end_src
 
 #+RESULTS:
