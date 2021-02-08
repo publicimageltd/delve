@@ -223,9 +223,6 @@ ZETTEL can be either a page, a backlink or a tolink."
 
 ;; the actual mapper:
 
-
-;; TODO Hier eine rekursive Funktion: Wir wollen alle DETAILS auch
-;; mitdemselben Mapper darstellen.
 (defun delve-mapper (data &optional no-details)
   "Transform DATA into a printable list.
 If NO-DETAILS is set, ignore details."
@@ -277,7 +274,7 @@ If NO-DETAILS is set, ignore details."
   "Get a list of all zettel with TAG."
   (delve-db-query-pages-with-tag (delve-tag-tag tag)))
 
-;; * Insert sublists by expanding items
+;; * Create and insert sublists by expanding items
 
 (defun delve-expand-and-insert (buf position &rest operator-fns)
   "Insert result of OPERATOR-FNS applied to item at POSITION.
