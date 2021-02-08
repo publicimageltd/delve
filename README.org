@@ -158,9 +158,11 @@ redisplayed:
 
 [[./screenshots/tainted-item.png]]
 
-All items will be updated by pressing =.= Note that this just updates
-the information from the database. If the database itself has not been
-updated, the display will be wrong. Usually, it just takes a few
+All item informations will be updated by pressing =.= Note that this
+just updates the information retrieved from the database. If the
+database itself has not adapted the changes yet, the new display will
+present the unmodified item. This is not what you want, so you should
+wait until the database has been updated. Usually, it just takes a few
 seconds to wait until =org roam= has updated the latest changes (it is
 shown in the echo area).
 
