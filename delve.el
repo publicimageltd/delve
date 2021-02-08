@@ -223,9 +223,8 @@ ZETTEL can be either a page, a backlink or a tolink."
 
 ;; the actual mapper:
 
-(defun delve-mapper (data &optional no-details)
-  "Transform DATA into a printable list.
-If NO-DETAILS is set, ignore details."
+(defun delve-mapper (data)
+  "Transform DATA into a printable list."
   (pcase data
     ((pred delve-zettel-p)         (delve-represent-zettel data))
     ((pred delve-tag-p)            (delve-represent-tag data))
@@ -236,10 +235,18 @@ If NO-DETAILS is set, ignore details."
 (defun delve-mapper-for-completion (data)
   "Transform DATA to an item suitable for completion."
   (let* ((delve-force-ignore-all-the-icons t))
-    (delve-mapper data t)))
+    (delve-mapper data)))
 
 ;; -----------------------------------------------------------
 ;; * Expand items by creating sublists
+;;
+;; "Expanding" basically means to do something (or to do several
+;; things) with a given item, collecting and passing the subsequent
+;; results in a list. It is akin to "evaluating" the operation with
+;; the item as its argument.
+;;
+
+;; This function does all the work:
 
 (defun delve-expand (item &rest operator-fns)
   "Collect the result of applying all OPERATOR-FNS on ITEM."
