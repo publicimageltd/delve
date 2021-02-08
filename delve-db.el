@@ -85,6 +85,8 @@ This is a simple copy of dash's `-flatten' using `seq'."
       (setq delve-db-there-were-errors t)))
   ;; notify the user via delve:
   (when (derived-mode-p 'delve-mode)
+    ;; TODO Move this out of this module; this should be handled in
+    ;; delve main
     (lister-replace (current-buffer) :point
 		    (delve-make-error :message "Useless message"
 				      :buffer (get-buffer-create delve-db-error-buffer)))))
