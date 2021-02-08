@@ -254,6 +254,12 @@ ZETTEL can be either a page, a backlink or a tolink."
 	   append (let ((res (funcall fn item)))
 		    (if (listp res) res (list res)))))
 
+;; These are the operators.
+;;
+;; Each operator should have one argument, a delve object, and should
+;; return a list of further delve objects.
+;;
+
 (defun delve-operate-search (search)
   "Return the results of executing SEARCH."
   (let* ((res (delve-db-query-all-zettel
@@ -310,7 +316,7 @@ POSITION is either an integer or the symbol `:point'."
     (_ nil)))
 
 (defun delve-guess-expansion (item)
-  "Guess and return useful expansion for ITEM."
+  "Guess and return a useful expansion for ITEM."
   (when-let* ((ops (delve-get-expansion-operators item)))
       (apply #'delve-expand item ops)))
 
@@ -579,12 +585,13 @@ HEADING will be used to construct the list title and the buffer name."
 ;; * Starting delve: entry point
 
 (defun delve-create-searches (searches-plists)
-  "Create expandable delve search objects according to SEARCHES-PLISTS.
+  "Create a list of expandable delve search objects.
+
 SEARCHES-PLISTS is a list of property lists. Each property list
-will be passed as a keyword argument list to
-`delve-make-page-search'. Thus, all keywords for this function
-can be used. See the documentation string of
-`delve-make-page-search' for all available options.
+will be passed as keyword arguments to `delve-make-page-search'.
+Thus, all keywords for this function can be used. See the
+documentation string of `delve-make-page-search' for all
+available options.
 
 Minimally, you should set the keywords `:name' (a string) and
 `:constraint' (with a vector representing an SQL query). See
