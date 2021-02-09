@@ -32,6 +32,7 @@
 
 (defvar delve-export-function (lambda ()
 				(let ((org-export-initial-scope 'buffer))
+				  (ignore org-export-initial-scope)
 				  (org-export-dispatch )))
   "In-buffer-function to call for exporting the org buffer.")
 
