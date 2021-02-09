@@ -44,17 +44,20 @@ If FILE is already visited, use that buffer; else load it in a
 temporary buffer.
 Do not recurse this macro."
   (declare (indent 1) (debug t))
-  `(progn 
-     (unless (org-roam--org-roam-file-p ,file)
-       (error "File nor an org roam file"))
-     (let* ((__loaded-p (get-file-buffer ,file))
-	    (__buf      (or __loaded-p (find-file-noselect ,file))))
-       (with-current-buffer __buf
-	 (save-buffer)
-	 ,@body
-	 (save-buffer))
-       (unless __loaded-p
-	 (kill-buffer __buf)))))
+  (let* ((loaded-p-var (make-symbol "delve-edit-remote-file-loaded-p"))
+	 (file-buf-var (make-symbol "delve-edit-file-buffer")))
+    `(progn 
+       (unless (org-roam--org-roam-file-p ,file)
+	 (error "File nor an org roam file"))
+       (let* ((,loaded-p-var (get-file-buffer ,file))
+	      (,file-buf-var (or ,loaded-p-var
+				 (find-file-noselect ,file))))
+	 (with-current-buffer ,file-buf-var
+	   (save-buffer)
+	   ,@body
+	   (save-buffer))
+	 (unless ,loaded-p-var
+	   (kill-buffer ,file-buf-var))))))
 
 ;; -----------------------------------------------------------
 ;;; * Remote editing of tags
