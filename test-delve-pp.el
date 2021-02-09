@@ -25,16 +25,18 @@
 ;;; Code:
 
 (require 'buttercup)
+(require 'delve-pp)
 
 (defface delve-pp-testface
   '((t (:weight bold)))
-  "Face for testing pretty printing.")
+  "Face for testing pretty printing."
+  :group 'testgroup)
 
 (describe "delve-pp-apply-mods"
   (it "returns string unmodified if no mod is passed"
-    (let ((s "the string")))
-    (expect (delve-pp-apply-mods s nil nil)
-	    :to-equal s))
+    (let ((s "the string"))
+      (expect (delve-pp-apply-mods s nil nil)
+	      :to-equal s)))
   (it "returns propertized string when using mod (:face facename)"
     (let ((s "the string")
 	  (face 'delve-pp-testface))
@@ -49,11 +51,11 @@
   (it "shortens long string using mod (:width n)"
     (let ((s "the very very very long string which is insanely long oh my god oh my gosh"))
       (expect (length (delve-pp-apply-mods s :width 30))
-		:to-be
+	      :to-be
 		30)))
   (it "returns string unmodified using unknown keyword (:nomod n)"
     (let ((s "the string"))
-	(expect (delve-pp-apply-mods s :nomod :nomod)
+      (expect (delve-pp-apply-mods s :nomod :nomod)
 		:to-equal
 		s))))
 
@@ -75,22 +77,26 @@
   (describe "using modifiers"
     (it "passes the mod keyword and its args to the mod application function"
       (spy-on 'delve-pp-apply-mods)
-      (delve-pp-item nil "the string" '(:face delve-pp-testface))
-      (expect 'delve-pp-apply-mods
-	      :to-have-been-called-with
-	      :face
-	      'delve-pp-testface))
+      (let ((s "the string"))
+	(delve-pp-item nil "the string" '(:face delve-pp-testface))
+	(expect 'delve-pp-apply-mods
+		:to-have-been-called-with
+		s
+		:face
+		'delve-pp-testface)))
     (it "iterates over pairs of mod keywords and arguments"
       (spy-on 'delve-pp-apply-mods :and-call-fake
 	      (lambda (s &rest _)
 		(concat "." s)))
-      (let ((s (delve-pp-item nil "the string" '(:face delve-pp-testface
-						       :width 30
-						       :format "%s"))))
+      (let* ((orig-s "the-string")
+	     (new-s (delve-pp-item nil orig-s
+				   '(:face delve-pp-testface
+					   :width 30
+					   :format "%s"))))
 	(expect 'delve-pp-apply-mods
 		:to-have-been-called-times 3)
-	(expect s :to-be (concat "..." s))))
-      
+	(expect new-s :to-equal (concat "..." orig-s))))))
+
 
 
 (provide 'test-delve-pp)

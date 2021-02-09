@@ -29,7 +29,7 @@
     (seq-every-p (lambda (target-face)
                    (or (eq face target-face)
                        (when (consp target-face)
-                         (seq-contains target-face face))))
+                         (seq-contains-p target-face face))))
                  all-faces)))
 
 ;; this is taken from
@@ -41,7 +41,7 @@
     (seq-some (lambda (target-face)
                 (or (eq face target-face)
                     (when (consp target-face)
-                      (seq-contains target-face face))))
+                      (seq-contains-p target-face face))))
               all-faces)))
 
 ;; (require 'delve-test-utils)
