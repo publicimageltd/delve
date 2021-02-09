@@ -69,8 +69,7 @@
 		s)))
     (it "calls the pprinter function with the object"
       (let ((s "this is my result"))
-	(fset 'test-pp (lambda (object) object))
-	(expect (delve-pp-item s 'test-pp nil)
+	(expect (delve-pp-item s #'identity nil)
 		:to-equal
 		s))))
 
@@ -96,8 +95,6 @@
 	(expect 'delve-pp-apply-mods
 		:to-have-been-called-times 3)
 	(expect new-s :to-equal (concat "..." orig-s))))))
-
-
 
 (provide 'test-delve-pp)
 ;;; test-delve-pp.el ends here

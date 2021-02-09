@@ -56,13 +56,12 @@
       (spy-on 'delve-db-query-all-zettel)
       (let ((constraints     [:where titles:title :like "%Reference%"])
 	    (args            nil)
-	    (post-process-fn #'identity)
 	    (with-clause     [:with something :or :something :else])
 	    (name            "Irrelevant name"))
 	(delve-operate-search (delve-make-page-search :name name
 						      :constraint constraints
 						      :args args
-						      :postprocess post-process-fn
+						      :postprocess #'identity 
 						      :with-clause with-clause))
 	(expect 'delve-db-query-all-zettel
 		:to-have-been-called-with
@@ -73,13 +72,13 @@
     (it "can postprocess the query results"
       (let ((results '("ITEM1" "ITEM2")))
 	(spy-on 'delve-db-query-all-zettel :and-return-value results)
-	(fset 'post-process-fn (lambda (items)
-				 (mapcar (apply-partially #'concat "a-") items)))
-	(expect (delve-operate-search
-		 (delve-make-page-search
-		  :postprocess 'post-process-fn))
-		:to-equal
-		(post-process-fn results))))))
+	(cl-labels ((post-process-fn (items)
+				     (mapcar (apply-partially #'concat "a-") items)))
+	  (expect (delve-operate-search
+		   (delve-make-page-search
+		    :postprocess #'post-process-fn))
+		  :to-equal
+		  (post-process-fn results)))))))
 
 (describe "Expansion"  
   (describe "delve-expand"

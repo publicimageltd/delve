@@ -25,10 +25,7 @@
 ;;; Code:
 
 (require 'cl-lib)
-;; FIXME necessary?
-(require 'delve-data-types)
 
-;; TODO Write tests
 ;; TODO Test if :width can be replaced by "%%ds"
 ;; TODO Make propertizing dependend on global variable (delve-pp-inhibit-propertizing)
 ;; TODO Implement pprinter (including the one for "optional icons")
