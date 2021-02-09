@@ -26,22 +26,24 @@
 
 (require 'cl-lib)
 
-;; TODO Test if :width can be replaced by "%%ds"
 ;; TODO Make propertizing dependend on global variable (delve-pp-inhibit-propertizing)
 ;; TODO Implement pprinter (including the one for "optional icons")
+
+(defvar delve-pp-inhibit-faces nil
+  "If set, never add any faces when using the pretty printer.")
 
 (defun delve-pp-apply-mods (s mod arg)
   "Return S modified by applying MOD using ARG.
 If MOD is not defined, return S unmodified."
   (pcase (list mod arg)
     (`(:format ,format-spec) (funcall #'format s format-spec))
-    ;; TODO Test if that preverves propertizing, or if we just replace it
-    ;; with a format spec
     (`(:width  ,width)       (let* ((pad (- width (string-width s))))
 			       (if (<= pad 0)
 				   (setq s (substring s 0 width))
 				 (setq s (concat s (make-string pad ?\s))))))
-    (`(:face ,face-or-spec)  (funcall #'propertize s 'face face-or-spec))
+    (`(:face ,face-or-spec)  (if delve-pp-inhibit-faces
+				 s
+			       (funcall #'propertize s 'face face-or-spec)))
     (_ s)))
 
 (defun delve-pp-item (object pprinter mods)

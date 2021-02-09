@@ -43,6 +43,13 @@
       (expect (delve-pp-apply-mods s :face face)
 	      :to-equal
 	      (propertize s 'face face))))
+  (it "does not add face when delve-pp-inhibit-faces is set"
+    (let ((s "the string")
+	  (face 'delve-pp-testface)
+	  (delve-pp-inhibit-faces t))
+      (expect (delve-pp-apply-mods s :face face)
+	      :to-equal
+	      s)))
   (it "pads string with extra whitespaces using mod (:width n)"
     (let ((s "the string"))
       (expect (length (delve-pp-apply-mods s :width 30))
