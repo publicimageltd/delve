@@ -34,7 +34,13 @@
 
 (defun delve-pp-apply-mods (s mod arg)
   "Return S modified by applying MOD using ARG.
-If MOD is not defined, return S unmodified."
+If MOD is not defined, return S unmodified.
+
+The following mods are currently defined:
+
+ (:width <n>)                    ;; restrict or pad output to <n> characters
+ (:face <facename or spec>))     ;; return string with this face
+ (:format  \"format-string\")    ;; pass nonempty value to format"
   (pcase (list mod arg)
     (`(:format ,format-spec) (funcall #'format s format-spec))
     (`(:width  ,width)       (let* ((pad (- width (string-width s))))
@@ -55,12 +61,9 @@ string or nil.
 As a special case, PPRINTER can also be a string, which is then
 returned unchanged.
 
-MODS is a property list and should be either NIL or one of the
-following:
-
- (:width <n>)                    ;; restrict or pad output to <n> characters
- (:face <facename or spec>))     ;; return string with this face
- (:format  \"format-string\")    ;; pass nonempty value to format"
+MODS modify the resulting string. The argument can be either nil,
+meaning to not modify it, or a property list, which is passed to
+`delve-pp-apply-mods', which see."
   (let* ((s (if (stringp pprinter)
 		pprinter
 	      (funcall pprinter object))))
@@ -73,6 +76,26 @@ following:
 				       (cl-second mod-walker)))
 	  (setq mod-walker (seq-drop mod-walker 2)))))
     s))
+
+(defun delve-pp-line (object pp-schemes)
+  "Returns a pretty printed representation of OBJECT.
+
+PP-SCHEMES is a list. Each item of this list can either be a
+string, which is used as-is, or a pretty printer function
+returning a string, to which the object is passed, or a list with
+a pretty printer function and two arguments determining how to
+further modify its result. The resulting string will be created
+by joining all these results, ignoring nil values."
+  (apply #'concat 
+	 (mapcar (lambda (it)
+		   (pcase it
+		     ((pred stringp)             it)
+		     ((pred functionp)           (funcall it object))
+		     (`(,fn ,mod-key ,mod-arg)   (delve-pp-item object ,fn (list ,mod-key ,mod-arg)))
+		     (`(,fn (,mod-key ,mod-arg)) (delve-pp-item object ,fn (list ,mod-key ,mod-arg)))
+		     (_ (format "invalid pp-scheme: %s" it))))
+		 pp-schemes)))
+  
 
 (provide 'delve-pp)
 ;;; delve-pp.el ends here
