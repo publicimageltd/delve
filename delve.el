@@ -84,7 +84,6 @@ Each action is simply an interactive function."
   :type '(repeat function)
   :group 'delve)
 
-
 (defcustom delve-searches
   `((:name "Orphaned Pages"
 	   :constraint [:where tags:tags :is :null])
@@ -100,15 +99,56 @@ Each action is simply an interactive function."
   :type '(repeat plist)
   :group 'delve)
 
+
+;; * Faces
+
+(defface delve-tags-face
+  '((t (:inherit org-level-1)))
+  "Face for displaying #+ROAM-TAGs in a delve list."
+  :group 'delve)
+
+(defface delve-title-face
+  '((t (:inherit org-document-title)))
+  "Face for displaying org roam page titles in a delve list."
+  :group 'delve)
+
+(defface delve-subtype-face
+  '((t (:inherit font-lock-constant-face)))
+  "Face for displaying the subtype of a delve item."
+  :group 'delve)
+
+(defface delve-mtime-face
+  '((t (:inherit org-document-info-keyword)))
+  "Face for displaying the mtime of a delve item."
+  :group 'delve)
+
+(defface delve-nbacklinks-face
+  '((t (:weight bold)))
+  "Face for displaying the number of backlinks to a delve zettel."
+  :group 'delve)
+
+(defface delve-ntolinks-face
+  '((t (:weight bold)))
+  "Face for displaying the number of tolinks to a delve zettel."
+  :group 'delve)
+
+(defface delve-search-face
+  '((t (:inherit org-level-2)))
+  "Face for displaying the title of a delve search."
+  :group 'delve)
+
+
 ;; * Buffer local variables for delve mode
 
 (defvar-local delve-local-initial-list nil
   "Buffer list when first creating this delve buffer.")
 
+
 ;; -----------------------------------------------------------
 ;; * Item Mapper for the List Display (lister)
 
 ;; -- presenting a zettel object:
+
 
 (defun delve-represent-tags (zettel)
   "Return all tags from GENERIC-ZETTEL as a propertized string."
@@ -116,7 +156,7 @@ Each action is simply an interactive function."
     (concat "("
 	    (propertize
 	     (string-join (delve-zettel-tags zettel) ", ")
-	     'face 'org-level-1)
+	     'face 'delve-tags-face)
 	    ") ")))
 
 (defun delve-represent-title (zettel)
@@ -125,7 +165,7 @@ Each action is simply an interactive function."
 	       (delve-zettel-title zettel)
 	       (delve-zettel-file zettel)
 	       "NO FILE, NO TITLE.")
-	      'face 'org-document-title))
+	      'face 'delve-title-face))
 
 (defun delve-format-time (time)
   "Return TIME in a more human readable form."
@@ -164,7 +204,7 @@ printed.")
        (propertize (if type-plist
 		       (plist-get type-plist :default)
 		     "subtype?")
-		   'face 'font-lock-constant-face))
+		   'face 'delve-subtype-face))
      " ")))
 
 (defun delve-represent-zettel (zettel)
@@ -178,7 +218,7 @@ ZETTEL can be either a page, a backlink or a tolink."
 	  ;; creation time:
 	  (propertize
 	   (delve-format-time (delve-zettel-mtime zettel))
-	   'face 'org-document-info-keyword)
+	   'face 'delve-mtime-face) 
 	  ;; subtype (tolink, backlink, zettel)
 	  (delve-format-subtype zettel)
 	  ;; associated tags:
@@ -186,13 +226,13 @@ ZETTEL can be either a page, a backlink or a tolink."
 	  ;; # of backlinks:
 	  (propertize
 	   (format "%d → " (or (delve-zettel-backlinks zettel) 0))
-	   'face '(:weight bold))
+	   'face 'delve-nbacklinks-face)
 	  ;; title:
 	  (delve-represent-title zettel)
 	  ;; # of tolinks:
 	  (propertize
 	   (format " →  %d" (or (delve-zettel-tolinks zettel) 0))
-	   'face '(:weight bold)))))
+	   'face 'delve-ntolinks-face))))
 
 ;; -- presenting a search item:
 
@@ -202,7 +242,7 @@ ZETTEL can be either a page, a backlink or a tolink."
 		" "
 		(propertize
 		 (delve-generic-search-name search)
-		 'face 'org-level-2))))
+		 'face 'delve-search-face)))) 
 
 ;; -- presenting a tag object:
 
