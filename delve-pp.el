@@ -36,7 +36,7 @@
 (defun delve-pp-apply-mods (s mod arg)
   "Return S modified by applying MOD using ARG.
 If MOD is not defined, return S unmodified."
-  (pcase mod
+  (pcase (list mod arg)
     (`(:format ,format-spec) (funcall #'format s format-spec))
     ;; TODO Test if that preverves propertizing, or if we just replace it
     ;; with a format spec
