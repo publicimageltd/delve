@@ -103,5 +103,43 @@
 		:to-have-been-called-times 3)
 	(expect new-s :to-equal (concat "..." orig-s))))))
 
+(describe "delve-pp-line"
+  (it "can be used to just concenate stringss"
+    (let* ((s1 "the")
+	   (s2 "string")
+	   (pp-scheme (list s1 s2)))
+      (expect (delve-pp-line nil pp-scheme)
+	      :to-equal
+	      (concat s1 s2))))
+  (it "joins the results from unmodified pretty printer"
+    (let* ((obj "the string")
+	   (pp-scheme '(identity identity)))
+      (expect (delve-pp-line obj pp-scheme)
+	      :to-equal
+	      (concat obj obj))))
+  (it "accepts mod-arg-pairs in two different formats"
+    (let* ((obj "the object")
+	   (pp-scheme '((identity :width 30)
+			(identity :face some-face))))
+      (spy-on 'delve-pp-item)
+      (delve-pp-line obj pp-scheme)
+      (expect 'delve-pp-item :to-have-been-called-times 2)))
+  (it "returns error string when scheme is invalid"
+    (let* ((obj "the object")
+	   (pp-scheme '((identity :something)
+			(:aaargh))))
+      (expect (delve-pp-line obj pp-scheme)
+	      :to-equal
+	      (apply #'concat
+		     (mapcar (apply-partially
+			      #'format delve-pp-invalid-scheme-error-string)
+			     pp-scheme)))))
+  (it "returns nil when scheme is invalid and  error string is set to nil"
+    (let* ((obj "the object")
+	   (pp-scheme '((identity :something)))
+	   (delve-pp-invalid-scheme-error-string nil))
+      (expect (delve-pp-line obj pp-scheme)
+	      :to-equal ""))))
+
 (provide 'test-delve-pp)
 ;;; test-delve-pp.el ends here

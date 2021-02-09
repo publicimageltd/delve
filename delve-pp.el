@@ -26,11 +26,12 @@
 
 (require 'cl-lib)
 
-;; TODO Make propertizing dependend on global variable (delve-pp-inhibit-propertizing)
-;; TODO Implement pprinter (including the one for "optional icons")
-
 (defvar delve-pp-inhibit-faces nil
   "If set, never add any faces when using the pretty printer.")
+
+(defvar delve-pp-invalid-scheme-error-string "invalid pp-scheme: '%s'"
+  "Error string to be returned when a pp scheme is invalid.
+If set to nil, return nil instead.")
 
 (defun delve-pp-apply-mods (s mod arg)
   "Return S modified by applying MOD using ARG.
@@ -81,11 +82,19 @@ meaning to not modify it, or a property list, which is passed to
   "Returns a pretty printed representation of OBJECT.
 
 PP-SCHEMES is a list. Each item of this list can either be a
-string, which is used as-is, or a pretty printer function
-returning a string, to which the object is passed, or a list with
+string, which is used as-is; or a pretty printer function
+returning a string, to which the object is passed; or a list with
 a pretty printer function and two arguments determining how to
-further modify its result. The resulting string will be created
-by joining all these results, ignoring nil values."
+further modify its result.
+
+The resulting string is created by joining all these results,
+ignoring nil values. Returns an empty string if all items
+returned nil values.
+
+If a scheme is invalid, include a descriptive error message in
+the result. This output is formed by passing
+`delve-pp-invalid-scheme-error-string' to `format'. Setting the
+variable to nil will inhibit any feedback on invalid schemes."
   (apply #'concat 
 	 (mapcar (lambda (it)
 		   (pcase it
@@ -93,9 +102,9 @@ by joining all these results, ignoring nil values."
 		     ((pred functionp)           (funcall it object))
 		     (`(,fn ,mod-key ,mod-arg)   (delve-pp-item object ,fn (list ,mod-key ,mod-arg)))
 		     (`(,fn (,mod-key ,mod-arg)) (delve-pp-item object ,fn (list ,mod-key ,mod-arg)))
-		     (_ (format "invalid pp-scheme: %s" it))))
+		     (_                          (when delve-pp-invalid-scheme-error-string
+						   (format delve-pp-invalid-scheme-error-string it)))))
 		 pp-schemes)))
   
-
 (provide 'delve-pp)
 ;;; delve-pp.el ends here
