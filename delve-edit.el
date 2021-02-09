@@ -136,7 +136,7 @@ ORG-TREE is nil, use the tree from calling this function on BUF."
 	   (marker   (mapcar (apply-partially #'delve-edit-pos-to-marker buf)
 			     regions)))
       (cl-dolist (region marker)
-	(delete-region (first region) (second region)))
+	(delete-region (cl-first region) (cl-second region)))
       (when tags
 	(goto-char new-pos)
 	(insert "#+ROAM_TAGS: "
@@ -205,7 +205,6 @@ TAG can be a string or a list of strings."
   (interactive (list buffer-file-name))
   (delve-edit-in-file zettel-file
     (org-roam-alias-delete)))
-
 
 (provide 'delve-edit)
 ;;; delve-edit.el ends here
