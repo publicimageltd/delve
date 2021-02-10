@@ -468,23 +468,6 @@ buffer."
 	    (delve (lister-get-all-data-tree buf beg end) "New sublist")))
       (delve item-at-point))))
 
-;; TODO Currently unused
-(defun delve-insert-zettel  ()
-  "Choose a zettel and insert it in the current delve buffer."
-  (interactive)
-  (let* ((zettel (delve-db-query-all-zettel 'delve-make-page
-					    [:order-by (asc titles:title)]))
-	 (completion (seq-map (lambda (z) (cons (concat (delve-represent-tags z)
-							(delve-represent-title z))
-						z))
-			      zettel))
-	 (candidate  (completing-read " Insert zettel: " completion nil t))
-	 (pos        (point)))
-    (when lister-highlight-mode
-      (lister-unhighlight-item))
-    (lister-insert (current-buffer) :next (alist-get candidate completion nil nil #'string=))
-    (lister-goto (current-buffer) pos)))
-
 (defun delve-visit-zettel ()
   "Visit the zettel item on point, leaving delve."
   (interactive)
