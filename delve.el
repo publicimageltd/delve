@@ -272,8 +272,8 @@ ERROR-OBJECT must be a delve object, not an emacs error object!"
 
 (defun delve-mapper-for-completion (data)
   "Transform DATA to an item suitable for completion."
-  ;; TODO Maybe also add inhibition of faces?
-  (let* ((delve-force-ignore-all-the-icons t))
+  (let* ((delve-force-ignore-all-the-icons t)
+	 (delve-pp-inhibit-faces t))
     (delve-mapper data)))
 
 ;; -----------------------------------------------------------
