@@ -27,22 +27,48 @@
 (require 'buttercup)
 (require 'delve-pp)
 
+;; * Utilities
+
 (defface delve-pp-testface
   '((t (:weight bold)))
   "Face for testing pretty printing."
   :group 'testgroup)
+
+(defun test-delve--string-properties (s)
+  "Return a list of all properties of S, with char indices.
+The list is simlar to the output of `prin1', with the string
+itself ommitted."
+  (let* ((s-prin1 (format "%S" s)))
+    (if (string-prefix-p "#(" s-prin1)
+	(cdr (read (substring s-prin1 1)))
+      nil)))
+
+(defun test-delve--merged-props (s)
+  "Return a list of all properties of S, disregarding indices."
+  (seq-uniq (cl-remove-if-not #'listp (test-delve--string-properties s))))
+
+;; * The Tests
 
 (describe "delve-pp-apply-mods"
   (it "returns string unmodified if no mod is passed"
     (let ((s "the string"))
       (expect (delve-pp-apply-mods s nil nil)
 	      :to-equal s)))
-  (it "returns propertized string when using mod (:face facename)"
+  (it "sets face property when when using mod (:face facename)"
     (let ((s "the string")
 	  (face 'delve-pp-testface))
-      (expect (delve-pp-apply-mods s :face face)
+      (expect (get-text-property 0 'face (delve-pp-apply-mods s :face face))
 	      :to-equal
-	      (propertize s 'face face))))
+	      '(delve-pp-testface)))
+  (it "appends face when using mod (:face-append facename)"
+    (let* ((s    "the string")
+	   (s-propped (propertize s 'face 'first-face))
+	   (face 'second-face)
+	   (s-result (delve-pp-apply-mods s :face-append face)))
+      (expect (get-text-property 0 'face s-result)
+	      :to-equal
+	      '(first-face second-face))))
+
   (it "does not add face when delve-pp-inhibit-faces is set"
     (let ((s "the string")
 	  (face 'delve-pp-testface)
