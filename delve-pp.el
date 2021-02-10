@@ -120,25 +120,35 @@ PP-SCHEMES is a list. Each item of this list can either be a
 string, which is used as-is; or a pretty printer function
 returning a string, to which the object is passed; or a list with
 a pretty printer function and some properties determining how to
-further modify its results. See `delve-pp-apply-mods' for the
-list of available mods.
+further modify its results. 
+
+This property list can be either an additional cons cell (like in
+\(fn .\(:prop arg\)\) or a continuation of the list, like in \(fn
+:prop arg\). See `delve-pp-apply-mods' for the list of available
+mods.
 
 The resulting string is created by joining all these results
 using SEPARATOR, ignoring nil values. Returns an empty string if
 all items returned nil values.
 
-If a scheme is invalid, include a descriptive error message in
-the result. This output is formed by passing
+If a scheme is structurally invalid, include a descriptive error
+message in the result. This output is formed by passing
 `delve-pp-invalid-scheme-error-string' to `format'. Setting the
-variable to nil will inhibit any feedback on invalid schemes."
+variable to nil will inhibit any feedback on invalid schemes.
+Note that no check is being done on the values passed."
   (string-join
    (cl-remove-if #'null 
 		 (mapcar (lambda (it)
 			   (pcase it
-			     ((pred stringp) it)
-			     (`(,fn )        (delve-pp-item object fn nil))
-			     (`(,fn . ,mods) (delve-pp-item object fn mods))
-			     (_              (when delve-pp-invalid-scheme-error-string
+			     ((pred stringp)   it)
+			     ((pred functionp) (delve-pp-item object it nil))
+			     (`(,fn)           (delve-pp-item object fn nil))
+			     (`(,fn ,mods)     (if (listp mods)
+						   (delve-pp-item object fn mods)
+						 (when delve-pp-invalid-scheme-error-string
+						   (format delve-pp-invalid-scheme-error-string it))))
+			     (`(,fn . ,mods)   (delve-pp-item object fn mods))
+			     (_                (when delve-pp-invalid-scheme-error-string
 					       (format delve-pp-invalid-scheme-error-string it)))))
 			 pp-schemes))
    separator))
