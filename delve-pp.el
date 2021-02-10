@@ -105,12 +105,13 @@ order. For a list of available mods, see `delve-pp-apply-mods'."
       (setq format-spec (plist-get mods :format))
       (setq s (format (or format-spec "%s") pprinter)))
     ;; then apply the mods
-    (cl-loop for i below (length mods) by 2
-	     do (let ((mod (elt mods i))
-		      (arg (elt mods (1+ i))))
-		  (unless (and format-spec (eq mod :format))
-		    (setq s (delve-pp-apply-mods s mod arg)))))
-    ;; finally pass the result
+    (when s
+      (cl-loop for i below (length mods) by 2
+	       do (let ((mod (elt mods i))
+			(arg (elt mods (1+ i))))
+		    (unless (and format-spec (eq mod :format))
+		      (setq s (delve-pp-apply-mods s mod arg))))))
+      ;; finally pass the result
     s))
   
 (cl-defun delve-pp-line (object pp-schemes &optional (separator " "))
