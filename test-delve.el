@@ -119,7 +119,7 @@
       (delve-mapper (delve-make-error))
       (expect 'delve-represent-error :to-have-been-called)))
 
-  (describe "representing a zettel object"
+  (xdescribe "representing a zettel object"
     (describe "delve-represent-tags"
       :var (s tags)
       (before-all
