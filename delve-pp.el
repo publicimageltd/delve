@@ -26,6 +26,8 @@
 
 (require 'cl-lib)
 
+;; * Global Variables
+
 (defvar delve-pp-inhibit-faces nil
   "If set, never add any faces when using the pretty printer.")
 
@@ -33,6 +35,32 @@
   "Error string to be returned when a pp scheme is invalid.
 If set to nil, return nil instead.")
 
+;; * Modify a String
+
+;; -- The modifying functions
+
+(defun delve-pp-mod:format (s format-spec)
+  "Pass S to `format' using FORMAT-SPEC."
+  (format format-spec s))
+
+(defun delve-pp-mod:width (s width)
+  "Pad or truncate S so that it fits WIDTH."
+  (let* ((pad (- width (string-width s))))
+    (if (<= pad 0)
+	(setq s (substring s 0 width))
+      (setq s (concat s (make-string pad ?\s))))))
+
+(defun delve-pp-mod:set-face (s face-or-spec)
+  "Set FACE-OR-SPEC as the face property of S."
+  (propertize s 'face face-or-spec))
+
+(defun delve-pp-mod:add-face (s face-or-spec)
+  "Add FACE-OR-SPEC to the face properties of S."
+  (with-temp-buffer
+    (insert s)
+    (add-face-text-property (point-min) (point-max) face-or-spec t)
+    (buffer-string)))
+ 
 (defun delve-pp-apply-mods (s mod arg)
   "Return S modified by applying MOD using ARG.
 If MOD is not defined, return S unmodified.
@@ -40,52 +68,60 @@ If MOD is not defined, return S unmodified.
 The following mods are currently defined:
 
  (:width <n>)                    ;; restrict or pad output to <n> characters
- (:face <facename or spec>))     ;; return string with this face
- (:format  \"format-string\")    ;; pass nonempty value to format"
+ (:set-face <facename or spec>))     ;; return string with this face
+ (:add-face <facename or spec>) ;; add face to the end of the string properties
+ (:format  \"format-string\")    ;; pass nonempty value to format
+
+If the global variable `delve-pp-inhibit-faces' is set to t, the
+face mods will be ignored. "
   (pcase (list mod arg)
-    (`(:format ,format-spec) (funcall #'format s format-spec))
-    (`(:width  ,width)       (let* ((pad (- width (string-width s))))
-			       (if (<= pad 0)
-				   (setq s (substring s 0 width))
-				 (setq s (concat s (make-string pad ?\s))))))
-    (`(:face ,face-or-spec)  (if delve-pp-inhibit-faces
-				 s
-			       (funcall #'propertize s 'face face-or-spec)))
+    (`(:format   ,format-spec)     (delve-pp-mod:format s format-spec))    					       
+    (`(:width    ,width)           (delve-pp-mod:width  s width))    
+    ((and `(:set-face ,face-or-spec) (guard (null delve-pp-inhibit-faces)))
+     (delve-pp-mod:set-face s face-or-spec))
+    ((and `(:add-face ,face-or-spec) (guard (null delve-pp-inhibit-faces)))
+     (delve-pp-mod:add-face s face-or-spec))
     (_ s)))
+
+;; * Pretty Print an Item
 
 (defun delve-pp-item (object pprinter mods)
   "Convert OBJECT to a string by passing it to PPRINTER and applying MODS.
 
-OBJECT is passed as argument to PPRINTER, which has to return a
-string or nil.
+If PPRINTER is a function, OBJECT is passed as an argument to
+PPRINTER.
 
-As a special case, PPRINTER can also be a string, which is then
-returned unchanged.
+If PPRINTER is not a function, it is passed as a value to
+`format'. The format string defaults to \"%s\" unless one of the
+MODS specifies another format using the keyword `:format'.
 
-MODS modify the resulting string. The argument can be either nil,
-meaning to not modify it, or a property list, which is passed to
-`delve-pp-apply-mods', which see."
-  (let* ((s (if (stringp pprinter)
-		pprinter
-	      (funcall pprinter object))))
-    (if (null mods)
-	s
-      (let ((mod-walker mods))
-	(while mod-walker
-	  (setq s (delve-pp-apply-mods s
-				       (cl-first mod-walker)
-				       (cl-second mod-walker)))
-	  (setq mod-walker (seq-drop mod-walker 2)))))
+MODS modify the resulting string. It can be either nil, leaving
+the string untouched, or a property list, which is processed in
+order. For a list of available mods, see `delve-pp-apply-mods'."
+  (let (s format-spec)
+    ;; first create the string to be modified 
+    (if (functionp pprinter)
+	(setq s (funcall pprinter object))
+      (setq format-spec (plist-get mods :format))
+      (setq s (format (or format-spec "%s") pprinter)))
+    ;; then apply the mods
+    (cl-loop for i below (length mods) by 2
+	     do (let ((mod (elt mods i))
+		      (arg (elt mods (1+ i))))
+		  (unless (and format-spec (eq mod :format))
+		    (setq s (delve-pp-apply-mods s mod arg)))))
+    ;; finally pass the result
     s))
-
+  
 (defun delve-pp-line (object pp-schemes)
   "Returns a pretty printed representation of OBJECT.
 
 PP-SCHEMES is a list. Each item of this list can either be a
 string, which is used as-is; or a pretty printer function
 returning a string, to which the object is passed; or a list with
-a pretty printer function and two arguments determining how to
-further modify its result.
+a pretty printer function and some properties determining how to
+further modify its results. See `delve-pp-apply-mods' for the
+list of available mods.
 
 The resulting string is created by joining all these results,
 ignoring nil values. Returns an empty string if all items
@@ -98,12 +134,11 @@ variable to nil will inhibit any feedback on invalid schemes."
   (apply #'concat 
 	 (mapcar (lambda (it)
 		   (pcase it
-		     ((pred stringp)             it)
-		     ((pred functionp)           (funcall it object))
-		     (`(,fn ,mod-key ,mod-arg)   (delve-pp-item object ,fn (list ,mod-key ,mod-arg)))
-		     (`(,fn (,mod-key ,mod-arg)) (delve-pp-item object ,fn (list ,mod-key ,mod-arg)))
-		     (_                          (when delve-pp-invalid-scheme-error-string
-						   (format delve-pp-invalid-scheme-error-string it)))))
+		     ((pred stringp) it)
+		     (`(,fn)         (delve-pp-item object ,fn nil))
+		     (`(,fn . ,mods) (delve-pp-item object ,fn mods))
+		     (_              (when delve-pp-invalid-scheme-error-string
+				       (format delve-pp-invalid-scheme-error-string it)))))
 		 pp-schemes)))
   
 (provide 'delve-pp)
