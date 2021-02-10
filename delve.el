@@ -186,6 +186,7 @@ Each action is simply an interactive function."
 	  (pcase (type-of delve-object)
 	    (`delve-error          (list "ERROR" "bug"))
 	    (`delve-generic-search (list "SEARCH"  "search"))
+	    (`delve-page-search    (list "SEARCH"  "search"))
 	    (`delve-tag            (list "TAG"     "tag"))
 	    (`delve-page           (list "PAGE"    "list-alt"))
 	    (`delve-tolink         (list "TOLINK"  "caret-left"))
