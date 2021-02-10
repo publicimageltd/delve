@@ -104,11 +104,12 @@ Each action is simply an interactive function."
 ;; * Faces
 
 (defface delve-tags-face
-  '((t (:inherit org-level-1)))
+  '((t (:inherit org-roam-tag)))
   "Face for displaying #+ROAM-TAGs in a delve list."
   :group 'delve)
 
 (defface delve-title-face
+  ;;  '((t (:inherit variabe-pitch)))
   '((t (:inherit org-document-title)))
   "Face for displaying org roam page titles in a delve list."
   :group 'delve)
@@ -154,8 +155,8 @@ Each action is simply an interactive function."
   '((delve-pp-zettel:needs-update (:set-face org-warning))
     (delve-pp-zettel:mtime        (:set-face delve-mtime-face))
     (delve-pp-generic:type        (:add-face delve-subtype-face))
-    (delve-pp-zettel:tags         (:set-face delve-tags-face
-			  	   :format "(%s)"))
+    (delve-pp-zettel:tags         (:format "(%s)"
+				   :set-face delve-tags-face))
     (delve-pp-zettel:backlinks    (:format "%d → "
 				   :set-face delve-nbacklinks-face))
     (delve-pp-zettel:title        (:set-face delve-title-face))
