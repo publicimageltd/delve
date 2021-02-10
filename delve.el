@@ -252,8 +252,8 @@ Each action is simply an interactive function."
 ERROR-OBJECT must be a delve object, not an emacs error object!"
   ;; TODO Use slot "message" in error object to
   ;; make this message even more specific
-  (format " Check SQL error log in buffer '%s'"
-	  (buffer-name (delve-error-buffer error-object))))
+     (format " SQL error logged in buffer '%s' (press ENTER to view)"
+	     (buffer-name (delve-error-buffer error-object))))
 
 (defun delve-represent-error (error-object)
   "Represent ERROR-OBJECT as a pretty printed list item."
