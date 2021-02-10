@@ -90,7 +90,7 @@ itself ommitted."
     (let ((s "the string"))
       (expect (delve-pp-apply-mods s :nomod :nomod)
 		:to-equal
-		s))))
+		s)))))
 
 (describe "delve-pp-item"
   
