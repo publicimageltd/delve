@@ -54,26 +54,26 @@ itself ommitted."
     (let ((s "the string"))
       (expect (delve-pp-apply-mods s nil nil)
 	      :to-equal s)))
-  (it "sets face property when when using mod (:face facename)"
+  (it "sets face property when when using mod (:set-face facename)"
     (let ((s "the string")
 	  (face 'delve-pp-testface))
-      (expect (get-text-property 0 'face (delve-pp-apply-mods s :face face))
+      (expect (test-delve--merged-props (delve-pp-apply-mods s :set-face face))
 	      :to-equal
-	      '(delve-pp-testface)))
-  (it "appends face when using mod (:face-append facename)"
+	      '(face delve-pp-testface)))
+  (it "appends face when using mod (:add-face facename)"
     (let* ((s    "the string")
 	   (s-propped (propertize s 'face 'first-face))
 	   (face 'second-face)
-	   (s-result (delve-pp-apply-mods s :face-append face)))
-      (expect (get-text-property 0 'face s-result)
+	   (s-result (delve-pp-apply-mods s :add-face face)))
+      (expect (test-delve--merged-props s-result)
 	      :to-equal
-	      '(first-face second-face))))
+	      '(face (first-face second-face)))))
 
   (it "does not add face when delve-pp-inhibit-faces is set"
     (let ((s "the string")
 	  (face 'delve-pp-testface)
 	  (delve-pp-inhibit-faces t))
-      (expect (delve-pp-apply-mods s :face face)
+      (expect (delve-pp-apply-mods s :set-face face)
 	      :to-equal
 	      s)))
   (it "pads string with extra whitespaces using mod (:width n)"
@@ -110,11 +110,11 @@ itself ommitted."
     (it "passes the mod keyword and its args to the mod application function"
       (spy-on 'delve-pp-apply-mods)
       (let ((s "the string"))
-	(delve-pp-item nil "the string" '(:face delve-pp-testface))
+	(delve-pp-item nil "the string" '(:set-face delve-pp-testface))
 	(expect 'delve-pp-apply-mods
 		:to-have-been-called-with
 		s
-		:face
+		:set-face
 		'delve-pp-testface)))
     (it "iterates over pairs of mod keywords and arguments"
       (spy-on 'delve-pp-apply-mods :and-call-fake
@@ -122,7 +122,7 @@ itself ommitted."
 		(concat "." s)))
       (let* ((orig-s "the-string")
 	     (new-s (delve-pp-item nil orig-s
-				   '(:face delve-pp-testface
+				   '(:set-face delve-pp-testface
 					   :width 30
 					   :format "%s"))))
 	(expect 'delve-pp-apply-mods
@@ -134,19 +134,19 @@ itself ommitted."
     (let* ((s1 "the")
 	   (s2 "string")
 	   (pp-scheme (list s1 s2)))
-      (expect (delve-pp-line nil pp-scheme)
+      (expect (delve-pp-line nil pp-scheme "")
 	      :to-equal
 	      (concat s1 s2))))
-  (it "joins the results from unmodified pretty printer"
+  (it "joins the results from unmodified pretty printer with space"
     (let* ((obj "the string")
 	   (pp-scheme '(identity identity)))
       (expect (delve-pp-line obj pp-scheme)
 	      :to-equal
-	      (concat obj obj))))
+	      (concat obj " " obj))))
   (it "accepts mod-arg-pairs in two different formats"
     (let* ((obj "the object")
 	   (pp-scheme '((identity :width 30)
-			(identity :face some-face))))
+			(identity :set-face some-face))))
       (spy-on 'delve-pp-item)
       (delve-pp-line obj pp-scheme)
       (expect 'delve-pp-item :to-have-been-called-times 2)))
