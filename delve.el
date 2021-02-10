@@ -34,6 +34,7 @@
 (require 'lister-highlight)
 (require 'delve-data-types)
 (require 'delve-edit)
+(require 'delve-pp)
 
 ;; * Silence Byte Compiler
 
@@ -149,117 +150,108 @@ Each action is simply an interactive function."
 
 ;; -- presenting a zettel object:
 
-
-(defun delve-represent-tags (zettel)
-  "Return all tags from GENERIC-ZETTEL as a propertized string."
-  (when (delve-zettel-tags zettel)
-    (concat "("
-	    (propertize
-	     (string-join (delve-zettel-tags zettel) ", ")
-	     'face 'delve-tags-face)
-	    ") ")))
-
-(defun delve-represent-title (zettel)
-  "Return the title of ZETTEL as a propertized string."
-  (propertize (or
-	       (delve-zettel-title zettel)
-	       (delve-zettel-file zettel)
-	       "NO FILE, NO TITLE.")
-	      'face 'delve-title-face))
-
-(defun delve-format-time (time)
-  "Return TIME in a more human readable form."
-  (let* ((days         (time-to-days time))
-	 (current-days (time-to-days (current-time))))
-    (if (/= days current-days)
-	(format-time-string "%b %d " time)
-      (format-time-string " %R " time))))
-
-(defvar delve-subtype-icons-alist
-  '((delve-page     :default "    PAGE" :faicon "list-alt")
-    (delve-tolink   :default "  TOLINK" :faicon "caret-left")
-    (delve-backlink :default "BACKLINK" :faicon "caret-right"))
-  "Alist associating a delve zettel subtype with a name and symbol.
-The name and the symbol are determined by the properties
-`:default' (for the name) and `:faicon' (for the symbol).
-
-If `all-the-icons' is installed, these symbols will be used when
-printing the items. Else, the `:default'-string will be
-printed.")
-
-(defun delve-get-icon-or-string (icon-name &optional descriptive-string)
-  "Get icon ICON-NAME or use DESCRIPTIVE-STRING or empty string."
-  (if (and (featurep 'all-the-icons)
-	   (not delve-force-ignore-all-the-icons))
-      (all-the-icons-faicon icon-name)
-    (or descriptive-string "")))
-
-(defun delve-format-subtype (zettel)
-  "Return the subtype of ZETTEL prettified."
-  (let* ((subtype     (type-of zettel))
-	 (type-plist  (alist-get subtype delve-subtype-icons-alist nil)))
-    (concat 
-     (if type-plist
-	 (delve-get-icon-or-string (plist-get type-plist :faicon))
-       (propertize (if type-plist
-		       (plist-get type-plist :default)
-		     "subtype?")
-		   'face 'delve-subtype-face))
-     " ")))
+(defvar delve-zettel-pp-scheme
+  '((delve-pp-zettel:needs-update (:set-face org-warning))
+    (delve-pp-zettel:mtime        (:set-face delve-mtime-face))
+    (delve-pp-generic:type        (:add-face delve-subtype-face))
+    (delve-pp-zettel:tags         (:set-face delve-tags-face
+			  	   :format "(%s)"))
+    (delve-pp-zettel:backlinks    (:format "%d → "
+				   :set-face delve-nbacklinks-face))
+    (delve-pp-zettel:title        (:set-face delve-title-face))
+    (delve-pp-zettel:tolinks      (:format " →  %d"
+				   :set-face delve-ntolinks-face)))
+  "Pretty printing scheme for displaying delve zettel.")
 
 (defun delve-represent-zettel (zettel)
-  "Return ZETTEL as a pretty propertized string.
-ZETTEL can be either a page, a backlink or a tolink."
-  (list  (concat
-	  ;; needs update?
-	  (when (delve-zettel-needs-update zettel)
-	    (propertize "item changed, not up to date ->"
-			'face 'org-warning))
-	  ;; creation time:
-	  (propertize
-	   (delve-format-time (delve-zettel-mtime zettel))
-	   'face 'delve-mtime-face) 
-	  ;; subtype (tolink, backlink, zettel)
-	  (delve-format-subtype zettel)
-	  ;; associated tags:
-	  (delve-represent-tags zettel)
-	  ;; # of backlinks:
-	  (propertize
-	   (format "%d → " (or (delve-zettel-backlinks zettel) 0))
-	   'face 'delve-nbacklinks-face)
-	  ;; title:
-	  (delve-represent-title zettel)
-	  ;; # of tolinks:
-	  (propertize
-	   (format " →  %d" (or (delve-zettel-tolinks zettel) 0))
-	   'face 'delve-ntolinks-face))))
+  "Represent ZETTEL as a pretty printed list item."
+  (list (delve-pp-line zettel delve-zettel-pp-scheme)))
+
+(defun delve-pp-zettel:needs-update (zettel)
+  "Inform that a zettel needs to be updated."
+  (when (delve-zettel-needs-update zettel)
+    "item changed, not up to date ->"))
+
+(defun delve-pp-zettel:mtime (zettel)
+  "Return the mtime of ZETTEL in a human readable form."
+  (let* ((time         (delve-zettel-mtime zettel))
+	 (days         (time-to-days time))
+	 (current-days (time-to-days (current-time))))
+    (format-time-string (if (/= days current-days)  "%b %d" "%R")
+			time)))
+
+(defun delve-pp-generic:type (delve-object)
+  "Represent the type of DELVE-OBJECT, if possible with an icon."
+  (let* ((representation
+	  (pcase (type-of delve-object)
+	    (`delve-error          (list "ERROR" "bug"))
+	    (`delve-generic-search (list "SEARCH"  "search"))
+	    (`delve-tag            (list "TAG"     "tag"))
+	    (`delve-page           (list "PAGE"    "list-alt"))
+	    (`delve-tolink         (list "TOLINK"  "caret-left"))
+	    (`delve-backlink       (list "BACKLINK" "caret-right"))
+	    (_                     (list "SUBTYPE?" "question")))))
+    (if (and (featurep 'all-the-icons)
+	     (not delve-force-ignore-all-the-icons))
+	(all-the-icons-faicon (cl-second representation))
+      (delve-pp-mod:width (cl-first representation) 8))))
+
+(defun delve-pp-zettel:tags (zettel)
+  "Join all tags from ZETTEL."
+  (when-let ((tags (delve-zettel-tags zettel)))
+    (string-join tags ",")))
+
+(defun delve-pp-zettel:backlinks (zettel)
+  "Return number of backlinks to ZETTEL."
+  (or (delve-zettel-backlinks zettel) 0))
+
+(defun delve-pp-zettel:title (zettel)
+  "Return the title of ZETTEL."
+  (or (delve-zettel-title zettel)
+      (delve-zettel-file zettel)
+      "NO FILE OR TITLE"))
+
+(defun delve-pp-zettel:tolinks (zettel)
+  "Return number of tolinks to ZETTEL."
+  (or (delve-zettel-tolinks zettel)))
 
 ;; -- presenting a search item:
 
+(defvar delve-search-pp-scheme
+  '(delve-pp-generic:type 
+    (delve-generic-search-name (:set-face 'delve-search-face)))
+  "Pretty printing scheme for displaying delve searches.")
+
 (defun delve-represent-search (search)
-  "Return propertized strings representing a SEARCH object."
-  (list (concat (delve-get-icon-or-string "search" "Search:")
-		" "
-		(propertize
-		 (delve-generic-search-name search)
-		 'face 'delve-search-face)))) 
+  "Represent SEARCH object as a  pretty printed  list item."
+  (list (delve-pp-line search delve-search-pp-scheme)))
 
 ;; -- presenting a tag object:
 
-(defun delve-represent-tag (tag)
-  "Return propertized strings representing a TAG object."
-  (list (concat (delve-get-icon-or-string "tag" "Tag:")
-		" "
-		(propertize (delve-tag-tag tag) 'face 'org-level-1)
-		(when (delve-tag-count tag)
-		  (format " (%d)" (delve-tag-count tag))))))
+(defvar delve-tag-pp-scheme
+  '(delve-pp-generic:type
+    (delve-tag-tag   (:set-face org-level-1))
+    (delve-tag-count (:format "(%d)")))
+  "Pretty printing scheme for displaying tag objects.")
 
 ;; -- presenting an error object:
+
+(defvar delve-error-pp-scheme
+  '((delve-pp-generic:type (:add-face error))
+    delve-pp-error:message)
+  "Pretty printing scheme for displaying error objects.")
+
+(defun delve-pp-error:message (error-object)
+  "Return an informative message about the error.
+ERROR-OBJECT must be a delve object, not an emacs error object!"
+  ;; TODO Use slot "message" in error object to
+  ;; make this message even more specific
+  (format " Check SQL error log in buffer '%s'"
+	  (buffer-name (delve-error-buffer error-object))))
+
 (defun delve-represent-error (error-object)
-  "Return propertized strings representing an ERROR object."
-  (list (concat (propertize "Error " 'face 'error)
-		"querying the data base! "
-		(format "Check '%s'." (buffer-name (delve-error-buffer error-object))))))
+  "Represent ERROR-OBJECT as a pretty printed list item."
+  (list (delve-pp-line error-object delve-error-pp-scheme)))
 
 ;; the actual mapper:
 
