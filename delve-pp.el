@@ -113,7 +113,7 @@ order. For a list of available mods, see `delve-pp-apply-mods'."
     ;; finally pass the result
     s))
   
-(defun delve-pp-line (object pp-schemes)
+(cl-defun delve-pp-line (object pp-schemes &optional (separator " "))
   "Returns a pretty printed representation of OBJECT.
 
 PP-SCHEMES is a list. Each item of this list can either be a
@@ -123,23 +123,25 @@ a pretty printer function and some properties determining how to
 further modify its results. See `delve-pp-apply-mods' for the
 list of available mods.
 
-The resulting string is created by joining all these results,
-ignoring nil values. Returns an empty string if all items
-returned nil values.
+The resulting string is created by joining all these results
+using SEPARATOR, ignoring nil values. Returns an empty string if
+all items returned nil values.
 
 If a scheme is invalid, include a descriptive error message in
 the result. This output is formed by passing
 `delve-pp-invalid-scheme-error-string' to `format'. Setting the
 variable to nil will inhibit any feedback on invalid schemes."
-  (apply #'concat 
-	 (mapcar (lambda (it)
-		   (pcase it
-		     ((pred stringp) it)
-		     (`(,fn)         (delve-pp-item object ,fn nil))
-		     (`(,fn . ,mods) (delve-pp-item object ,fn mods))
-		     (_              (when delve-pp-invalid-scheme-error-string
-				       (format delve-pp-invalid-scheme-error-string it)))))
-		 pp-schemes)))
+  (string-join
+   (cl-remove-if #'null 
+		 (mapcar (lambda (it)
+			   (pcase it
+			     ((pred stringp) it)
+			     (`(,fn)         (delve-pp-item object ,fn nil))
+			     (`(,fn . ,mods) (delve-pp-item object ,fn mods))
+			     (_              (when delve-pp-invalid-scheme-error-string
+					       (format delve-pp-invalid-scheme-error-string it)))))
+			 pp-schemes))
+   separator))
   
 (provide 'delve-pp)
 ;;; delve-pp.el ends here
