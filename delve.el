@@ -407,19 +407,18 @@ If MARKER-OR-POS is nil, redraw the item at point."
   "Update all items in BUF which are marked as needing update.
 Also update all marked items, if any."
   (interactive (list (current-buffer)))
-  (let* ((marked-items (lister-all-marked-items buf)))
-    (cl-labels ((tainted-zettel-p (data)
-				  (and (delve-zettel-p data)
-				       (or (delve-zettel-needs-update data)
-					   (lister-get-mark-state buf :point))))
-		(update-zettel (data)
-			       (when-let*
-				   ((new-item (delve-db-update-item data)))
-				 (lister-replace buf :point new-item))))
-      (let ((n (lister-walk-all buf #'update-zettel #'tainted-zettel-p)))
-	(message (concat
-		  (if (> n 0) (format "%d" n) "No")
-		  " items redisplayed"))))))
+  (cl-labels ((tainted-zettel-p (data)
+				(and (delve-zettel-p data)
+				     (or (delve-zettel-needs-update data)
+					 (lister-get-mark-state buf :point))))
+	      (update-zettel (data)
+			     (when-let*
+				 ((new-item (delve-db-update-item data)))
+			       (lister-replace buf :point new-item))))
+    (let ((n (lister-walk-all buf #'update-zettel #'tainted-zettel-p)))
+      (message (concat
+		(if (> n 0) (format "%d" n) "No")
+		" items redisplayed")))))
 
 (defun delve-revert (buf)
   "Revert delve buffer BUF to its initial list."
