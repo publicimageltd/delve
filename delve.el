@@ -234,6 +234,10 @@ Each action is simply an interactive function."
     (delve-tag-count (:format "(%d)")))
   "Pretty printing scheme for displaying tag objects.")
 
+(defun delve-represent-tag (tag)
+  "Represent TAG object as a pretty printed list item."
+  (list (delve-pp-line tag delve-tag-pp-scheme)))
+
 ;; -- presenting an error object:
 
 (defvar delve-error-pp-scheme
