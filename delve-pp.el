@@ -136,8 +136,8 @@ variable to nil will inhibit any feedback on invalid schemes."
 		 (mapcar (lambda (it)
 			   (pcase it
 			     ((pred stringp) it)
-			     (`(,fn)         (delve-pp-item object ,fn nil))
-			     (`(,fn . ,mods) (delve-pp-item object ,fn mods))
+			     (`(,fn )        (delve-pp-item object fn nil))
+			     (`(,fn . ,mods) (delve-pp-item object fn mods))
 			     (_              (when delve-pp-invalid-scheme-error-string
 					       (format delve-pp-invalid-scheme-error-string it)))))
 			 pp-schemes))
