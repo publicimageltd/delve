@@ -3,7 +3,6 @@
 ;; Copyright (C) 2021  
 
 ;; Author:  Jörg Volbers <joerg@joergvolbers.de>
-;; Keywords: delve
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,11 +17,12 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+;; This file is NOT part of GNU Emacs.
+
 ;;; Commentary:
 
-;; Most of the tests is an extension and a modified copy from
-;; https://github.com/d12frosted/vulpea. Thanks to Boris Buliga for
-;; that.
+;; Provides utilities for testing interaction with an org roam
+;; database. Adopted from https://github.com/d12frosted/vulpea.
 
 ;;; Code:
 
@@ -40,12 +40,12 @@
   (expand-file-name "note-files"))
 
 (defun delve-test-temp-notes-dir ()
-  "Create new directory name for a collection of org roam notes."
+  "Create a new directory name for a collection of org roam notes."
   (expand-file-name (make-temp-name "note-files-")
 		    temporary-file-directory))
 
 (defun delve-test-get-file (file-name)
-  "Get reference file FILE NAME from the test data base.
+  "Get file FILE NAME from the test data base.
 This requires `delve-test-setup-db' to have been called."
   (if delve-test-environment
       (concat
@@ -87,6 +87,7 @@ This requires `delve-test-setup-db' to have been called."
       (rename-file org-roam-directory new-dir t)))
   (setq delve-test-environment nil))
 
+;; SQL statements are long, so give them some space:
 (setq buttercup-stack-frame-style 'pretty)
 
 (provide 'delve-test-utils)

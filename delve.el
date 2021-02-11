@@ -3,7 +3,10 @@
 ;; Copyright (C) 2020
 
 ;; Author:  <joerg@joergvolbers.de>
-;; Keywords: hypermedia, org-roam
+;; Version: 0.4
+;; Package-Requires: ((emacs "26.1") (lister))
+;; Keywords: hypermedia, org-roam 
+;; URL: https://github.com/publicimageltd/delve
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by

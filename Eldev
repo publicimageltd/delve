@@ -1,0 +1,8 @@
+; -*- mode: emacs-lisp; lexical-binding: t; no-byte-compile: t -*-
+
+;; Uncomment some calls below as needed for your project.
+;(eldev-use-package-archive 'gnu)
+(eldev-use-package-archive 'melpa)
+
+;; Tell checkdoc not to demand two spaces after a period.
+(setq sentence-end-double-space nil)

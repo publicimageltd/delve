@@ -3,7 +3,6 @@
 ;; Copyright (C) 2021  
 
 ;; Author:  <joerg@joergvolbers.de>
-;; Keywords: 
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,14 +17,30 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+;; This file is NOT part of GNU Emacs.
+
 ;;; Commentary:
 
-;; To see what results to expect, see note-files/structure.org
+;; Tests the interaction with the database.
+
+;;; Notes for writing tests:
+
+;; - The database will be created from tests/note-files. Once a test
+;;   is run, you can query the database in
+;;   /tmp/note-files-last-test-run/org-roam.db directly to see what
+;;   your lisp code should return.
 ;;
-;; To create a database without running the test, set the variable
-;; "no-tests". Then you can query the database located in
-;; /tmp/note-files-last-test-run/org-roam.db
+;; - Some executable org mode babel blocks in note-files/structure.org
+;;   already provide some basic insights by calling sqlite3 directly
+;;   with some queries.
 ;;
+;; - To force the creation of the database without first running this
+;;   test suite, manually set the variable "no-tests" to true in this
+;;   file and then run the test (or execute this file). This will
+;;   create the database in /tmp/note-files-last-test-run, as if a
+;;   test had been run.
+;;
+
 ;;; Code:
 
 (require 'delve-test-utils)
@@ -34,11 +49,12 @@
 (defvar no-tests nil
   "Set this to t if you just want to create the database.")
 
-;; * Optionally create the database w/o teting
+;; * Optionally create the database w/o testing
 
 (when no-tests
   (delve-test-setup-db)
   (delve-test-teardown-db)
+  ;; you don't run this test interactively within emacs, do you?
   (kill-emacs))
 
 ;; * Tests
