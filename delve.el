@@ -4,7 +4,7 @@
 
 ;; Author:  <joerg@joergvolbers.de>
 ;; Version: 0.4
-;; Package-Requires: ((emacs "26.1") (lister))
+;; Package-Requires: ((emacs "26.1") (org-roam "1.2.3") (lister))
 ;; Keywords: hypermedia, org-roam 
 ;; URL: https://github.com/publicimageltd/delve
 

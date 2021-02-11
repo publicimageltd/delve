@@ -4,5 +4,9 @@
 ;(eldev-use-package-archive 'gnu)
 (eldev-use-package-archive 'melpa)
 
+;; allow to load test helpers
+(eldev-add-loading-roots 'test "tests")
+(eldev-add-loading-roots 'test "tests/utils")
+
 ;; Tell checkdoc not to demand two spaces after a period.
 (setq sentence-end-double-space nil)
