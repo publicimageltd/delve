@@ -33,6 +33,7 @@
 (require 'buttercup)
 (require 'org)
 (require 'org-roam)
+(require 'org-id)
 
 ;; * Locations
 
@@ -50,7 +51,8 @@
 		(lambda (f) (if (file-directory-p f) 'dir-ok)))
    (locate-file delve-note-files-directory
 		load-path nil
-		(lambda (f) (if (file-directory-p f) 'dir-ok)))))
+		(lambda (f) (if (file-directory-p f) 'dir-ok)))
+   (user-error "Could not create test data base; canceled")))
 
 (defun delve-test-temp-notes-dir ()
   "Create a new directory name for a collection of org roam notes."
@@ -66,11 +68,11 @@ This requires `delve-test-setup-db' to have been called."
        file-name)
     (user-error "delve-test-get-file has to be called within a test environment.")))
 
-(defun delve-test-all-files ()
-  "Return all file names from the test environment."
+(defun delve-test-all-org-files ()
+  "Return all org file names from the test environment."
   (if delve-test-environment
       (directory-files org-roam-directory nil "\\.org$")
-    (user-error "delve-test-all-files has to be called within a test environment.")))
+    (user-error "delve-test-all-org-files has to be called within a test environment.")))
 
 (defun delve-test-setup-db ()
   "Provide a temporary org roam db to work with."
@@ -78,17 +80,21 @@ This requires `delve-test-setup-db' to have been called."
 	 (new-dir      (delve-test-temp-notes-dir))
 	 (inhibit-message t))
     (copy-directory original-dir new-dir nil nil t)
+    (setq delve-test-environment t)
     (setq org-roam-directory new-dir)
     (setq org-roam-db-location (concat
 				(file-name-as-directory new-dir)
 				"org-roam.db"))
     (setq org-roam-db-update-method 'immediate)
+    (org-id-update-id-locations (delve-test-all-org-files))    
     (org-roam-mode +1)
     (org-roam-db-build-cache)
-    (setq delve-test-environment t)))
+    (sleep-for 2)))
 
 (defun delve-test-teardown-db (&optional dont-move)
   "Delete the temporary org roam db."
+  (unless delve-test-environment
+    (user-error "nothing to tear down; no test environment given"))
   (org-roam-mode -1)
   (unless dont-move
     (let ((new-dir (expand-file-name "note-files-last-test-run"

@@ -273,7 +273,8 @@
 	  (setq file-name (delve-test-get-file "reference.org"))
 	  (setq result (delve-db-query-backlinks
 			(delve-db-get-page-from-file file-name)))))
-
+      (it "has found the right file"
+	(expect file-name :to-match "reference.org$"))
       (it "returns a non-nil value"
 	(expect result :not :to-be nil))
       (it "returns exact 2 items"
