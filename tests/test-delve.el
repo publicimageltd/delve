@@ -62,12 +62,6 @@
                       (seq-contains-p target-face face))))
               all-faces)))
 
-;; (require 'delve-test-utils)
-  ;; (before-all
-  ;;   (delve-test-setup-db))
-  ;; (after-all
-  ;;   (delve-test-teardown-db))
-
 (describe "Searching"
   (describe "page search operator"
     (it "passes the search parameters correctly to the main SQL zettel query"
