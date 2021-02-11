@@ -23,6 +23,10 @@
 
 ;; Provides utilities for testing interaction with an org roam
 ;; database. Adopted from https://github.com/d12frosted/vulpea.
+;;
+;; For these functions to work, a separate directory with org roam
+;; note files has to be provided. It has to be accessed from this
+;; file's location. See the variable "delve-note-files-directory".
 
 ;;; Code:
 
@@ -35,9 +39,18 @@
 (defvar delve-test-environment nil
   "Whether the test environment exists.")
 
+(defvar delve-note-files-directory "note-files"
+  "Name of the directory for the note files to create the db.")
+
 (defun delve-test-orig-notes-dir ()
   "Return directory containing test note files."
-  (expand-file-name "note-files"))
+  (or
+   (locate-file delve-note-files-directory
+		(list default-directory) nil
+		(lambda (f) (if (file-directory-p f) 'dir-ok)))
+   (locate-file delve-note-files-directory
+		load-path nil
+		(lambda (f) (if (file-directory-p f) 'dir-ok)))))
 
 (defun delve-test-temp-notes-dir ()
   "Create a new directory name for a collection of org roam notes."
