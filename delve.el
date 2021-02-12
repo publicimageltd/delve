@@ -156,7 +156,8 @@ Each action is simply an interactive function."
 
 (defvar delve-zettel-pp-scheme
   '((delve-pp-zettel:needs-update (:set-face org-warning))
-    (delve-pp-zettel:mtime        (:set-face delve-mtime-face))
+    (delve-pp-zettel:mtime        (:set-face delve-mtime-face
+				   :format "%10s"))
     (delve-pp-generic:type        (:add-face delve-subtype-face))
     (delve-pp-zettel:tags         (:format "(%s)"
 				   :set-face delve-tags-face))
@@ -178,11 +179,18 @@ Each action is simply an interactive function."
 
 (defun delve-pp-zettel:mtime (zettel)
   "Return the mtime of ZETTEL in a human readable form."
-  (let* ((time         (delve-zettel-mtime zettel))
-	 (days         (time-to-days time))
-	 (current-days (time-to-days (current-time))))
-    (format-time-string (if (/= days current-days)  "%b %d" "%R")
-			time)))
+  (let* ((time                 (delve-zettel-mtime zettel))
+	 (days                 (time-to-days time))
+	 (current-time-in-days (time-to-days (current-time)))
+	 (day-difference       (- current-time-in-days days))
+	 (current-year         (string-to-number (format-time-string "%y" (current-time))))
+	 (zettel-year          (string-to-number (format-time-string "%y" time)))
+	 (format-spec  (cond 
+			 ((/= current-year zettel-year) "%b %d %y")
+			 ((> day-difference 1)   "%b %d")
+			 (t        "%R"))))
+;;    (format "%d" (time-to-day-in-year time))))
+    (format-time-string format-spec time)))
 
 (defun delve-pp-generic:type (delve-object)
   "Represent the type of DELVE-OBJECT, if possible with an icon."
