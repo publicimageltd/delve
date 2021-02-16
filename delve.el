@@ -3,8 +3,8 @@
 ;; Copyright (C) 2020
 
 ;; Author:  <joerg@joergvolbers.de>
-;; Version: 0.4
-;; Package-Requires: ((emacs "26.1") (org-roam "1.2.3") (lister))
+;; Version: 0.5
+;; Package-Requires: ((emacs "26.1") (org-roam "1.2.3") (lister "0.5"))
 ;; Keywords: hypermedia, org-roam 
 ;; URL: https://github.com/publicimageltd/delve
 
@@ -428,7 +428,7 @@ Also update all marked items, if any."
 			     (when-let*
 				 ((new-item (delve-db-update-item data)))
 			       (lister-replace buf :point new-item))))
-    (let ((n (lister-walk-all buf #'update-zettel #'tainted-zettel-p)))
+    (let ((n (length (lister-walk-all buf #'update-zettel #'tainted-zettel-p))))
       (message (concat
 		(if (> n 0) (format "%d" n) "No")
 		" items redisplayed")))))
@@ -512,7 +512,7 @@ be passed to this additional argument."
 			(funcall edit-fn (delve-zettel-file data) choice)
 			(setf (delve-zettel-needs-update data) t)
 			(delve-redraw-item buf)))
-      (setq n (lister-walk-marked-items buf #'add-it))
+      (setq n (length (lister-walk-marked-items buf #'add-it)))
       (message "Changed %d items" n))))
 
 (defun delve-add-tag ()

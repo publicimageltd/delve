@@ -39,7 +39,6 @@
 ;;   file and then run the test (or execute this file). This will
 ;;   create the database in /tmp/note-files-last-test-run, as if a
 ;;   test had been run.
-;;
 
 ;;; Code:
 
