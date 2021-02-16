@@ -1,5 +1,10 @@
 #+TITLE: delve.el
 
+NOTE: I am currently waiting for the new database version of
+`org-roam` to be published ("v2"). Then I will adapt delve to this new
+scheme. Until then, there will be no major development, everything
+under the hood.
+
 Delve is a tool to delve into your [[https://github.com/org-roam/org-roam][org roam zettelkasten]]. Its main
 purpose is to find pages by following links (either backlinks or
 references made in the page itself). Thus you can quickly overview the
@@ -376,6 +381,14 @@ deeper into the Zettelkasten.
 :END:
 
 ** Current pre-release version
+
+** 0.5
+
+*** Under the hood
+
+ + Rewrote the pretty printing of the line
+ + Added tests
+ + Switched from `makem.sh` to `Eldev`
 
 *** Enhancements
 
