@@ -20,6 +20,23 @@
 ;;; Commentary:
 
 ;; Defines same basic types for the delve zettelkasten explorer.
+;;
+;; * Here's an overview of the type hierarchy:
+;;
+;; delve-basis ---------- delve-tag
+;;             |
+;;             |--------- delve-zettel ----- delve-page
+;;                                    |
+;;                                    |----- delve-tolink
+;;                                    |
+;;                                    |----- delve-backlink
+;;
+;; delve-generic-search ---- delve-page-search
+;;
+;; delve-error
+;;
+
+
 
 ;;; Code:
 
