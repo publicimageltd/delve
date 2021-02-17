@@ -572,6 +572,7 @@ be passed to this additional argument."
 
 ;; * Some delve specific buffer handling
 
+;; TODO Define all these faces explicitly via defface
 (defun delve--pretty-main-buffer-header ()
   "Return a pretty header for the main buffer."
   (list
@@ -581,6 +582,7 @@ be passed to this additional argument."
    (delve-pp-line nil '((" This is the main entry page. Use <TAB> to expand an item, C-l expands in a new buffer."
 			 (:set-face font-lock-comment-face))))))
 
+;; TODO Define all these faces explicitly via defface
 (defun delve--pretty-collection-header (collection-name)
   "Return a pretty header for a collection buffer"
   (list
