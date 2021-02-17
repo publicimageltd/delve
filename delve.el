@@ -230,8 +230,8 @@ Each action is simply an interactive function."
 ;; -- presenting a search item:
 
 (defvar delve-search-pp-scheme
-  '(delve-pp-generic:type 
-    (delve-generic-search-name (:set-face 'delve-search-face)))
+  '(delve-pp-generic:type
+    (delve-generic-search-name (:set-face delve-search-face)))
   "Pretty printing scheme for displaying delve searches.")
 
 (defun delve-represent-search (search)
