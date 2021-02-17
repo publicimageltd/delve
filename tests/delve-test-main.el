@@ -31,7 +31,7 @@
 
 ;; Utilities
 
-(defun delve-test-fake-pages (&optional title)
+(defun delve-test-fake-page (&optional title)
   "Return a fake page object with no significant data."
   (delve-make-page  :title  (if title (format "%s" title) "Fake-Title")
 		     :file  "dummyfile.org"
@@ -161,37 +161,33 @@
 ;; * Collections
 
 (describe "Collections"
-  (describe "delve-view-collection"
+  (describe "delve-new-collection-buffer"
     :var (some-items)
     (before-all
-      (setq some-items (seq-map #'delve-test-fake-pages
+      (setq some-items (seq-map #'delve-test-fake-page
 				'("Zettel1" "Zettel2" "Zettel3"))))
 
     (it "returns a delve buffer if called with correct arguments"
-      (let ((buf (delve-view-collection some-items (lambda () (list "test"))) "testbuffer")))
+      (let ((buf (delve-new-collection-buffer some-items (list "test") "testbuffer")))
 	(expect (type-of buf) :to-be 'buffer)
 	(expect (with-current-buffer buf major-mode)
 		:to-be 'delve-mode)
 	(kill-buffer buf)))
-    (it "uses the return value of the heading function for the list header"
+    (it "sets the heading list as the list header"
+      (spy-on 'lister-set-header)
       (let* ((my-heading '("My Heading"))
-	     (heading-fn (lambda () my-heading))
-	     (buf (delve-view-collection some-items heading-fn "testbuffer"))
-	     (header (with-current-buffer buf
-		       (or lister-local-header-marker
-			   (buffer-substring-no-properties (+ lister-local-header-marker lister-local-left-margin)
-							   (+ lister-local-header-marker
-							      (1- (get-text-property lister-local-header-marker 'nchars)))))))))
-      (expect (list header) :to-equal my-heading)
-      (kill-buffer buf))
-    (it "accepts a value of nil for the header fn"
-      (let ((buf (delve-view-collection some-items nil "testbuffer")))
-	(expect buf :not :to-be nil)
+	     (buf (delve-new-collection-buffer some-items my-heading "testbuffer")))
+	(expect 'lister-set-header :to-have-been-called-with buf my-heading)
+	(kill-buffer buf)))
+    (it "accepts a value of nil for the header"
+      (spy-on 'lister-set-header)
+      (let ((buf (delve-new-collection-buffer some-items nil "testbuffer")))	
+	(expect 'lister-set-header :to-have-been-called-with buf nil)
 	(kill-buffer buf)))
     (it "inserts all items of the collections"
       (let* ((n 200)
-	     (many-items (seq-map #'delve-test-fake-pages (number-sequence 1 n)))
-	     (buf (delve-view-collection many-items nil "testbuffer")))
+	     (many-items (seq-map #'delve-test-fake-page (number-sequence 1 n)))
+	     (buf (delve-new-collection-buffer many-items nil "testbuffer")))
 	(expect (length (lister-get-all-data buf)) :to-be n)
 	(kill-buffer buf))))
 

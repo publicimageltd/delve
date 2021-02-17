@@ -5,7 +5,7 @@
 ;; Author:  <joerg@joergvolbers.de>
 ;; Version: 0.5
 ;; Package-Requires: ((emacs "26.1") (org-roam "1.2.3") (lister "0.5"))
-;; Keywords: hypermedia, org-roam 
+;; Keywords: hypermedia, org-roam
 ;; URL: https://github.com/publicimageltd/delve
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -65,7 +65,7 @@ If `nil', do not add anything."
   :type 'boolean
   :group 'delve)
 
-(defcustom delve-buffer-name-format "delve: %.20s"
+(defcustom delve-buffer-name-format "delve: %.60s"
   "Prefix for delve buffer names.
 New delve buffer will be created using this format spec."
   :type 'boolean
@@ -156,6 +156,7 @@ Each action is simply an interactive function."
 (defvar delve-zettel-pp-scheme
   '((delve-pp-zettel:needs-update (:set-face org-warning))
     (delve-pp-zettel:mtime        (:set-face delve-mtime-face
+;;				   :width 10))
 				   :format "%10s"))
     (delve-pp-generic:type        (:add-face delve-subtype-face))
     (delve-pp-zettel:tags         (:format "(%s)"
@@ -184,7 +185,7 @@ Each action is simply an interactive function."
 	 (day-difference       (- current-time-in-days days))
 	 (current-year         (string-to-number (format-time-string "%y" (current-time))))
 	 (zettel-year          (string-to-number (format-time-string "%y" time)))
-	 (format-spec  (cond 
+	 (format-spec  (cond
 			 ((/= current-year zettel-year) "%b %d %y")
 			 ((> day-difference 1)   "%b %d")
 			 (t        "%R"))))
@@ -242,6 +243,7 @@ Each action is simply an interactive function."
 
 (defvar delve-tag-pp-scheme
   '(delve-pp-generic:type
+    ;; FIXME explicitly declare this face
     (delve-tag-tag   (:set-face org-level-1))
     (delve-tag-count (:format "(%d)")))
   "Pretty printing scheme for displaying tag objects.")
@@ -318,12 +320,12 @@ ERROR-OBJECT must be a delve object, not an emacs error object!"
 	       (delve-generic-search-constraint search)
 	       ;; args
 	       (delve-generic-search-args search)
-	       ;; with-clause 
+	       ;; with-clause
 	       (delve-generic-search-with-clause search))))
     (if (and res (delve-generic-search-postprocess search))
 	(funcall (delve-generic-search-postprocess search) res)
       res)))
-		
+
 (defun delve-operate-backlinks (zettel)
   "Get a list of all zettel linking to ZETTEL."
   (delve-db-query-backlinks zettel))
@@ -353,7 +355,7 @@ POSITION is either an integer or the symbol `:point'."
 	(lister-insert-sublist-below buf pos res)
       (message "Cannot expand item; no results"))))
 
-(defun delve-get-expansion-operators (item)
+(defun delve-expansion-operators-for (item)
   "Return a list of valid expansion operators to apply to ITEM."
   (pcase item
     ((pred delve-tag-p)
@@ -364,13 +366,14 @@ POSITION is either an integer or the symbol `:point'."
      (list #'delve-operate-search))
     (_ nil)))
 
-(defun delve-guess-expansion (item)
-  "Guess and return a useful expansion for ITEM."
-  (when-let* ((ops (delve-get-expansion-operators item)))
+;; TODO Add error handling
+(defun delve-get-expansion-for (item)
+  "Return a useful expansion for ITEM."
+  (when-let* ((ops (delve-expansion-operators-for item)))
       (apply #'delve-expand item ops)))
 
-(defun delve-guess-expansion-and-insert (buf pos)
-  "Guess useful expansion for item at POS and insert it.
+(defun delve-get-expansion-and-insert (buf pos)
+  "Insert expansions for item at POS.
 BUF must be a valid lister buffer populated with delve items. POS
 can be an integer or the symbol `:point'."
   (interactive (list (current-buffer) (point)))
@@ -379,13 +382,13 @@ can be an integer or the symbol `:point'."
 		     (:point (with-current-buffer buf (point)))
 		     (_ (error "Invalid value for POS: %s" pos))))
 	 (item     (lister-get-data buf position))
-	 (sublist  (delve-guess-expansion item)))
+	 (sublist  (delve-get-expansion-for item)))
     (if sublist
 	(lister-insert-sublist-below buf position sublist)
       (user-error "No expansion found"))))
-  
+
 ;; -----------------------------------------------------------
-;;; * Delve Mode: Interactive Functions, Mode Definition 
+;;; * Delve Mode: Interactive Functions, Mode Definition
 
 ;; Refresh or update the display in various ways
 
@@ -456,15 +459,15 @@ Also update all marked items, if any."
 	 (pos (point)))
     (if (lister-sublist-below-p buf pos)
 	(lister-remove-sublist-below buf pos)
-      (delve-guess-expansion-and-insert buf pos))))
+      (delve-get-expansion-and-insert buf pos))))
 
 (defun delve-new-from-sublist (buf pos &optional expand-zettel)
   "Create a new delve buffer using the current item(s) at point.
 If point is on a non-zettel item (e.g. tag search), open a new
-buffer with this item expanded. 
+buffer with this item expanded.
 
 If point is on a zettel, create a new buffer with all zettel
-items of this sublist it belongs to. 
+items of this sublist it belongs to.
 
 With prefix, if point is on a zettel, expand it in a new delve
 buffer."
@@ -563,24 +566,75 @@ be passed to this additional argument."
   "Major mode for browsing your org roam zettelkasten."
   ;; Setup lister first since it deletes all local vars:
   (lister-setup	(current-buffer) #'delve-mapper
-		nil                             ;; initial data
+		nil                                     ;; initial data
 		(concat "DELVE Version " delve-version) ;; header
 		nil ;; footer
 		nil ;; filter
 		t   ;; no major-mode
 		)
-  ;; Now add delve specific stuff:
+  ;; --- Now add delve specific stuff:
+  ;; do not mark searches:
   (setq-local lister-local-marking-predicate #'delve-zettel-p)
+  ;; pressing enter calls `delve-action:'
   (setq-local lister-local-action #'delve-action))
 
-;; * Some delve specific buffer handling 
+;; * Some delve specific buffer handling
 
-(defun delve-view-collection (items heading-fn buffer-name)
-  "View collection of ITEMS in a new buffer.
+(defun delve--pretty-main-buffer-header ()
+  "Return a pretty header for the main buffer."
+  (list
+   (delve-pp-line nil `(("DELVE"  (:set-face font-lock-comment-face))
+			(,delve-version (:set-face font-lock-comment-face))
+			("Main buffer" (:set-face org-document-title))))
+   (delve-pp-line nil '((" Use M-x delve-readme-org for further information."
+			 (:set-face font-lock-comment-face))))))
 
-HEADING-FN has to return a list item (a list of strings) which
-will be used as a heading for the list. As a special case, if
-HEADING-FN is nil, no heading will be displayed.
+(defun delve--pretty-collection-header (collection-name)
+  "Return a pretty header for a collection buffer"
+  (list
+   (delve-pp-line nil `(("DELVE Collection" (:set-face font-lock-comment-face))
+			(,collection-name (:set-face '((t (:foreground-color "green")))))))))
+
+(defun delve--modify-first-item (l modify-fn)
+  "Replace the first item in L with the result of MODIFY-FN.
+MODIFY-FN is called with the original first item as its
+argument."
+  (apply #'list (funcall modify-fn (car l)) (cdr l)))
+
+(defun delve-expand-in-new-buffer (delve-object)
+  "Returns a new buffer with an expansion of DELVE-OBJECT.
+If there are no expansions for this object, throw an error."
+  (let (heading-prefix object-name)
+    (unless (delve-expansion-operators-for delve-object)
+      (error "Unknown delve object '%s', cannot create a collection"))
+    (cl-etypecase delve-object
+      (delve-page          (setq heading-prefix "Links to and from"
+				 object-name    (delve-page-title delve-object)))
+      (delve-tag           (setq heading-prefix "Zettel tagged with"
+				 object-name    (delve-tag-tag delve-object)))
+      (delve-backlink      (setq heading-prefix "Links to"
+				 object-name   (delve-backlink-title delve-object)))
+      (delve-tolink        (setq heading-prefix "All links from"
+				 object-name   (delve-tolink-title delve-object)))
+      (delve-page-search   (setq heading-prefix "Search results"
+				 object-name   (delve-page-search-name delve-object))))
+    (let ((object-type  (let ((delve-force-ignore-all-the-icons t))
+			  (string-trim (delve-pp-generic:type delve-object))))
+	  (items (delve-get-expansion-for delve-object)))
+      (unless items
+	(user-error (concat "Expanding " (downcase heading-prefix) " '" object-name "' yields no result")))
+      (delve-new-collection-buffer items
+				   (delve--modify-first-item (delve-mapper delve-object)
+							     (apply-partially #'concat heading-prefix " "))
+				   (concat heading-prefix  " " object-type " '"  object-name "' ")))))
+
+(defun delve-new-collection-buffer (items heading buffer-name)
+  "List delve ITEMS in a new buffer.
+
+HEADING has to be a list item (a list of strings) which will be
+used as a heading for the list. As special case, if HEADING is
+nil, no heading will be displayed, and if HEADING is a string,
+implictly convert it into a valid item.
 
 The new buffer name will be created by using
 `delve-buffer-name-format' with the value of BUFFER-NAME "
@@ -589,7 +643,7 @@ The new buffer name will be created by using
       (delve-mode)
       (lister-set-list buf items)
       (setq-local delve-local-initial-list items)
-      (lister-set-header buf (and heading-fn (funcall heading-fn)))
+      (lister-set-header buf heading)
       (lister-goto buf :first)
       (lister-highlight-mode))
     buf))
@@ -639,7 +693,7 @@ Minimally, you should set the keywords `:name' (a string) and
 (defun delve (&optional item-or-list header-info)
   "Delve into the org roam zettelkasten with predefined searches.
 Alternatively, pass the list to be displayed using the optional
-argument ITEM-OR-LIST. 
+argument ITEM-OR-LIST.
 
 ITEM-OR-LIST can be a delve object or a list of delve objects. If
 ITEM-OR-LIST is a delve object, e.g. `delve-zettel', expand on it
@@ -652,29 +706,19 @@ Optionally use HEADER-INFO for the title."
   (unless org-roam-mode
     (with-temp-message "Turning on org roam mode..."
       (org-roam-mode)))
-  (let* ((items
-	  ;; TODO Refactor: This could become a variant of
-	  ;; "delve-guess-expansion"
-	  (or 
-	   (pcase item-or-list
-	     ((pred null)       (append (delve-create-searches delve-searches)
-					(delve-db-query-roam-tags)))
-	     ((pred listp)      item-or-list)
-	     ((pred delve-get-expansion-operators)  (delve-guess-expansion item-or-list))
-	     (_                 (user-error "Unknown optional argument type: %s" (type-of item-or-list))))
-	   (user-error "No items to be displayed")))
-	 ;;
-	 (heading   (or header-info
-			(if (null item-or-list)
-			    "Initial list"
-			  (if (not (listp item-or-list))
-			      (substring-no-properties
-			       (car (delve-mapper-for-completion item-or-list)))
-			    "New list"))))
-	 ;;
-	 (buf     (delve-view-collection items (concat heading
-						  (when delve-new-buffer-add-creation-time
-						    (format-time-string delve-new-buffer-add-creation-time))))))
+  (let* ((header-info (or header-info ""))
+	 (buf (cond
+	       ((null item-or-list)
+		(delve-new-collection-buffer (append (delve-create-searches delve-searches)
+						     (delve-db-query-roam-tags))
+					     (delve--pretty-main-buffer-header)
+					     "Main Buffer"))
+	       ((listp item-or-list)
+		(delve-new-collection-buffer item-or-list
+					     (delve--pretty-collection-header header-info)
+					     (concat "Collection " header-info)))
+	       (t
+		(delve-expand-in-new-buffer item-or-list)))))
     (switch-to-buffer buf)
     (when delve-auto-delete-roam-buffer
       (when-let* ((win (get-buffer-window org-roam-buffer)))
@@ -725,7 +769,7 @@ Optionally use HEADER-INFO for the title."
 							 delve-user-actions)
 		       'delve)))
     (if (bufferp choice)
-	(progn 
+	(progn
 	  (switch-to-buffer choice)
 	  (when delve-auto-delete-roam-buffer
 	    (when-let* ((win (get-buffer-window org-roam-buffer)))
