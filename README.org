@@ -43,6 +43,11 @@ Delve inherits and extends the functionality from the now deprecated
     - [[#evil][Evil]]
 - [[#keybindings][Keybindings]]
   - [[#delve][Delve]]
+    - [[#viewing-items-and-expanding-queries][Viewing items and expanding queries]]
+    - [[#navigation-and-ordering][Navigation and ordering]]
+    - [[#marking][Marking]]
+    - [[#remote-editing][Remote Editing]]
+    - [[#restoring--refreshing][Restoring / Refreshing]]
   - [[#delve-minor-mode][Delve minor mode]]
 - [[#changelog][Changelog]]
 - [[#bugs--problems--untested-stuff][Bugs / Problems / Untested Stuff]]
@@ -318,23 +323,53 @@ hurrying it. (Remember, that's a hobby horse!)
 On standard emacs, use the usual navigation keys. Additionally, the
 following keys apply:
 
-| Key   | Function                                                                                       |
-|-------+------------------------------------------------------------------------------------------------|
-| ENTER | Visit zettel at point                                                                          |
-| TAB   | Expand on zettel or search at point, or hide it                                                |
-| LEFT  | Insert list with all backlinks pointing to zettel at point                                     |
-| RIGHT | Insert list with all links in the zettel at point                                              |
-| m     | Mark the item at point, or unmark it.                                                          |
-| C-u m | Mark or unmark the whole sublist to which the item at point belongs.                           |
-| u     | Remove all marks in the buffer.                                                                |
-| *     | Mark the whole buffer.                                                                         |
-| +     | Add tag to the zettel at point, or to all marked items.                                        |
-| -     | Remove tag from the zettel at point, or from all marked items.                                 |
-| g     | Update (redisplay) all items in the buffer (might take some time).                             |
-| .     | Update (redisplay) the item at point, all marked items and all items which are not up-to-date. |
-| C-l   | Open a new delve buffer using (or expanding) the zettel at point.                              |
-| r     | Revert buffer to the original list, updating it.                                               |
-|-------+------------------------------------------------------------------------------------------------|
+*** Viewing items and expanding queries
+
+| Key     | Function                                             |
+|---------+------------------------------------------------------|
+| ENTER   | Visit zettel at point                                |
+| TAB     | Expand on zettel or search at point, or hide it      |
+| C-l     | Open a new delve buffer expanding the item at point. |
+| C-u C-l | Open a new delve buffer with the current sublist.    |
+|---------+------------------------------------------------------|
+
+*** Navigation and ordering
+
+| Key    | Function                                                   |
+|--------+------------------------------------------------------------|
+| LEFT   | Insert list with all backlinks pointing to zettel at point |
+| RIGHT  | Insert list with all links in the zettel at point          |
+| M-up   | Move the current item up.                                  |
+| M-down | Move the current item down.                                |
+|--------+------------------------------------------------------------|
+
+*** Marking
+
+| Key   | Function                                                             |
+|-------+----------------------------------------------------------------------|
+| m     | Mark the item at point, or unmark it.                                |
+| C-u m | Mark or unmark the whole sublist to which the item at point belongs. |
+| u     | Remove all marks in the buffer.                                      |
+| *     | Mark the whole buffer.                                               |
+|-------+----------------------------------------------------------------------|
+
+
+*** Remote Editing
+
+| Key | Function                                                       |
+|-----+----------------------------------------------------------------|
+| +   | Add tag to the zettel at point, or to all marked items.        |
+| -   | Remove tag from the zettel at point, or from all marked items. |
+|-----+----------------------------------------------------------------|
+
+*** Restoring / Refreshing
+
+| Key     | Function                                                                                       |
+|---------+------------------------------------------------------------------------------------------------|
+| g       | Update (redisplay) all items in the buffer (might take some time).                             |
+| .       | Update (redisplay) the item at point, all marked items and all items which are not up-to-date. |
+| r       | Revert buffer to the original list, updating it.                                               |
+|---------+------------------------------------------------------------------------------------------------|
 
 For integrating =delve= into =evil=, see the [[#evil][section above]].
 
@@ -379,6 +414,10 @@ deeper into the Zettelkasten.
 :END:
 
 ** Current pre-release version
+
+ + Behavior of =C-l= is now more consistent
+ + Added =M-up= and =M-down= to move items
+ + Marked items can now be moved into a separate buffer (=M-x delve-collect-into-new-buffer=)
 
 ** 0.5
 
