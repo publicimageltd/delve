@@ -71,7 +71,7 @@
 	       (:constructor delve-make-page)
 	       (:include delve-zettel)))
 
-(cl-defstruct (delve-tolink 
+(cl-defstruct (delve-tolink
 	       (:constructor delve-make-tolink)
 	       (:include delve-zettel)))
 
