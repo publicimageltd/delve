@@ -134,8 +134,9 @@ list of open delve buffers.
 
 ** Basic navigation
 
- + Use navigation keys to move between the items. Mark items using
-   'm' (see also keybindings below).
+ + Use navigation keys to move to an item. *Mark* items using 'm' (see
+   also keybindings below). *Move* items within the list using =M-up= and
+   =M-down=.
  + Use =<tab>= to either display the results of expanding the item at
    point, or to remove the results again. In other words, =<tab>= is a
    toggle.

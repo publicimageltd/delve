@@ -455,6 +455,61 @@ Also update all marked items, if any."
 	   (all-items (lister-walk-marked-items buf unmark-fn)))
       (delve all-items coll-name))))
 
+(defun delve-move-item-up (buf pos)
+  "Move item up."
+  (interactive (list (current-buffer) (point)))
+  (delve-move-item buf pos 'up))
+
+(defun delve-move-item-down (buf pos)
+  "Move item down."
+  (interactive (list (current-buffer) (point)))
+  (delve-move-item buf pos 'down))
+
+;; TODO This should be moved into lister as "lister-next-item-position"
+(defun delve-move--next-pos-or-end (buf pos direction)
+  "In BUF, return the next item in DIRECTION or the end of the list.
+Return the position of the next item above or below POS. If there
+is no such item, return the position of the first or last item
+instead. DIRECTION can be the symbol `up' or `down'."
+  (or (lister-looking-at-prop buf pos 'item
+			      (if (eq direction 'up) 'previous 'next))
+      (if (eq direction 'up)
+	  (lister-item-min buf)
+	(lister-item-max buf))))
+
+(defun delve-move-item (buf pos direction)
+  "Move item up or down.
+BUF is a lister buffer. POS is the position of the item to be
+moved. DIRECTION is either the symbol `up' or `down'."
+  (let* ((direction-word (if (eq direction 'up) "up" "down")))
+    (unless (lister-item-p buf pos)
+      (user-error (format "There is no item to move %s" direction-word)))
+    ;; we first check if there is an item above or below.
+    ;; later, we need to rescan this position since we have removed an
+    ;; item, which changes all item positions below this item.
+    (let* ((next-pos (lister-looking-at-prop buf pos
+					     'item
+					     (if (eq direction 'up) 'previous 'next)))
+	   (end-pos  (if (eq direction 'up) (lister-item-max buf) (lister-item-max buf))))
+      (when (or (null next-pos)
+		;; TODO Make lister-looking-at-prop return nil if it
+		;; has reached the end of the buffer.
+		;;
+		;; lister-looking-at-prop is buggy, it returns the
+		;; position if point is at eob:
+		(= next-pos end-pos))
+	(user-error (format "Item cannot be moved further %s" direction-word)))
+      (let* ((level-current (lister-level-at buf :point))
+	     (level-next    (lister-level-at buf next-pos)))
+	(when (not (= level-current level-next))
+	  (user-error "Items can only be moved within their indentation level."))
+	(let* ((item (lister-get-data buf pos))
+	       (mark-state (lister-get-mark-state buf pos)))
+	  (lister-remove buf pos)
+	  (setq next-pos (delve-move--next-pos-or-end buf pos direction))
+	  (lister-insert buf next-pos item level-current)
+	  (lister-mark-item buf next-pos mark-state))))))
+
 (defun delve-expand-insert-tolinks ()
   "Insert all tolinks from the item at point."
   (interactive)
@@ -554,15 +609,25 @@ be passed to this additional argument."
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map lister-mode-map)
     ;; <RETURN> is mapped to #'delve-action (via lister-local-action)
+    ;;
+    ;; expand items:
     (define-key map "\t"               #'delve-expand-toggle-sublist)
     (define-key map (kbd "C-l")        #'delve-expand-in-new-bufffer)
-    (define-key map "r"                #'delve-revert)
-    (define-key map "."                #'delve-refresh-tainted-items)
     (define-key map (kbd "<left>")     #'delve-expand-insert-backlinks)
     (define-key map (kbd "<right>")    #'delve-expand-insert-tolinks)
+    ;;
+    ;; restore buffer or items:
+    (define-key map "r"                #'delve-revert)
+    (define-key map (kbd "g")          #'delve-refresh-buffer)
+    (define-key map "."                #'delve-refresh-tainted-items)
+    ;;
+    ;; edit the list:
+    (define-key map (kbd "<M-up>")     #'delve-move-item-up)
+    (define-key map (kbd "<M-down>")   #'delve-move-item-down)
+    ;;
+    ;; remote editing of zettel pages:
     (define-key map (kbd "+")          #'delve-add-tag)
     (define-key map (kbd" -")          #'delve-remove-tag)
-    (define-key map (kbd "g")          #'delve-refresh-buffer)
     (define-key map (kbd "X")          #'delve-kill-buffer)
     map)
   "Key map for `delve-mode'.")
