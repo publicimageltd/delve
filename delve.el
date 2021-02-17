@@ -65,8 +65,9 @@ If `nil', do not add anything."
   :type 'boolean
   :group 'delve)
 
-(defcustom delve-buffer-name "delve:"
-  "Prefix for delve buffer names."
+(defcustom delve-buffer-name-format "delve: %.20s"
+  "Prefix for delve buffer names.
+New delve buffer will be created using this format spec."
   :type 'boolean
   :group 'delve)
 
@@ -353,7 +354,7 @@ POSITION is either an integer or the symbol `:point'."
       (message "Cannot expand item; no results"))))
 
 (defun delve-get-expansion-operators (item)
-  "Return a list of expansion operators to apply to ITEM."
+  "Return a list of valid expansion operators to apply to ITEM."
   (pcase item
     ((pred delve-tag-p)
      (list #'delve-operate-taglist))
@@ -574,17 +575,21 @@ be passed to this additional argument."
 
 ;; * Some delve specific buffer handling 
 
-(defun delve-new-buffer (items heading)
-  "Create a new delve buffer displaying ITEMS.
-HEADING will be used to construct the list title and the buffer name."
-  (let* ((buffer-title (concat delve-buffer-name " " (string-trim heading)))
-	 (list-title   (concat "DELVE " delve-version " - " (string-trim heading)))
-	 (buf          (generate-new-buffer buffer-title)))
+(defun delve-view-collection (items heading-fn buffer-name)
+  "View collection of ITEMS in a new buffer.
+
+HEADING-FN has to return a list item (a list of strings) which
+will be used as a heading for the list. As a special case, if
+HEADING-FN is nil, no heading will be displayed.
+
+The new buffer name will be created by using
+`delve-buffer-name-format' with the value of BUFFER-NAME "
+  (let* ((buf (generate-new-buffer (format delve-buffer-name-format buffer-name))))
     (with-current-buffer buf
       (delve-mode)
       (lister-set-list buf items)
       (setq-local delve-local-initial-list items)
-      (lister-set-header buf list-title)
+      (lister-set-header buf (and heading-fn (funcall heading-fn)))
       (lister-goto buf :first)
       (lister-highlight-mode))
     buf))
@@ -638,7 +643,7 @@ argument ITEM-OR-LIST.
 
 ITEM-OR-LIST can be a delve object or a list of delve objects. If
 ITEM-OR-LIST is a delve object, e.g. `delve-zettel', expand on it
-in the new delve buffer. If expansion yielded an empty list,
+in the new delve buffer. If this expansion yields an empty list,
 throw an error. If ITEM-OR-LIST is list, treat it as a list of
 delve objects and insert them as they are.
 
@@ -667,7 +672,7 @@ Optionally use HEADER-INFO for the title."
 			       (car (delve-mapper-for-completion item-or-list)))
 			    "New list"))))
 	 ;;
-	 (buf     (delve-new-buffer items (concat heading
+	 (buf     (delve-view-collection items (concat heading
 						  (when delve-new-buffer-add-creation-time
 						    (format-time-string delve-new-buffer-add-creation-time))))))
     (switch-to-buffer buf)
