@@ -65,7 +65,7 @@ If `nil', do not add anything."
   :type 'boolean
   :group 'delve)
 
-(defcustom delve-buffer-name-format "delve: %.60s"
+(defcustom delve-buffer-name-format "delve: %.80s"
   "Prefix for delve buffer names.
 New delve buffer will be created using this format spec."
   :type 'boolean
