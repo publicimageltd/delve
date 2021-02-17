@@ -49,6 +49,9 @@
   "Used internally: Bind this temporally to never use any icons
   when representing an item.")
 
+(defvar delve-version "0.5"
+  "Current version of delve.")
+
 ;; * Customizable Global variables
 
 (defcustom delve-new-buffer-add-creation-time " (%ER)"
@@ -74,11 +77,6 @@ turning this option on will use icons when displaying the items
 to select from. This is only useful if you do use a completion
 interface like ivy, since it is hard to type an icon."
   :type 'boolean
-  :group 'delve)
-
-(defcustom delve-version-string "0.3"
-  "Current version of delve."
-  :type 'string
   :group 'delve)
 
 (defcustom delve-user-actions
@@ -565,7 +563,7 @@ be passed to this additional argument."
   ;; Setup lister first since it deletes all local vars:
   (lister-setup	(current-buffer) #'delve-mapper
 		nil                             ;; initial data
-		(concat "DELVE Version " delve-version-string) ;; header
+		(concat "DELVE Version " delve-version) ;; header
 		nil ;; footer
 		nil ;; filter
 		t   ;; no major-mode
@@ -580,7 +578,7 @@ be passed to this additional argument."
   "Create a new delve buffer displaying ITEMS.
 HEADING will be used to construct the list title and the buffer name."
   (let* ((buffer-title (concat delve-buffer-name " " (string-trim heading)))
-	 (list-title   (concat "DELVE " delve-version-string " - " (string-trim heading)))
+	 (list-title   (concat "DELVE " delve-version " - " (string-trim heading)))
 	 (buf          (generate-new-buffer buffer-title)))
     (with-current-buffer buf
       (delve-mode)
