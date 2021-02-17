@@ -33,7 +33,7 @@ Delve inherits and extends the functionality from the now deprecated
   - [[#basic-navigation][Basic navigation]]
   - [[#remote-editing][Remote editing]]
     - [[#typical-workflow-changing-tags][Typical workflow: Changing tags]]
-  - [[#open-a-sublist-in-a-new-delve-buffer][Open a sublist in a new delve buffer]]
+  - [[#expand-an-item-in-a-new-delve-buffer][Expand an item in a new delve buffer]]
   - [[#further-useful-commands][Further useful commands]]
 - [[#installation][Installation]]
   - [[#basic-installation][Basic Installation]]
@@ -120,11 +120,12 @@ Note that this is still a work in progress. See [[#bugs--problems--untested-stuf
 * Important interactive functions
 ** Main entry point: delve-open-or-select
 
-Bind =delve-open-or-select= to any key. If you call that function, a list of
-predefined searches (which you can customize, of course) is presented,
-along with a list of tag searches for each ROAM_TAG in your database.
-Move to an item and press <TAB>. A list of pages matching the search
-will be inserted below the item.
+Bind =delve-open-or-select= to any key. If you call that function, a
+list of predefined searches (which you can customize, of course) is
+presented, along with a list of tag searches for each ROAM_TAG in your
+database. Move to an item and press <TAB>. A list of pages matching
+the search will be inserted below the item (this is called 'expansion'
+in this documentation).
 
 Press =q= to bury the delve buffer.
 
@@ -144,8 +145,8 @@ list of open delve buffers.
    can also mark items and then remote edit all marked pages in one
    rush.
  + Use =q= to bury the buffer.
- + Use =C-l= to create a sublist in a new buffer, depending on what item
-   you are on (see below for more explanation).
+ + Use =C-l= to expand an item in a new buffer, instead of inserting the
+   expansion below point (see below for more explanation).
 
 ** Remote editing
 
@@ -186,20 +187,16 @@ all pages tagged '/Readme/' to '/Unread/', you can:
  4. Press =-= to remove the old tag '/Readme/'.
  5. Press =.= to update the display of the items.
 
-** Open a sublist in a new delve buffer
+** Expand an item in a new delve buffer
 
-If you are on a searchable item (e.g. a predefined search or a tag),
-press =C-l= to create a new delve buffer which expands on just this
-item.
-
-If point is on a zettel page, create a new delve buffer with all the
-list items belonging to this list on which the cursor is positioned
-on. This effectively moves the current sublist you are in into a new
-buffer, cutting off everything else. 
+If you are on a searchable item (e.g. a predefined search or a tag) or
+on a zettel page, pressing =C-l= opens a new delve buffer with the
+results of expanding that item. That is, you will see the results in a
+new buffer instead of cluttering your current list.
 
 If point is on a zettel page and you press =C-u C-l=, that is, if you
-call =C-l= with a prefix arg, then the current zettel will be expanded
-in a new buffer. This also works with searches.
+call =C-l= with a prefix arg, then the current sublist this zettel
+belongs to will be inserted in a new buffer.
 
 ** Further useful commands
 

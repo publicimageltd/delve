@@ -147,7 +147,6 @@ Each action is simply an interactive function."
 (defvar-local delve-local-initial-list nil
   "Buffer list when first creating this delve buffer.")
 
-
 ;; -----------------------------------------------------------
 ;; * Item Mapper for the List Display (lister)
 
@@ -461,26 +460,19 @@ Also update all marked items, if any."
 	(lister-remove-sublist-below buf pos)
       (delve-get-expansion-and-insert buf pos))))
 
-(defun delve-new-from-sublist (buf pos &optional expand-zettel)
-  "Create a new delve buffer using the current item(s) at point.
-If point is on a non-zettel item (e.g. tag search), open a new
-buffer with this item expanded.
-
-If point is on a zettel, create a new buffer with all zettel
-items of this sublist it belongs to.
-
-With prefix, if point is on a zettel, expand it in a new delve
-buffer."
+(defun delve-expand-in-new-bufffer (buf pos &optional expand-parent)
+  "Expand the item at point in a new buffer (instead of inserting it).
+With prefix arg, open the current subtree in a new buffer."
   (interactive (list (current-buffer) (point) current-prefix-arg))
   (unless lister-local-marker-list
     (user-error "There are no items in this buffer"))
   (let* ((item-at-point (lister-get-data buf pos)))
-    (if (delve-zettel-p item-at-point)
-	(if expand-zettel
-	    (delve item-at-point)
+    (if expand-parent
+	(if (not (delve-zettel-p item-at-point))
+	    (user-error "Only zettel sublists can be re-opened in a new buffer")	 
 	  (pcase-let* ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
-	    ;; TODO Throw an error if there actually is no sublist!
-	    (delve (lister-get-all-data-tree buf beg end) "New sublist")))
+	    (let* ((items (lister-get-all-data-tree buf beg end)))
+	      (delve items))))
       (delve item-at-point))))
 
 (defun delve-visit-zettel ()
@@ -549,7 +541,7 @@ be passed to this additional argument."
     (set-keymap-parent map lister-mode-map)
     ;; <RETURN> is mapped to #'delve-action (via lister-local-action)
     (define-key map "\t"               #'delve-expand-toggle-sublist)
-    (define-key map (kbd "C-l")        #'delve-new-from-sublist)
+    (define-key map (kbd "C-l")        #'delve-expand-in-new-bufffer)
     (define-key map "r"                #'delve-revert)
     (define-key map "."                #'delve-refresh-tainted-items)
     (define-key map (kbd "<left>")     #'delve-expand-insert-backlinks)
@@ -586,7 +578,7 @@ be passed to this additional argument."
    (delve-pp-line nil `(("DELVE"  (:set-face font-lock-comment-face))
 			(,delve-version (:set-face font-lock-comment-face))
 			("Main buffer" (:set-face org-document-title))))
-   (delve-pp-line nil '((" Use M-x delve-readme-org for further information."
+   (delve-pp-line nil '((" This is the main entry page. Use <TAB> to expand an item, C-l expands in a new buffer."
 			 (:set-face font-lock-comment-face))))))
 
 (defun delve--pretty-collection-header (collection-name)
@@ -601,7 +593,7 @@ MODIFY-FN is called with the original first item as its
 argument."
   (apply #'list (funcall modify-fn (car l)) (cdr l)))
 
-(defun delve-expand-in-new-buffer (delve-object)
+(defun delve-new-buffer-with-expansion (delve-object)
   "Returns a new buffer with an expansion of DELVE-OBJECT.
 If there are no expansions for this object, throw an error."
   (let (heading-prefix object-name)
@@ -718,7 +710,7 @@ Optionally use HEADER-INFO for the title."
 					     (delve--pretty-collection-header header-info)
 					     (concat "Collection " header-info)))
 	       (t
-		(delve-expand-in-new-buffer item-or-list)))))
+		(delve-new-buffer-with-expansion item-or-list)))))
     (switch-to-buffer buf)
     (when delve-auto-delete-roam-buffer
       (when-let* ((win (get-buffer-window org-roam-buffer)))
