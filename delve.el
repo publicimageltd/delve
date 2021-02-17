@@ -606,7 +606,7 @@ argument."
 If there are no expansions for this object, throw an error."
   (let (heading-prefix object-name)
     (unless (delve-expansion-operators-for delve-object)
-      (error "Unknown delve object '%s', cannot create a collection"))
+      (error "Unknown delve object, cannot create a collection"))
     (cl-etypecase delve-object
       (delve-page          (setq heading-prefix "Links to and from"
 				 object-name    (delve-page-title delve-object)))
