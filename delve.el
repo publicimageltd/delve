@@ -441,6 +441,20 @@ Also update all marked items, if any."
     (lister-set-list buf delve-local-initial-list)
     (lister-goto buf :first)))
 
+(defun delve-collect-into-new-buffer (buf)
+  "Collect all marked items into a new buffer."
+  (interactive (list (current-buffer)))
+  (let* ((marked-items (lister-all-marked-items buf)))
+    (unless marked-items
+      (user-error "There are no marked items to collect"))
+    (let* ((coll-name (read-string "Enter a name for the new collection of items: "))
+	   (unmark-fn (lambda (data)
+			(lister-mark-item buf :point nil)
+			;; return to collect:
+			data))
+	   (all-items (lister-walk-marked-items buf unmark-fn)))
+      (delve all-items coll-name))))
+
 (defun delve-expand-insert-tolinks ()
   "Insert all tolinks from the item at point."
   (interactive)
