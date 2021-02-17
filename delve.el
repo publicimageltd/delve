@@ -610,14 +610,16 @@ If there are no expansions for this object, throw an error."
 				 object-name   (delve-tolink-title delve-object)))
       (delve-page-search   (setq heading-prefix "Search results"
 				 object-name   (delve-page-search-name delve-object))))
-    (let ((object-type  (let ((delve-force-ignore-all-the-icons t))
-			  (string-trim (delve-pp-generic:type delve-object))))
+    (let ((object-type     (let ((delve-force-ignore-all-the-icons t))
+			     (string-trim (delve-pp-generic:type delve-object))))
+	  (object-mapped   (let ((delve-pp-inhibit-faces t))
+			     (delve-mapper delve-object)))
 	  (items (delve-get-expansion-for delve-object)))
       (unless items
 	(user-error (concat "Expanding " (downcase heading-prefix) " '" object-name "' yields no result")))
       (delve-new-collection-buffer items
-				   (delve--modify-first-item (delve-mapper delve-object)
-							     (apply-partially #'concat heading-prefix " "))
+				   (delve--modify-first-item  object-mapped
+							      (apply-partially #'concat heading-prefix " "))
 				   (concat heading-prefix  " " object-type " '"  object-name "' ")))))
 
 (defun delve-new-collection-buffer (items heading buffer-name)
