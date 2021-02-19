@@ -30,7 +30,7 @@
 
 ;;; Code:
 
-(require 'buttercup)
+;;(require 'buttercup)
 (require 'org)
 (require 'org-roam)
 (require 'org-id)
@@ -106,8 +106,6 @@ This requires `delve-test-setup-db' to have been called."
       (rename-file org-roam-directory new-dir t)))
   (setq delve-test-environment nil))
 
-;; SQL statements are long, so give them some space:
-(setq buttercup-stack-frame-style 'pretty)
 
 (provide 'delve-test-db-utils)
 ;;; delve-test-db-utils.el ends here

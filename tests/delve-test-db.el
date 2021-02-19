@@ -42,8 +42,12 @@
 
 ;;; Code:
 
+(require 'buttercup)
 (require 'delve-test-db-utils)
 (require 'delve-db)
+
+;; SQL statements are long, so give them some space:
+(setq buttercup-stack-frame-style 'pretty)
 
 (defvar no-tests nil
   "Set this to t if you just want to create the database.")
