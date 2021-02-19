@@ -554,13 +554,12 @@ With prefix arg, open the current subtree in a new buffer."
 
 ;;; Remote editing: add / remove tags
 
-(defun delve-remote-edit (buf edit-fn choice)
+(defun delve-remote-edit (buf edit-fn arg)
   "Pass CHOICE to EDIT-FN for all marked items, or the item at point.
 BUF must be a delve buffer.
 
 EDIT-FN has to accept two arguments: an org roam file, to which
-the editing will apply, and an additional argument. CHOICE will
-be passed to this additional argument."
+the editing will apply, and an additional argument ARG."
   (let* ((marked-items       (lister-all-marked-items buf))
 	 (zettel-at-point    (and (lister-item-p buf :point)
 				  (delve-zettel-p (lister-get-data buf :point))))
@@ -572,7 +571,7 @@ be passed to this additional argument."
       (lister-mark-item buf :point t))
     ;;
     (cl-labels ((add-it (data)
-			(funcall edit-fn (delve-zettel-file data) choice)
+			(funcall edit-fn (delve-zettel-file data) arg)
 			(setf (delve-zettel-needs-update data) t)
 			(delve-redraw-item buf)))
       (setq n (length (lister-walk-marked-items buf #'add-it)))
