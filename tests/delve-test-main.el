@@ -29,7 +29,7 @@
 (require 'delve)
 (require 'seq)
 
-;; Utilities
+;; * Utilities
 
 (defmacro with-buf-bound-by  (sym buf-fn &rest body)
   (declare (indent 2))
@@ -37,6 +37,19 @@
      (with-current-buffer ,sym
        ,@body)
      (kill-buffer ,sym)))
+
+(defun delve-test--string-properties (s)
+  "Return a list of all properties of S, with char indices.
+The list is simlar to the output of `prin1', with the string
+itself ommitted."
+  (let* ((s-prin1 (format "%S" s)))
+    (if (string-prefix-p "#(" s-prin1)
+	(cdr (read (substring s-prin1 1)))
+      nil)))
+
+(defun delve-test--merged-props (s)
+  "Return a list of all properties of S, disregarding indices."
+  (seq-uniq (cl-remove-if-not #'listp (delve-test--string-properties s))))
 
 (defun delve-test-fake-page (&optional title)
   "Return a fake page object with no significant data."
@@ -48,36 +61,7 @@
 		     :backlinks 0
 		     :tolinks 0))
 
-;; TODO Replace this one with the ones from ./test-delve-pp.el
-(defmacro delve-test--with-temp-buffer (content &rest body)
-  "Evaluate BODY in a temporary buffer with CONTENT."
-  (declare (debug t)
-           (indent 1))
-  `(with-temp-buffer
-     (insert ,content)
-     ,@body))
-
-;; TODO Replace this one with the ones from ./test-delve-pp.el
-(defun delve-test--face-covers-range-p (start end face)
-  "Return true if every face from START to END has FACE."
-  (let ((all-faces (mapcar (lambda (i) (get-text-property i 'face)) (number-sequence start end))))
-    (seq-every-p (lambda (target-face)
-                   (or (eq face target-face)
-                       (when (consp target-face)
-                         (seq-contains-p target-face face))))
-                 all-faces)))
-
-;; this is taken from
-;; https://github.com/clojure-emacs/cider/blob/master/test/cider-font-lock-tests.el
-(defun delve-test-face-exists-in-range-p (start end face)
-  "Return true if FACE exists between START to END."
-  (let ((all-faces (mapcar (lambda (i) (get-text-property i 'face)) (number-sequence start end))))
-    ;; cl-some returns t now but will change to return a truthy value in the future
-    (seq-some (lambda (target-face)
-                (or (eq face target-face)
-                    (when (consp target-face)
-                      (seq-contains-p target-face face))))
-              all-faces)))
+;; * The Specs
 
 (describe "Searching"
   (describe "page search operator"
@@ -156,11 +140,9 @@
 	(setq s (delve-represent-tags (delve-make-zettel
 				       :tags tags))))
       (it "uses delve-tags-face"
-	(delve-test--with-temp-buffer s
-	  (expect (delve-test-face-exists-in-range-p
-		   (point-min) (point-max)
-		   'delve-tags-face)
-		  :to-be-truthy)))
+	(expect (delve-test--merged-props s)
+		:to-equal
+		'((delve-tags-face))))
       (it "returns nil when no tags are given"
 	(expect (delve-represent-tags (delve-make-zettel))
 		:to-be nil)))))
