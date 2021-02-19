@@ -91,6 +91,15 @@ This requires `delve-test-setup-db' to have been called."
     (org-roam-db-build-cache)
     (sleep-for 2)))
 
+(defun delve-test-move-temp-db (target)
+  "Move the DB from the test environment to directory TARGET."
+  (unless delve-test-environment 
+    (error "Nothing to copy, no test environment"))
+  (with-temp-message (format "Moving temporary database to %s" target)
+    (when (file-exists-p target)
+      (delete-directory target t))
+    (rename-file org-roam-directory target t)))
+
 (defun delve-test-teardown-db (&optional dont-move)
   "Delete the temporary org roam db."
   (unless delve-test-environment
@@ -99,11 +108,7 @@ This requires `delve-test-setup-db' to have been called."
   (unless dont-move
     (let ((new-dir (expand-file-name "note-files-last-test-run"
 				     temporary-file-directory)))
-      (message "Moving database %s to %s...."
-	       org-roam-directory new-dir)
-      (when (file-exists-p new-dir)
-	(delete-directory new-dir t))
-      (rename-file org-roam-directory new-dir t)))
+      (delve-test-move-temp-db new-dir)))
   (setq delve-test-environment nil))
 
 
