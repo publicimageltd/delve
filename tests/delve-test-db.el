@@ -42,7 +42,7 @@
 
 ;;; Code:
 
-(require 'delve-test-utils)
+(require 'delve-test-db-utils)
 (require 'delve-db)
 
 (defvar no-tests nil

@@ -1,4 +1,4 @@
-;;; delve-test-utils.el ---  Helpers for testing delve -*- lexical-binding: t; -*-
+;;; delve-test-db-utils.el ---  Helpers for testing delve -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021  
 
@@ -109,5 +109,5 @@ This requires `delve-test-setup-db' to have been called."
 ;; SQL statements are long, so give them some space:
 (setq buttercup-stack-frame-style 'pretty)
 
-(provide 'delve-test-utils)
-;;; delve-test-utils.el ends here
+(provide 'delve-test-db-utils)
+;;; delve-test-db-utils.el ends here
