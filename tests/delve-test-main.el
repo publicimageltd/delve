@@ -31,6 +31,13 @@
 
 ;; Utilities
 
+(defmacro with-buf-bound-by  (sym buf-fn &rest body)
+  (declare (indent 2))
+  `(let* ((,sym ,buf-fn))
+     (with-current-buffer ,sym
+       ,@body)
+     (kill-buffer ,sym)))
+
 (defun delve-test-fake-page (&optional title)
   "Return a fake page object with no significant data."
   (delve-make-page  :title  (if title (format "%s" title) "Fake-Title")
@@ -168,28 +175,26 @@
 				'("Zettel1" "Zettel2" "Zettel3"))))
 
     (it "returns a delve buffer if called with correct arguments"
-      (let ((buf (delve-new-collection-buffer some-items (list "test") "testbuffer")))
+      (with-buf-bound-by buf (delve-new-collection-buffer some-items (list "test") "testbuffer")
 	(expect (type-of buf) :to-be 'buffer)
-	(expect (with-current-buffer buf major-mode)
-		:to-be 'delve-mode)
-	(kill-buffer buf)))
+	(expect major-mode    :to-be 'delve-mode)))
+
     (it "sets the heading list as the list header"
       (spy-on 'lister-set-header)
-      (let* ((my-heading '("My Heading"))
-	     (buf (delve-new-collection-buffer some-items my-heading "testbuffer")))
-	(expect 'lister-set-header :to-have-been-called-with buf my-heading)
-	(kill-buffer buf)))
+      (let* ((my-heading '("My Heading")))
+	(with-buf-bound-by buf (delve-new-collection-buffer some-items my-heading "testbuffer")
+	  (expect 'lister-set-header :to-have-been-called-with buf my-heading))))
+
     (it "accepts a value of nil for the header"
       (spy-on 'lister-set-header)
-      (let ((buf (delve-new-collection-buffer some-items nil "testbuffer")))	
-	(expect 'lister-set-header :to-have-been-called-with buf nil)
-	(kill-buffer buf)))
+      (with-buf-bound-by buf (delve-new-collection-buffer some-items nil "testbuffer")
+	(expect 'lister-set-header :to-have-been-called-with buf nil)))
+
     (it "inserts all items of the collections"
       (let* ((n 200)
-	     (many-items (seq-map #'delve-test-fake-page (number-sequence 1 n)))
-	     (buf (delve-new-collection-buffer many-items nil "testbuffer")))
-	(expect (length (lister-get-all-data buf)) :to-be n)
-	(kill-buffer buf))))
+	     (many-items (seq-map #'delve-test-fake-page (number-sequence 1 n))))
+	(with-buf-bound-by buf (delve-new-collection-buffer many-items nil "testbuffer")
+	  (expect (length (lister-get-all-data buf)) :to-be n))))))
 
     
 (provide 'delve-test)
