@@ -722,6 +722,15 @@ The new buffer name will be created by using
       (lister-highlight-mode))
     buf))
 
+(defun delve-add-to-buffer (target-buffer item-or-list)
+  "Add delve ITEM-OR-LIST to an existing delve TARGET-BUFFER."
+  (unless (and (buffer-live-p target-buffer)
+	       (delve-buffer-p target-buffer))
+    (user-error "Target buffer does not exist"))
+  (if (listp item-or-list)
+      (lister-add-sequence target-buffer item-or-list)
+    (lister-add target-buffer item-or-list)))
+
 (defun delve-buffer-p (buf)
   "Test if BUF is a delve buffer."
   (with-current-buffer buf

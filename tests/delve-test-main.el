@@ -114,6 +114,8 @@ itself ommitted."
 		  :to-equal
 		  (post-process-fn results)))))))
 
+;; *  UI
+
 (describe "UI"
   (describe "the mapper"
     (it "recognizes zettel objects"
@@ -136,12 +138,12 @@ itself ommitted."
 ;; * Collections
 
 (describe "Collections"
-  (describe "delve-new-collection-buffer"
-    :var (some-items)
-    (before-all
-      (setq some-items (seq-map #'delve-test-fake-page
-				'("Zettel1" "Zettel2" "Zettel3"))))
+  :var (some-items)
+  (before-all
+    (setq some-items (seq-map #'delve-test-fake-page
+			      '("Zettel1" "Zettel2" "Zettel3"))))
 
+  (describe "delve-new-collection-buffer"
     (it "returns a delve buffer if called with correct arguments"
       (with-buf-bound-by buf (delve-new-collection-buffer some-items (list "test") "testbuffer")
 	(expect (type-of buf) :to-be 'buffer)
@@ -162,7 +164,34 @@ itself ommitted."
       (let* ((n 200)
 	     (many-items (seq-map #'delve-test-fake-page (number-sequence 1 n))))
 	(with-buf-bound-by buf (delve-new-collection-buffer many-items nil "testbuffer")
-	  (expect (length (lister-get-all-data buf)) :to-be n))))))
+	  (expect (length (lister-get-all-data buf)) :to-be n)))))
+
+  (describe "delve-add-to-buffer"
+    (it "adds an item to the end of an existing collection"
+      (let* ((new-item (delve-test-fake-page "New Item")))
+	(with-buf-bound-by buf (delve-new-collection-buffer some-items nil "collection")
+	  (delve-add-to-buffer buf new-item)
+	  (expect (lister-get-data buf :last)
+		  :to-equal new-item))))
+    (it "adds a list of items to an existing collection"
+      (let* ((new-items (seq-map #'delve-test-fake-page (number-sequence 1 10))))
+	(with-buf-bound-by buf (delve-new-collection-buffer some-items nil "collection")
+	  (delve-add-to-buffer buf new-items)
+	  (expect (lister-get-all-data buf)
+		  :to-equal (append some-items new-items)))))
+    (it "adds an item to an empty collection"
+      (let* ((new-item (delve-test-fake-page "New Item")))
+	(with-buf-bound-by buf (delve-new-collection-buffer nil nil "collection")
+	  (delve-add-to-buffer buf new-item)
+	  (expect (lister-get-all-data buf)
+		  :to-equal (list new-item)))))
+    (it "throws an error if target buffer does not exist"
+      (let* ((new-item (delve-test-fake-page "New Item"))
+	     (buf      (delve-new-collection-buffer nil nil "collection")))
+	(kill-buffer buf)
+	(expect  (delve-add-to-buffer buf new-item)
+		 :to-throw)))))
+		       
 
     
 (provide 'delve-test)
