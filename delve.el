@@ -88,7 +88,7 @@ Each action is simply an interactive function."
   :group 'delve)
 
 (defcustom delve-searches
-  `((:name "Orphaned Pages"
+  `((:name "Pages without tags"
 	   :constraint [:where tags:tags :is :null])
     (:name "10 Last Modified"
 	   :postprocess delve-db-query-last-10-modified)
