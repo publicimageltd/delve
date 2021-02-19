@@ -63,7 +63,27 @@ itself ommitted."
 
 ;; * The Specs
 
-(describe "Searching"
+(describe "Expanding"
+
+  (describe "delve-expand"
+    (it "can be called with no operator"
+      (expect (delve-expand "ITEM")
+	      :to-be nil))
+    (it "accepts operators returning lists"
+      (expect (delve-expand "ITEM" #'list #'list)
+	      :to-equal
+	      '("ITEM" "ITEM")))
+    (it "accepts operators returning single values"
+      (expect (delve-expand "ITEM" #'identity #'identity)
+	      :to-equal
+	      '("ITEM" "ITEM")))
+    (it "returns results in the order of the operator functions"
+      (expect (delve-expand "ITEM"
+			    (apply-partially #'concat "a-")
+			    (apply-partially #'concat "b-"))
+	      :to-equal
+	      '("a-ITEM" "b-ITEM"))))
+  
   (describe "page search operator"
     (it "passes the search parameters correctly to the main SQL zettel query"
       (spy-on 'delve-db-query-all-zettel)
@@ -82,7 +102,8 @@ itself ommitted."
 		constraints
 		args
 		with-clause)))
-    (it "can postprocess the query results"
+    
+    (it "postprocesses the query results"
       (let ((results '("ITEM1" "ITEM2")))
 	(spy-on 'delve-db-query-all-zettel :and-return-value results)
 	(cl-labels ((post-process-fn (items)
@@ -92,26 +113,6 @@ itself ommitted."
 		    :postprocess #'post-process-fn))
 		  :to-equal
 		  (post-process-fn results)))))))
-
-(describe "Expansion"  
-  (describe "delve-expand"
-    (it "can be called with no operator"
-      (expect (delve-expand "ITEM")
-	      :to-be nil))
-    (it "accepts operators returning lists"
-      (expect (delve-expand "ITEM" #'list #'list)
-	      :to-equal
-	      '("ITEM" "ITEM")))
-    (it "accepts operators returning single values"
-      (expect (delve-expand "ITEM" #'identity #'identity)
-	      :to-equal
-	      '("ITEM" "ITEM")))
-    (it "returns results in the order of the operator functions"
-      (expect (delve-expand "ITEM"
-			    (apply-partially #'concat "a-")
-			    (apply-partially #'concat "b-"))
-	      :to-equal
-	      '("a-ITEM" "b-ITEM")))))
 
 (describe "UI"
   (describe "the mapper"
