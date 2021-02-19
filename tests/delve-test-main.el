@@ -130,22 +130,7 @@ itself ommitted."
     (it "recognizes error objects"
       (spy-on 'delve-represent-error)
       (delve-mapper (delve-make-error))
-      (expect 'delve-represent-error :to-have-been-called)))
-
-  (xdescribe "representing a zettel object"
-    (describe "delve-represent-tags"
-      :var (s tags)
-      (before-all
-	(setq tags '("tag1" "tag2"))
-	(setq s (delve-represent-tags (delve-make-zettel
-				       :tags tags))))
-      (it "uses delve-tags-face"
-	(expect (delve-test--merged-props s)
-		:to-equal
-		'((delve-tags-face))))
-      (it "returns nil when no tags are given"
-	(expect (delve-represent-tags (delve-make-zettel))
-		:to-be nil)))))
+      (expect 'delve-represent-error :to-have-been-called))))
 
 ;; * Collections
 
