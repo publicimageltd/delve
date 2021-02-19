@@ -50,6 +50,7 @@ Delve inherits and extends the functionality from the now deprecated
     - [[#restoring--refreshing][Restoring / Refreshing]]
   - [[#delve-minor-mode][Delve minor mode]]
 - [[#changelog][Changelog]]
+- [[#testing][Testing]]
 - [[#bugs--problems--untested-stuff][Bugs / Problems / Untested Stuff]]
 :END:
 
@@ -443,6 +444,17 @@ deeper into the Zettelkasten.
  + Include ID links.
 
 ** 0.3 Initial release.
+
+* Testing
+
+If you find bugs, first test if you can replicate it in a clean
+environment. This is easy if you install [[https://github.com/doublep/eldev][Eldev]]. You can open =Delve= in
+an isolated environment with a test database (in =/tmp/=). Just call the
+script =./interactive-test.sh= from within the directory where the =Eldev=
+file is located.
+
+Delve uses =Eldev= because one is an anagram of the other.
+
 
 * Bugs / Problems / Untested Stuff
 
