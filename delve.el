@@ -485,7 +485,11 @@ switch to the target buffer."
       (setq new-buf buf-or-name))
     (if (not keep-visible)
 	(switch-to-buffer new-buf)
-      (setq msg (concat msg " to new buffer " (buffer-name new-buf))))
+      (setq msg (concat msg
+			" to"
+			(when (stringp buf-or-name)
+			  " new")
+			" buffer " (buffer-name new-buf))))
     (message msg)))
 
 (defun delve-move-item-up (buf pos)
