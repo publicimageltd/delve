@@ -129,6 +129,8 @@ Note that this is still a work in progress. See [[#bugs--problems--untested-stuf
  - Visit the Zettel at point to edit it. Delve provides an interactive
    command to switch back and forth between the Delve buffers and the
    org roam buffers.
+ - Collect selected items into new buffers, with the ability to edit
+   them (i.e. for preparing outlines).
  - Remote editing: Add or remove tags without leaving the tree view.
  - Additional minor mode (delve-minor-mode) for org roam pages,
    allowing to open a new Delve buffer with the current org roam page
