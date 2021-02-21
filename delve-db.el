@@ -29,6 +29,10 @@
 (require 'org-roam-db)
 (require 'delve-data-types)
 
+;; * Silence Byte Compiler
+
+(declare-function lister-replace "lister" (buf pos data &optional level) t)
+
 ;; * Global Variables
 
 (defvar delve-db-error-buffer "*DELVE - Database Error*"
