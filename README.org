@@ -1,9 +1,18 @@
 #+TITLE: delve.el
 
-NOTE: I am currently waiting for the new database version of
-`org-roam` to be published ("v2"). Then I will adapt delve to this new
-scheme. Until then, there will be no major development, everything
-under the hood.
+* NOTE: Waiting for org-roam v2
+
+*NOTE*: I am currently waiting for the /new database version/ of =org-roam=
+to be published (branch "v2"). This adaptation, however, will most
+likely take some time. I am in a busy phase at work now and cannot
+guarantee to adapt the code immediately, but I will adapt =Delve= to
+this new scheme -- I use it myself and want to keep on using it.
+
+So please *do not open an issue immediately* once the new version of
+=org-roam= is published, or only open an issue to make me aware that the
+new version of =org-roam= is available.
+
+* What is Delve?
 
 Delve is a tool to delve into your [[https://github.com/org-roam/org-roam][org roam zettelkasten]]. Its main
 purpose is to find pages by following links (either backlinks or
@@ -30,9 +39,10 @@ Delve inherits and extends the functionality from the now deprecated
 - [[#features][Features]]
 - [[#important-interactive-functions][Important interactive functions]]
   - [[#main-entry-point-delve-open-or-select][Main entry point: delve-open-or-select]]
-  - [[#basic-navigation][Basic navigation]]
+  - [[#most-fundamental-workflows][Most fundamental workflows]]
   - [[#remote-editing][Remote editing]]
     - [[#typical-workflow-changing-tags][Typical workflow: Changing tags]]
+  - [[#collecting-items][Collecting items]]
   - [[#expand-an-item-in-a-new-delve-buffer][Expand an item in a new delve buffer]]
   - [[#further-useful-commands][Further useful commands]]
 - [[#installation][Installation]]
@@ -45,6 +55,7 @@ Delve inherits and extends the functionality from the now deprecated
   - [[#delve][Delve]]
     - [[#viewing-items-and-expanding-queries][Viewing items and expanding queries]]
     - [[#navigation-and-ordering][Navigation and ordering]]
+    - [[#collecting][Collecting]]
     - [[#marking][Marking]]
     - [[#remote-editing][Remote Editing]]
     - [[#restoring--refreshing][Restoring / Refreshing]]
@@ -138,20 +149,19 @@ Press =q= to bury the delve buffer.
 If you then press =delve-open-or-select= again, you will be presented with a
 list of open delve buffers. 
 
-** Basic navigation
+** Most fundamental workflows
 
- + Use navigation keys to move to an item. *Mark* items using 'm' (see
-   also keybindings below). *Move* items within the list using =M-up= and
-   =M-down=.
+ + Use navigation keys to move to an item and =q= to bury the buffer. =X=
+   kills the buffer.
+ + *Mark* items using 'm' (see also keybindings below).
+ + *Move* items manually using =M-up= and =M-down=.
  + Use =<tab>= to either display the results of expanding the item at
-   point, or to remove the results again. In other words, =<tab>= is a
-   toggle.
- + Use =<return>= to visit the zettel at point. If you are not a zettel
-   page item, nothing will happen.
- + Use =+= and =-= to remote edit the ROAM_TAGS of the page at point. You
-   can also mark items and then remote edit all marked pages in one
-   rush.
- + Use =q= to bury the buffer.
+   point (e.g. a search query), or to remove the previously inserted
+   results. In other words, =<tab>= is a toggle.
+ + Use =<return>= to visit the zettel at point.
+ + Use =+= and =-= to remote edit the =#+ROAM_TAGS= of the page item at
+   point. You can also mark items and then remote edit all marked
+   pages in one rush.
  + Use =C-l= to expand an item in a new buffer, instead of inserting the
    expansion below point (see below for more explanation).
 
@@ -193,6 +203,29 @@ all pages tagged '/Readme/' to '/Unread/', you can:
  3. Press =+= to add the new tag '/Unread/'.
  4. Press =-= to remove the old tag '/Readme/'.
  5. Press =.= to update the display of the items.
+
+** Collecting items
+
+It is often useful to collect items in a separate list. You can use
+the function =delve-collect= for this purpose (bound to =c=).
+
+If you press =c= and there are marked items, all marked items will be
+copied into a buffer of your choice. To choose this buffer, a list of
+currently available delve buffers (a.k.a collections) will be
+presented. You can either select one of those or enter the name for a
+new buffer, which will be created on the fly. In any case, Delve will
+switch to that buffer so that you can work with that new collection.
+
+Sometimes, however, it is advisable to just push the items in a new
+buffer and to continue working in the present buffer. To do this, just
+press the prefix key (=C-u=) before calling this command. Pressing =C-u=
+when calling =delve-collect= also preserves the marks on the original
+items. If you want to remove the marks, press =u=.
+
+Note that these copied items will /not/ be automatically updated if you
+edit their tags. If you want them to reflect some later changes,
+update them manually by pressing =*= and =.= in the buffer with the copied
+items.
 
 ** Expand an item in a new delve buffer
 
@@ -344,6 +377,13 @@ following keys apply:
 | M-down | Move the current item down.                                |
 |--------+------------------------------------------------------------|
 
+*** Collecting
+
+| Key | Function                                                            |
+|-----+---------------------------------------------------------------------|
+| c   | Collect marked items or item at point into a new or existing buffer |
+|-----+---------------------------------------------------------------------|
+
 *** Marking
 
 | Key   | Function                                                             |
@@ -416,9 +456,11 @@ deeper into the Zettelkasten.
 
 ** Current pre-release version
 
+ + =delve-open-or-select= now does not offer the current buffer for
+   selection, if it is a delve buffer
  + Behavior of =C-l= is now more consistent
  + Added =M-up= and =M-down= to move items
- + Marked items can now be moved into a separate buffer (=M-x delve-collect-into-new-buffer=)
+ + Marked items can now be moved into a separate buffer (=M-x delve-collect=)
 
 ** 0.5
 

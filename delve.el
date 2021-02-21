@@ -148,6 +148,17 @@ Each action is simply an interactive function."
   "Buffer list when first creating this delve buffer.")
 
 ;; -----------------------------------------------------------
+;; * Utilities
+
+(defun delve--acomplete (prompt collection &optional require-match history)
+  "Complete on alist COLLECTION and return the associated result."
+  (let* ((res         (completing-read prompt collection nil require-match nil history))
+	 (associated  (alist-get res collection nil nil #'string=)))
+    (if (and (not require-match) (not associated))
+	res
+      associated))) 
+
+;; -----------------------------------------------------------
 ;; * Item Mapper for the List Display (lister)
 
 ;; -- presenting a zettel object:
@@ -389,25 +400,40 @@ can be an integer or the symbol `:point'."
 ;; -----------------------------------------------------------
 ;;; * Delve Mode: Interactive Functions, Mode Definition
 
+;;  Generic function to deal with marked items
+
+(cl-defun delve-walk-marked-items (buf action-fn &optional
+				       (mark-current-if-none t)
+				       (unmark t))
+  "Apply ACTION-FN on all marked items in BUF.
+ Return the accumulated results.
+
+If no item is marked, apply the function to the item at point
+unless MARK-CURRENT-IF-NONE is nil. Remove the marks after
+operation unless UNMARK is nil."
+  (let* ((marked-items (lister-all-marked-items buf))
+	 (mark-pred-fn (buffer-local-value 'lister-local-marking-predicate buf)))
+    ;; maybe mark item at point
+    (when (and (null marked-items)
+	       mark-current-if-none)
+      (if (or (not (lister-item-p buf :point))
+	      ;; TODO Replace this with "lister-markable-p" in 0.6
+	       (not (and (not (null mark-pred-fn))
+			 (funcall mark-pred-fn (lister-get-data buf :point)))))
+	  (user-error "Item at point has to be zettel")
+	(lister-mark-item buf :point t)
+	(setq marked-items (list (lister-marker-at buf :point)))
+	;; always unmark since the mark is internal only
+	(setq unmark t)))
+    ;; now do the walk:
+    (unless marked-items
+      (user-error "There are no marked items"))
+    (let* ((res (lister-walk-marked-items buf action-fn)))
+      (when unmark
+	(lister-mark-some-items buf marked-items nil))
+      res)))
+
 ;; Refresh or update the display in various ways
-
-(defun delve-update-item-at-point ()
-  "Update the item at point."
-  (interactive)
-  (let* ((new-item (delve-db-update-item
-		    (lister-get-data (current-buffer) :point))))
-    (if (null new-item)
-	(user-error "No update possible")
-;;      (setf (delve-zettel-needs-update new-item) nil)
-      (lister-replace (current-buffer) :point new-item)
-      (message "Item updated"))))
-
-(defun delve-redraw-item (buf &optional marker-or-pos)
-  "In BUF, redraw the item at MARKER-OR-POS.
-If MARKER-OR-POS is nil, redraw the item at point."
-  (when-let* ((pos  (or marker-or-pos :point))
-	      (data (lister-get-data buf pos)))
-    (lister-replace buf pos data)))
 
 (defun delve-refresh-buffer (buf)
   "Refresh all items in BUF."
@@ -426,13 +452,13 @@ Also update all marked items, if any."
 				     (or (delve-zettel-needs-update data)
 					 (lister-get-mark-state buf :point))))
 	      (update-zettel (data)
-			     (when-let*
-				 ((new-item (delve-db-update-item data)))
+			     (when-let* ((inhibit-message t)
+					 (new-item (delve-db-update-item data)))
 			       (lister-replace buf :point new-item))))
-    (let ((n (length (lister-walk-all buf #'update-zettel #'tainted-zettel-p))))
-      (message (concat
-		(if (> n 0) (format "%d" n) "No")
-		" items redisplayed")))))
+    (let ((res (lister-walk-all buf #'update-zettel #'tainted-zettel-p)))
+      (message (if res
+		   (format "Updated %d items" (length res))
+		 "All items up to date. To force an update, mark the item(s) and redo this function")))))
 
 (defun delve-revert (buf)
   "Revert delve buffer BUF to its initial list."
@@ -441,19 +467,25 @@ Also update all marked items, if any."
     (lister-set-list buf delve-local-initial-list)
     (lister-goto buf :first)))
 
-(defun delve-collect-into-new-buffer (buf)
-  "Collect all marked items into a new buffer."
-  (interactive (list (current-buffer)))
-  (let* ((marked-items (lister-all-marked-items buf)))
-    (unless marked-items
-      (user-error "There are no marked items to collect"))
-    (let* ((coll-name (read-string "Enter a name for the new collection of items: "))
-	   (unmark-fn (lambda (data)
-			(lister-mark-item buf :point nil)
-			;; return to collect:
-			data))
-	   (all-items (lister-walk-marked-items buf unmark-fn)))
-      (delve all-items coll-name))))
+(defun delve-collect (buf &optional keep-visible)
+  "In BUF, copy marked items or item at point into a (new) buffer.
+After copying, unmark the items and switch to the target buffer.
+If KEEP-VISIBLE is non-nil, keep the items marked and do not
+switch to the target buffer."
+  (interactive (list (current-buffer) current-prefix-arg))
+  (let* ((bufs         (delve--all-delve-buffers-for-completion (cl-remove buf (delve-all-buffers))))
+	 (buf-or-name  (delve--acomplete "Choose collection name or enter a new one: " bufs))
+	 (collection   (delve-walk-marked-items buf #'identity t (not keep-visible)))
+	 (new-buf      nil)
+	 (msg          (format "Added %d items" (length collection))))
+    (if (stringp buf-or-name)
+	(setq new-buf (delve collection buf-or-name (not keep-visible)))
+      (delve-add-to-buffer buf-or-name collection)
+      (setq new-buf buf-or-name))
+    (if (not keep-visible)
+	(switch-to-buffer new-buf)
+      (setq msg (concat msg " to new buffer " (buffer-name new-buf))))
+    (message msg)))
 
 (defun delve-move-item-up (buf pos)
   "Move item up."
@@ -555,27 +587,17 @@ With prefix arg, open the current subtree in a new buffer."
 ;;; Remote editing: add / remove tags
 
 (defun delve-remote-edit (buf edit-fn arg)
-  "Pass CHOICE to EDIT-FN for all marked items, or the item at point.
+  "Apply EDIT-FN with ARG on all marked items, or the item at point.
 BUF must be a delve buffer.
 
 EDIT-FN has to accept two arguments: an org roam file, to which
 the editing will apply, and an additional argument ARG."
-  (let* ((marked-items       (lister-all-marked-items buf))
-	 (zettel-at-point    (and (lister-item-p buf :point)
-				  (delve-zettel-p (lister-get-data buf :point))))
-	 (n 0))
-    (unless (or marked-items zettel-at-point)
-      (user-error "Item at point is no zettel"))
-    (when (null marked-items)
-      ;; temporarily mark item at point:
-      (lister-mark-item buf :point t))
-    ;;
-    (cl-labels ((add-it (data)
-			(funcall edit-fn (delve-zettel-file data) arg)
-			(setf (delve-zettel-needs-update data) t)
-			(delve-redraw-item buf)))
-      (setq n (length (lister-walk-marked-items buf #'add-it)))
-      (message "Changed %d items" n))))
+  (cl-labels ((add-it (data)
+		      (funcall edit-fn (delve-zettel-file data) arg)
+		      (setf (delve-zettel-needs-update data) t)
+		      (lister-replace buf :point data)))
+    (let ((res (delve-walk-marked-items buf #'add-it)))
+      (message "Changed %d items" (or (length res) 0)))))
 
 (defun delve-add-tag ()
   "Add tags to all marked zettel or the zettel at point."
@@ -623,6 +645,9 @@ the editing will apply, and an additional argument ARG."
     ;; edit the list:
     (define-key map (kbd "<M-up>")     #'delve-move-item-up)
     (define-key map (kbd "<M-down>")   #'delve-move-item-down)
+    ;;
+    ;; collect items:
+    (define-key map (kbd "c")          #'delve-collect)
     ;;
     ;; remote editing of zettel pages:
     (define-key map (kbd "+")          #'delve-add-tag)
@@ -702,6 +727,7 @@ If there are no expansions for this object, throw an error."
 							      (apply-partially #'concat heading-prefix " "))
 				   (concat heading-prefix  " " object-type " '"  object-name "' ")))))
 
+;; TODO Rename to delve-new-buffer 
 (defun delve-new-collection-buffer (items heading buffer-name)
   "List delve ITEMS in a new buffer.
 
@@ -729,7 +755,10 @@ The new buffer name will be created by using
     (user-error "Target buffer does not exist"))
   (if (listp item-or-list)
       (lister-add-sequence target-buffer item-or-list)
-    (lister-add target-buffer item-or-list)))
+    (lister-add target-buffer item-or-list))
+  ;; unhighlight inserted item if buffer is not visible:
+  (unless (get-buffer-window target-buffer)
+    (lister-sensor-leave target-buffer)))
 
 (defun delve-buffer-p (buf)
   "Test if BUF is a delve buffer."
@@ -773,18 +802,29 @@ Minimally, you should set the keywords `:name' (a string) and
 	     searches-plists))
 
 ;;;###autoload
-(defun delve (&optional item-or-list header-info)
+(cl-defun delve (&optional item-or-list header-info (switch-buffer t))
   "Delve into the org roam zettelkasten with predefined searches.
-Alternatively, pass the list to be displayed using the optional
-argument ITEM-OR-LIST.
+Alternatively, display a list in a new buffer.
 
-ITEM-OR-LIST can be a delve object or a list of delve objects. If
-ITEM-OR-LIST is a delve object, e.g. `delve-zettel', expand on it
-in the new delve buffer. If this expansion yields an empty list,
-throw an error. If ITEM-OR-LIST is list, treat it as a list of
-delve objects and insert them as they are.
+ITEM-OR-LIST can be nil, an expandable delve object or a list of
+delve objects:
 
-Optionally use HEADER-INFO for the title."
+If ITEM-OR-LIST is nil, create the main buffer with predefined
+searches.
+
+If ITEM-OR-LIST is a delve object, expand this item and insert
+the results of expanding in a new buffer.
+
+If ITEM-OR-LIST is list, treat it as a list of delve objects and
+insert them as they are.
+
+When creating a new buffer, Optionally use HEADER-INFO for the
+title.
+
+If final optional argument SWITCH-BUFFER is non-nil (which is the
+default setting), also switch to the newly created buffer.
+
+Return the buffer created."
   (interactive)
   (unless org-roam-mode
     (with-temp-message "Turning on org roam mode..."
@@ -802,10 +842,12 @@ Optionally use HEADER-INFO for the title."
 					     (concat "Collection " header-info)))
 	       (t
 		(delve-new-buffer-with-expansion item-or-list)))))
-    (switch-to-buffer buf)
-    (when delve-auto-delete-roam-buffer
-      (when-let* ((win (get-buffer-window org-roam-buffer)))
-	(delete-window win)))))
+    (when switch-buffer
+      (switch-to-buffer buf)
+      (when delve-auto-delete-roam-buffer
+	(when-let* ((win (get-buffer-window org-roam-buffer)))
+	  (delete-window win))))
+    buf))
 
 (defun delve-get-fn-documentation (fn)
   "Return the first line of the documentation string of fn."
@@ -829,17 +871,21 @@ Optionally use HEADER-INFO for the title."
 	    "ACTION ")
 	  " " doc))
 
+(defun delve--all-delve-buffers-for-completion (bufs)
+  "Return an alist with the names of BUFS prettified ."
+  (mapcar (lambda (buf)
+	    (cons (delve-prettify-delve-buffer-name (buffer-name buf)) buf))
+	  bufs))
+
 (defun delve-complete-on-bufs-and-fns (prompt bufs fns)
-  "PROMPT user to complete on BUFS and FNs."
-  (let* ((collection (append (mapcar (lambda (buf)
-				       (cons (delve-prettify-delve-buffer-name (buffer-name buf)) buf))
-				     bufs)
+  "PROMPT user to select one of BUFS or FNS.
+BUFS is a list of buffer, FNS a list of function names."
+  (let* ((collection (append (delve--all-delve-buffers-for-completion bufs)
 			     (mapcar (lambda (fn)
 				       (cons (delve-prettify-delve-fn-doc (delve-get-fn-documentation fn))
 					     fn))
-				     fns)))
-	 (selection  (completing-read prompt collection nil t)))
-    (cdr (assoc selection collection #'string=))))
+				     fns))))
+    (delve--acomplete prompt collection t)))
 
 ;;;###autoload
 (defun delve-open-or-select ()
@@ -848,7 +894,9 @@ Optionally use HEADER-INFO for the title."
   (let* ((bufs       (delve-all-buffers))
 	 (choice     (if bufs
 			 (delve-complete-on-bufs-and-fns "Select delve buffer: "
-							 bufs
+							 (if (eq major-mode 'delve-mode)
+							     (cl-remove (current-buffer) bufs)
+							   bufs)
 							 delve-user-actions)
 		       'delve)))
     (if (bufferp choice)
