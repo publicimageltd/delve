@@ -108,102 +108,6 @@ return nil."
 				 (format " Arguments: %s" args)))
 	   nil)))
 
-;; * Parse the Query Results
-
-(defun delve-db-rearrange (pattern l)
-  "For each item in L, return a new item rearranged by PATTERN.
-
-L is a list of lists. Return a list where each item in L is
-'rearranged' using PATTERN.
-
-PATTERN can be a vector or a list. Each 'rearranged' list item is
-created by collecting the results of successively parsing all
-elements of PATTERN, using it to map the original item to the
-result. See the examples below.
-
-An element of pattern can be either a symbol, an integer, a list
-with an integer and a function name, or a list with an integer
-and a sexp.
-
-If the element in PATTERN is a symbol or a string, pass it
-unmodified to the resulting item. This is useful for adding
-keywords to the result.
-
-If the element in PATTERN is an integer, return the zero-indexed
-value of the item currently processed. This is useful for
-actually rearranging the items, e.g., swapping a position.
-
-If the element in PATTERN is a list, use the first element of
-this list as an index (see above), and the second as a symbol for
-a mapping function. Pass the indexed value through this function
-before adding it.
-
-A third option is to use a list with an index and a sexp. Like
-the function in the second variant above, the sexp is used as a
-mapping function. The sexp will be evaluated with the variable
-`it' bound to the original item's element, thus allowing
-anaphoric references.
-
-Examples:
-
- ;;  swap positions 1 und 0:
- (delve-db-rearrange [1 0] '((a b) (a b)))   -> ((b a) (b a))
-
- ;; only pick the first value:
- (delve-db-rearrange [0] '((a b c) (a b c))) ->  ((a) (a))
-
- ;; swap positions, but also pass the first value to `1+':
- (delve-db-rearrange [1 (0 1+)] '((1 0) (1 0)))      -> ((0 2) (0 2))
-
- ;; the same using an anaphoric sexp:
- (delve-db-rearrange [1 (0 (1+ it))] '((1 0) (1 0))) -> ((0 2) (0 2))
-
- ;; only pick the second value, prepend the keyword `:count':
- (delve-db-rearrange [:count 1] '((0 20) (1 87))) -> ((:count 20) (:count 87))
-
- ;; only pick the second value, prepend a keyword and a string value:
- (delve-db-rearrange [:count 1 :string \"hi\"] '((0 20) (1 87)))
-  -> ((:count 20 :string \"hi\")
-      (:count 87 :string \"hi\"))"
-  ;;
-  (seq-map (lambda (item)
-	     (seq-mapcat (lambda (index-or-list)
-			   (list
-			    ;; FIXME This should be a pcase pattern.
-			    ;;
-			    ;; pass through keywords and strings:
-			    (if (or (symbolp index-or-list)
-				    (stringp index-or-list))
-				index-or-list
-			      ;; use lists to pass the value through a fn:
-			      (if (listp index-or-list)
-				  (progn
-				    (with-no-warnings
-				      (defvar it)) ;; force dynamic binding for calling the sexp
-				    (let* ((fn-or-sexp (cadr index-or-list))
-					   (it         (seq-elt item (car index-or-list))))
-				      (if (listp fn-or-sexp)
-					  ;; anaphoric sexp
-					  (eval fn-or-sexp)
-					;; function name 
-					(funcall fn-or-sexp it))))
-				;; must be an integer; use it as an index:
-				(seq-elt item index-or-list)))))
-			 ;;
-			 pattern))
-	   l))
-
-(defun delve-db-rearrange-into (make-fn keyed-pattern l)
-  "Rearrange each item in L and pass the result to MAKE-FN.
-KEYED-PATTERN is an extension of the pattern used by
-`delve-db-rearrange'.  The extended pattern also requires a
-keyword for each element.  The object is created by using the
-keywords and the associated result value as key-value-pairs
-passed to MAKE-FN."
-  (seq-map (lambda (item)
-	     (apply make-fn item))
-	   (delve-db-rearrange keyed-pattern l)))
-
 ;; * Specific Queries to the Data Base
 
 ;; One query to rule them all, listed here for debugging purposes.
@@ -272,20 +176,18 @@ specific query for special usecases."
 	   :left :join files :using [[ file ]]
 	   :left :join tags :using  [[ file ]] ]))
     (with-temp-message "Querying database..."
-      (thread-last (delve-db-safe-query
-		    (vconcat with-clause base-query constraints)
-		    args)
-	;; TODO Alternative: Use pcase-let
-	;; Or even: cl-loop for row in .... collect (pcase-let ((,a ,b
-	;; ,) row) (funcall makefn .......)
-	(delve-db-rearrange-into make-fn
-				 [ :file 0
-				   :title 1
-				   :tags 2
-				   :mtime (3 (plist-get it :mtime))
-				   :atime (3 (plist-get it :atime))
-				   :tolinks 4
-				   :backlinks 5 ])))))
+      (cl-loop for row in (delve-db-safe-query
+			   (vconcat with-clause base-query constraints)
+			   args)
+	       collect (pcase-let ((`(,file ,title ,tags ,times ,tolinks ,backlinks) row))
+			 (funcall make-fn
+				  :file      file
+				  :title     title
+				  :tags      tags
+				  :mtime     (plist-get times :mtime)
+				  :atime     (plist-get times :atime)
+				  :tolinks   tolinks
+				  :backlinks backlinks))))))
 
 ;; * Queries returning plain lisp lists:
 
