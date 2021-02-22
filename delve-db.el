@@ -275,6 +275,9 @@ specific query for special usecases."
       (thread-last (delve-db-safe-query
 		    (vconcat with-clause base-query constraints)
 		    args)
+	;; TODO Alternative: Use pcase-let
+	;; Or even: cl-loop for row in .... collect (pcase-let ((,a ,b
+	;; ,) row) (funcall makefn .......)
 	(delve-db-rearrange-into make-fn
 				 [ :file 0
 				   :title 1
