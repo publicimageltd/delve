@@ -175,19 +175,20 @@ specific query for special usecases."
 	   :from titles
 	   :left :join files :using [[ file ]]
 	   :left :join tags :using  [[ file ]] ]))
-    (with-temp-message "Querying database..."
-      (cl-loop for row in (delve-db-safe-query
-			   (vconcat with-clause base-query constraints)
-			   args)
-	       collect (pcase-let ((`(,file ,title ,tags ,times ,tolinks ,backlinks) row))
-			 (funcall make-fn
-				  :file      file
-				  :title     title
-				  :tags      tags
-				  :mtime     (plist-get times :mtime)
-				  :atime     (plist-get times :atime)
-				  :tolinks   tolinks
-				  :backlinks backlinks))))))
+    ;; use desctructuring to map the table columns to lisp vars
+    ;; saw this while browsing org-roam's "v2" repository
+    (cl-loop for row in (delve-db-safe-query
+			 (vconcat with-clause base-query constraints)
+			 args)
+	     collect (pcase-let ((`(,file ,title ,tags ,times ,tolinks ,backlinks) row))
+		       (funcall make-fn
+				:file      file
+				:title     title
+				:tags      tags
+				:mtime     (plist-get times :mtime)
+				:atime     (plist-get times :atime)
+				:tolinks   tolinks
+				:backlinks backlinks)))))
 
 ;; * Queries returning plain lisp lists:
 
