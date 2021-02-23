@@ -352,21 +352,6 @@ ERROR-OBJECT must be a delve object, not an emacs error object!"
 
 ;; * Create and insert sublists by expanding items
 
-(defun delve-expand-and-insert (buf position &rest operator-fns)
-  "Insert result of OPERATOR-FNS applied to item at POSITION.
-BUF must be a valid lister buffer.
-
-POSITION is either an integer or the symbol `:point'."
-  (let* ((pos  (pcase position
-		 ((and (pred integerp) position) position)
-		 (:point (with-current-buffer buf (point)))
-		 (_      (error "Invalid value for POSITION: %s" position))))
-	 (item (lister-get-data buf pos))
-	 (res (apply #'delve-expand item operator-fns)))
-    (if res
-	(lister-insert-sublist-below buf pos res)
-      (message "Cannot expand item; no results"))))
-
 (defun delve-expansion-operators-for (item)
   "Return a list of valid expansion operators to apply to ITEM."
   (pcase item
@@ -379,13 +364,20 @@ POSITION is either an integer or the symbol `:point'."
     (_ nil)))
 
 ;; TODO Add error handling
-(defun delve-get-expansion-for (item)
-  "Return a useful expansion for ITEM."
+(defun delve-expand-item (item)
+  "Return a useful expansion for delve object ITEM, or nil."
   (when-let* ((ops (delve-expansion-operators-for item)))
       (apply #'delve-expand item ops)))
 
-(defun delve-get-expansion-and-insert (buf pos)
-  "Insert expansions for item at POS.
+(defun delve-expand-and-insert (buf pos &optional operator-fn)
+  "Determine expansion operators and insert results for item at POS.
+Determine the expansion operator for the item at the indicated
+position, collect the results and insert them as sublist.
+
+The expansion operator is determined using the item type. (See
+`delve-expansion-operators-for'.) If OPERATOR-FN is set, use this
+function as an operator instead.
+
 BUF must be a valid lister buffer populated with delve items. POS
 can be an integer or the symbol `:point'."
   (interactive (list (current-buffer) (point)))
@@ -394,9 +386,12 @@ can be an integer or the symbol `:point'."
 		     (:point (with-current-buffer buf (point)))
 		     (_ (error "Invalid value for POS: %s" pos))))
 	 (item     (lister-get-data buf position))
-	 (sublist  (delve-get-expansion-for item)))
+	 (sublist  (if operator-fn
+		       (funcall operator-fn item)
+		     (delve-expand-item item))))
     (if sublist
-	(lister-insert-sublist-below buf position sublist)
+	(with-temp-message "Inserting expansion results..."
+	  (lister-insert-sublist-below buf position sublist))
       (user-error "No expansion found"))))
 
 ;; -----------------------------------------------------------
@@ -454,8 +449,7 @@ Also update all marked items, if any."
 				     (or (delve-zettel-needs-update data)
 					 (lister-get-mark-state buf :point))))
 	      (update-zettel (data)
-			     (when-let* ((inhibit-message t)
-					 (new-item (delve-db-update-item data)))
+			     (when-let* ((new-item (delve-db-update-item data)))
 			       (lister-replace buf :point new-item))))
     (let ((res (lister-walk-all buf #'update-zettel #'tainted-zettel-p)))
       (message (if res
@@ -565,7 +559,7 @@ moved. DIRECTION is either the symbol `up' or `down'."
 	 (pos (point)))
     (if (lister-sublist-below-p buf pos)
 	(lister-remove-sublist-below buf pos)
-      (delve-get-expansion-and-insert buf pos))))
+      (delve-expand-and-insert buf pos))))
 
 (defun delve-expand-in-new-bufffer (buf pos &optional expand-parent)
   "Expand the item at point in a new buffer (instead of inserting it).
@@ -725,7 +719,7 @@ If there are no expansions for this object, throw an error."
 			     (string-trim (delve-pp-generic:type delve-object))))
 	  (object-mapped   (let ((delve-pp-inhibit-faces t))
 			     (delve-mapper delve-object)))
-	  (items (delve-get-expansion-for delve-object)))
+	  (items (delve-expand-item delve-object)))
       (unless items
 	(user-error (concat "Expanding " (downcase heading-prefix) " '" object-name "' yields no result")))
       (delve-new-collection-buffer items
