@@ -312,9 +312,10 @@ ERROR-OBJECT must be a delve object, not an emacs error object!"
 
 (defun delve-expand (item &rest operator-fns)
   "Collect the result of applying all OPERATOR-FNS on ITEM."
-  (cl-loop for fn in operator-fns
-	   append (let ((res (funcall fn item)))
-		    (if (listp res) res (list res)))))
+  (with-temp-message "Querying database, please wait..."
+    (cl-loop for fn in operator-fns
+	     append (let ((res (funcall fn item)))
+		      (if (listp res) res (list res))))))
 
 ;; These are the operators.
 ;;
