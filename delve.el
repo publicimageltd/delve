@@ -157,7 +157,7 @@ Each action is simply an interactive function."
 	 (associated  (alist-get res collection nil nil #'string=)))
     (if (and (not require-match) (not associated))
 	res
-      associated))) 
+      associated)))
 
 ;; -----------------------------------------------------------
 ;; * Item Mapper for the List Display (lister)
@@ -444,6 +444,32 @@ operation unless UNMARK is nil."
       (with-temp-message "Updating the whole buffer, that might take some time...."
 	(lister-set-list buf (delve-db-update-tree all-data))))))
 
+
+(defun delve-sort-buffer-function (buf function)
+  "sort all items in BUF by FUNCTION."
+  (when-let* ((all-data (lister-get-all-data buf))
+              (head (car all-data))
+              (tail (cdr all-data)))
+    (lister-with-locked-cursor buf
+      (with-temp-message "Updating the whole buffer, that might take some time...."
+	(lister-set-list buf (cons head (funcall function  tail)))))))
+
+(defun delve-sort-buffer-by-atime (buf)
+  "Refresh all items in BUF."
+  (interactive (list (current-buffer)))
+  (delve-sort-buffer-function buf 'delve-db-query-sort-by-atime))
+
+(defun delve-sort-buffer-by-mtime (buf)
+  "Refresh all items in BUF."
+  (interactive (list (current-buffer)))
+  (delve-sort-buffer-function buf 'delve-db-query-sort-by-mtime))
+
+(defun delve-sort-buffer-by-ctime (buf)
+  "Refresh all items in BUF."
+  (interactive (list (current-buffer)))
+  (delve-sort-buffer-function buf 'delve-db-query-sort-by-ctime))
+
+
 (defun delve-refresh-tainted-items (buf)
   "Update all items in BUF which are marked as needing update.
 Also update all marked items, if any."
@@ -575,7 +601,7 @@ With prefix arg, open the current subtree in a new buffer."
   (let* ((item-at-point (lister-get-data buf pos)))
     (if expand-parent
 	(if (not (delve-zettel-p item-at-point))
-	    (user-error "Only zettel sublists can be re-opened in a new buffer")	 
+	    (user-error "Only zettel sublists can be re-opened in a new buffer")
 	  (pcase-let* ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
 	    (let* ((items (lister-get-all-data-tree buf beg end)))
 	      (delve items))))
@@ -732,7 +758,7 @@ If there are no expansions for this object, throw an error."
 							      (apply-partially #'concat heading-prefix " "))
 				   (concat heading-prefix  " " object-type " '"  object-name "' ")))))
 
-;; TODO Rename to delve-new-buffer 
+;; TODO Rename to delve-new-buffer
 (defun delve-new-collection-buffer (items heading buffer-name)
   "List delve ITEMS in a new buffer.
 
