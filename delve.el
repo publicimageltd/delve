@@ -169,6 +169,12 @@ Each action is simply an interactive function."
     (delve-pp-zettel:mtime        (:set-face delve-mtime-face
 ;;				   :width 10))
 				   :format "%10s"))
+    (delve-pp-zettel:atime        (:set-face delve-mtime-face
+                                   ;;				   :width 10))
+				   :format "%10s"))
+    (delve-pp-zettel:ctime        (:set-face delve-mtime-face
+                                   ;;				   :width 10))
+				   :format "%10s"))
     (delve-pp-generic:type        (:add-face delve-subtype-face))
     (delve-pp-zettel:tags         (:format "(%s)"
 				   :set-face delve-tags-face))
@@ -188,9 +194,9 @@ Each action is simply an interactive function."
   (when (delve-zettel-needs-update zettel)
     "item changed, not up to date ->"))
 
-(defun delve-pp-zettel:mtime (zettel)
-  "Return the mtime of ZETTEL in a human readable form."
-  (let* ((time                 (delve-zettel-mtime zettel))
+(defun delve-pp-zettel:meta (zettel time-fun)
+  "Return the TIME-FUN of ZETTEL in a human readable form."
+  (let* ((time                 (funcall time-fun zettel))
 	 (days                 (time-to-days time))
 	 (current-time-in-days (time-to-days (current-time)))
 	 (day-difference       (- current-time-in-days days))
@@ -202,6 +208,18 @@ Each action is simply an interactive function."
 			 (t        "%R"))))
 ;;    (format "%d" (time-to-day-in-year time))))
     (format-time-string format-spec time)))
+
+(defun delve-pp-zettel:mtime (zettel)
+  "Return the mtime of ZETTEL in a human readable form."
+  (delve-pp-zettel:meta zettel 'delve-zettel-mtime))
+
+(defun delve-pp-zettel:atime (zettel)
+  "Return the atime of ZETTEL in a human readable form."
+  (delve-pp-zettel:meta zettel 'delve-zettel-atime))
+
+(defun delve-pp-zettel:ctime (zettel)
+  "Return the ctime of ZETTEL in a human readable form."
+  (delve-pp-zettel:meta zettel 'delve-zettel-ctime))
 
 (defun delve-pp-generic:type (delve-object)
   "Represent the type of DELVE-OBJECT, if possible with an icon."
@@ -452,7 +470,7 @@ operation unless UNMARK is nil."
               (tail (cdr all-data)))
     (lister-with-locked-cursor buf
       (with-temp-message "Updating the whole buffer, that might take some time...."
-	(lister-set-list buf (cons head (funcall function  tail)))))))
+	(lister-set-list buf (cons head (funcall function tail)))))))
 
 (defun delve-sort-buffer-by-atime (buf)
   "Refresh all items in BUF."
