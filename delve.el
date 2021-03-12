@@ -197,7 +197,8 @@ Each action is simply an interactive function."
   "List of times to be displayed alongside each zettel item.
 List can contain the values `mtime' (modification time),
 `atime' (access time) and `ctime' (creation time).
-Currently, ctime is not supported by org roam.")
+Currently, ctime is not supported by org roam."
+  :group 'delve)
 
 (defvar delve-zettel-pp-scheme
   '((delve-pp-zettel:needs-update (:set-face org-warning))
