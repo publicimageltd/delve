@@ -618,12 +618,20 @@ moved. DIRECTION is either the symbol `up' or `down'."
 (defun delve-expand-insert-tolinks ()
   "Insert all tolinks from the item at point."
   (interactive)
-  (delve-expand-and-insert (current-buffer) :point #'delve-operate-tolinks))
+  (unless (delve-zettel-p (lister-get-data (current-buffer) :point))
+    (user-error "This item has no tolinks"))
+  (delve-expand-and-insert (current-buffer)
+			   :point
+			   #'delve-operate-tolinks))
 
 (defun delve-expand-insert-backlinks ()
   "Insert all backlinks from the item at point."
   (interactive)
-  (delve-expand-and-insert (current-buffer) :point #'delve-operate-backlinks))
+  (unless (delve-zettel-p (lister-get-data (current-buffer) :point))
+    (user-error "This item has no backlinks"))
+  (delve-expand-and-insert (current-buffer)
+			   :point
+			   #'delve-operate-backlinks))
 
 (defun delve-expand-toggle-sublist ()
   "Close or open the item's sublist at point."
