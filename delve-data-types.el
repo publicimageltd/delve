@@ -1,6 +1,6 @@
 ;;; delve-data-types.el --- data types for the delve tool  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020  
+;; Copyright (C) 2020
 
 ;; Author:  <joerg@joergvolbers.de>
 
@@ -59,10 +59,11 @@
 			    (:include delve-basis))
   needs-update ;; boolean
   title        ;; zettel
-  file         ;; full path to the file 
+  file         ;; full path to the file
   tags         ;; a list of tags
   mtime        ;; a list time stamp (HIGH LOW MICRO PICO)
   atime        ;; a list time stamp (HIGH LOW MICRO PICO)
+  ctime        ;; a list time stamp (HIGH LOW MICRO PICO)
   backlinks    ;; integer
   tolinks      ;; integer
   )

@@ -1,6 +1,6 @@
 ;;; delve-db.el --- library for accessing the org roam database   -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020  
+;; Copyright (C) 2020
 
 ;; Author:  <joerg@joergvolbers.de>
 
@@ -100,7 +100,7 @@ Catch all errors and redirect the error messages to an error
 buffer.  If an error occurs, inform the user with a message and
 return nil."
   (condition-case-unless-debug err
-      (apply #'org-roam-db-query sql args)
+      (apply #'org-roam-db-query sql (delve--flatten args))
     (error (delve-db-log-error err
 			       " Error occured when executing the query:"
 			       (format " %s" sql)
@@ -134,7 +134,7 @@ putting together all informations such as file names, links, etc.
 This main query can be modified using the vectors WITH-CLAUSE,
 CONSTRAINTS and ARGS. The final SQL query is constructed like
 this:
- 
+
  WITH-CLAUSE + main query + CONSTRAINTS
 
 This final query is passed to `org-roam-db-query', and from there
@@ -283,6 +283,16 @@ specific query for special usecases."
   "Sort ZETTEL by mtime, last one first."
   (cl-sort zettel (lambda (e1 e2) (time-less-p e2 e1))
 	   :key #'delve-zettel-mtime))
+
+(defun delve-db-query-sort-by-atime (zettel)
+  "Sort ZETTEL by mtime, last one first."
+  (cl-sort zettel (lambda (e1 e2) (time-less-p e2 e1))
+	   :key #'delve-zettel-atime))
+
+(defun delve-db-query-sort-by-ctime (zettel)
+  "Sort ZETTEL by mtime, last one first."
+  (cl-sort zettel (lambda (e1 e2) (time-less-p e2 e1))
+	   :key #'delve-zettel-ctime))
 
 (defun delve-db-query-last-10-modified (zettel)
   "Return the last 10 modified ZETTEL."
