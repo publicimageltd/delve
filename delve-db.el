@@ -187,9 +187,9 @@ specific query for special usecases."
 				:tags      tags
 				:mtime     (plist-get times :mtime)
 				:atime     (plist-get times :atime)
-				;; NOTE Uncomment if ctime is provided
-				;; by org-roam per default
-;;			        :ctime     (plist-get times :ctime) 
+				;; NOTE Uncomment once ctime is
+				;; provided by org-roam 
+			        :ctime     nil ;; (plist-get times :ctime) 
 				:tolinks   tolinks
 				:backlinks backlinks)))))
 

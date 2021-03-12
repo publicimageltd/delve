@@ -127,6 +127,16 @@ Each action is simply an interactive function."
   "Face for displaying the mtime of a delve item."
   :group 'delve)
 
+(defface delve-atime-face
+  '((t (:inherit org-document-info-keyword)))
+  "Face for displaying the atime of a delve item."
+  :group 'delve)
+
+(defface delve-ctime-face
+  '((t (:inherit org-document-info-keyword)))
+  "Face for displaying the ctime of a delve item."
+  :group 'delve)
+
 (defface delve-nbacklinks-face
   '((t (:weight bold)))
   "Face for displaying the number of backlinks to a delve zettel."
@@ -162,20 +172,37 @@ Each action is simply an interactive function."
 ;; -----------------------------------------------------------
 ;; * Item Mapper for the List Display (lister)
 
+;; -- visually indicate the type of the item:
+
+(defun delve-pp-generic:type (delve-object)
+  "Represent the type of DELVE-OBJECT, if possible with an icon."
+  (let* ((representation
+	  (pcase (type-of delve-object)
+	    (`delve-error          (list "ERROR" "bug"))
+	    (`delve-generic-search (list "SEARCH"  "search"))
+	    (`delve-page-search    (list "SEARCH"  "search"))
+	    (`delve-tag            (list "TAG"     "tag"))
+	    (`delve-page           (list "PAGE"    "list-alt"))
+	    (`delve-tolink         (list "TOLINK"  "caret-left"))
+	    (`delve-backlink       (list "BACKLINK" "caret-right"))
+	    (_                     (list "SUBTYPE?" "question")))))
+    (if (and (featurep 'all-the-icons)
+	     (not delve-force-ignore-all-the-icons))
+	(all-the-icons-faicon (cl-second representation))
+      (delve-pp-mod:width (cl-first representation) 8))))
+
 ;; -- presenting a zettel object:
+
+(defcustom delve-zettel-pp-time-scheme '(mtime)
+  "List of times to be displayed alongside each zettel item.
+List can contain the values `mtime' (modification time),
+`atime' (access time) and `ctime' (creation time).
+Currently, ctime is not supported by org roam.")
 
 (defvar delve-zettel-pp-scheme
   '((delve-pp-zettel:needs-update (:set-face org-warning))
-    (delve-pp-zettel:mtime        (:set-face delve-mtime-face
-;;				   :width 10))
-				   :format "%10s"))
-    (delve-pp-zettel:atime        (:set-face delve-mtime-face
-                                   ;;				   :width 10))
-				   :format "%10s"))
-    (delve-pp-zettel:ctime        (:set-face delve-mtime-face
-                                   ;;				   :width 10))
-				   :format "%10s"))
     (delve-pp-generic:type        (:add-face delve-subtype-face))
+    delve-pp-zettel:times
     (delve-pp-zettel:tags         (:format "(%s)"
 				   :set-face delve-tags-face))
     (delve-pp-zettel:backlinks    (:format "%d → "
@@ -183,7 +210,8 @@ Each action is simply an interactive function."
     (delve-pp-zettel:title        (:set-face delve-title-face))
     (delve-pp-zettel:tolinks      (:format " →  %d"
 				   :set-face delve-ntolinks-face)))
-  "Pretty printing scheme for displaying delve zettel.")
+  "Pretty printing scheme for displaying delve zettel.
+See `delve-pp-line' for possible values.")
 
 (defun delve-represent-zettel (zettel)
   "Represent ZETTEL as a pretty printed list item."
@@ -211,32 +239,32 @@ Each action is simply an interactive function."
 
 (defun delve-pp-zettel:mtime (zettel)
   "Return the mtime of ZETTEL in a human readable form."
-  (delve-pp-zettel:format-time zettel 'delve-zettel-mtime))
+  (delve-pp-mod:add-face
+   (delve-pp-zettel:format-time zettel 'delve-zettel-mtime)
+   'delve-mtime-face))
 
 (defun delve-pp-zettel:atime (zettel)
   "Return the atime of ZETTEL in a human readable form."
-  (delve-pp-zettel:format-time zettel 'delve-zettel-atime))
+  (delve-pp-mod:add-face
+   (delve-pp-zettel:format-time zettel 'delve-zettel-atime)
+   'delve-atime-face))
 
 (defun delve-pp-zettel:ctime (zettel)
   "Return the ctime of ZETTEL in a human readable form."
-  (delve-pp-zettel:format-time zettel 'delve-zettel-ctime))
+  (delve-pp-mod:add-face
+   (delve-pp-zettel:format-time zettel 'delve-zettel-ctime)
+   'delve-ctime-face))
 
-(defun delve-pp-generic:type (delve-object)
-  "Represent the type of DELVE-OBJECT, if possible with an icon."
-  (let* ((representation
-	  (pcase (type-of delve-object)
-	    (`delve-error          (list "ERROR" "bug"))
-	    (`delve-generic-search (list "SEARCH"  "search"))
-	    (`delve-page-search    (list "SEARCH"  "search"))
-	    (`delve-tag            (list "TAG"     "tag"))
-	    (`delve-page           (list "PAGE"    "list-alt"))
-	    (`delve-tolink         (list "TOLINK"  "caret-left"))
-	    (`delve-backlink       (list "BACKLINK" "caret-right"))
-	    (_                     (list "SUBTYPE?" "question")))))
-    (if (and (featurep 'all-the-icons)
-	     (not delve-force-ignore-all-the-icons))
-	(all-the-icons-faicon (cl-second representation))
-      (delve-pp-mod:width (cl-first representation) 8))))
+(defun delve-pp-zettel:times (zettel)
+  "Return pretty printed {a/m/c}-times of ZETTEL."
+  (mapconcat (lambda (time-key)
+	       (pcase time-key
+		 (`mtime (delve-pp-zettel:mtime zettel))
+		 (`ctime (delve-pp-zettel:ctime zettel))
+		 (`atime (delve-pp-zettel:atime zettel))
+		 (_      "TIMESCHEME?")))
+	     delve-zettel-pp-time-scheme
+	     " "))
 
 (defun delve-pp-zettel:tags (zettel)
   "Join all tags from ZETTEL."
@@ -262,7 +290,8 @@ Each action is simply an interactive function."
 (defvar delve-search-pp-scheme
   '(delve-pp-generic:type
     (delve-generic-search-name (:set-face delve-search-face)))
-  "Pretty printing scheme for displaying delve searches.")
+  "Pretty printing scheme for displaying delve searches.
+See `delve-pp-line' for possible values.")
 
 (defun delve-represent-search (search)
   "Represent SEARCH object as a  pretty printed  list item."
@@ -286,7 +315,8 @@ Each action is simply an interactive function."
 (defvar delve-error-pp-scheme
   '((delve-pp-generic:type (:add-face error))
     delve-pp-error:message)
-  "Pretty printing scheme for displaying error objects.")
+  "Pretty printing scheme for displaying error objects.
+See `delve-pp-line' for possible values.")
 
 (defun delve-pp-error:message (error-object)
   "Return an informative message about the error.
