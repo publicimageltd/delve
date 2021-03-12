@@ -240,32 +240,30 @@ See `delve-pp-line' for possible values.")
 
 (defun delve-pp-zettel:mtime (zettel)
   "Return the mtime of ZETTEL in a human readable form."
-  (delve-pp-mod:add-face
-   (delve-pp-zettel:format-time zettel 'delve-zettel-mtime)
-   'delve-mtime-face))
+  (delve-pp-zettel:format-time zettel 'delve-zettel-mtime))
 
 (defun delve-pp-zettel:atime (zettel)
   "Return the atime of ZETTEL in a human readable form."
-  (delve-pp-mod:add-face
-   (delve-pp-zettel:format-time zettel 'delve-zettel-atime)
-   'delve-atime-face))
+  (delve-pp-zettel:format-time zettel 'delve-zettel-atime))
 
 (defun delve-pp-zettel:ctime (zettel)
   "Return the ctime of ZETTEL in a human readable form."
-  (delve-pp-mod:add-face
-   (delve-pp-zettel:format-time zettel 'delve-zettel-ctime)
-   'delve-ctime-face))
+  (delve-pp-zettel:format-time zettel 'delve-zettel-ctime))
 
 (defun delve-pp-zettel:times (zettel)
   "Return pretty printed {a/m/c}-times of ZETTEL."
-  (mapconcat (lambda (time-key)
-	       (pcase time-key
-		 (`mtime (delve-pp-zettel:mtime zettel))
-		 (`ctime (delve-pp-zettel:ctime zettel))
-		 (`atime (delve-pp-zettel:atime zettel))
-		 (_      "TIMESCHEME?")))
-	     delve-zettel-pp-time-scheme
-	     " "))
+  (let ((schemes '((mtime . ((delve-pp-zettel:mtime (:format "%10s"
+						   :set-face delve-mtime-face))))
+		  (atime  . ((delve-pp-zettel:atime (:format "%10s"
+						   :set-face delve-atime-face))))
+		  (ctime  . ((delve-pp-zettel:ctime (:format "%10s"
+			 			   :set-face delve-ctime-face)))))))
+    ;;
+    (mapconcat (lambda (time-key)
+		 (when-let ((pp-scheme (alist-get time-key schemes)))
+		   (delve-pp-line zettel pp-scheme)))
+	       delve-zettel-pp-time-scheme
+	       " ")))
 
 (defun delve-pp-zettel:tags (zettel)
   "Join all tags from ZETTEL."
