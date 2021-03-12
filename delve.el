@@ -194,7 +194,7 @@ Each action is simply an interactive function."
   (when (delve-zettel-needs-update zettel)
     "item changed, not up to date ->"))
 
-(defun delve-pp-zettel:meta (zettel time-fun)
+(defun delve-pp-zettel:format-time (zettel time-fun)
   "Return the TIME-FUN of ZETTEL in a human readable form."
   (let* ((time                 (funcall time-fun zettel))
 	 (days                 (time-to-days time))
@@ -211,15 +211,15 @@ Each action is simply an interactive function."
 
 (defun delve-pp-zettel:mtime (zettel)
   "Return the mtime of ZETTEL in a human readable form."
-  (delve-pp-zettel:meta zettel 'delve-zettel-mtime))
+  (delve-pp-zettel:format-time zettel 'delve-zettel-mtime))
 
 (defun delve-pp-zettel:atime (zettel)
   "Return the atime of ZETTEL in a human readable form."
-  (delve-pp-zettel:meta zettel 'delve-zettel-atime))
+  (delve-pp-zettel:format-time zettel 'delve-zettel-atime))
 
 (defun delve-pp-zettel:ctime (zettel)
   "Return the ctime of ZETTEL in a human readable form."
-  (delve-pp-zettel:meta zettel 'delve-zettel-ctime))
+  (delve-pp-zettel:format-time zettel 'delve-zettel-ctime))
 
 (defun delve-pp-generic:type (delve-object)
   "Represent the type of DELVE-OBJECT, if possible with an icon."
