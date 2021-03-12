@@ -60,6 +60,7 @@ Delve inherits and extends the functionality from the now deprecated
     - [[#remote-editing][Remote Editing]]
     - [[#restoring--refreshing][Restoring / Refreshing]]
   - [[#delve-minor-mode][Delve minor mode]]
+- [[#customizations][Customizations]]
 - [[#changelog][Changelog]]
 - [[#testing][Testing]]
 - [[#bugs--problems--untested-stuff][Bugs / Problems / Untested Stuff]]
@@ -278,9 +279,10 @@ directory). See [[#delve-minor-mode]] below.
 
 ** Further Configuration
 *** Predefined Searches
+
 Delve comes with a set of predefined searches. See the documentation
-of the variable =delve-searches= for more details. Basically, you pass a
-list of keywords which define the search. 
+of the customizable variable =delve-searches= for more details.
+Basically, you pass a list of keywords which define the search.
 
 A search is made by specialization. Delve provides a universal search
 query which would return /all/ pages, with some additional information
@@ -451,6 +453,12 @@ page to another page (i.e., a link to the page titled "Kreativität"
 respective links, so that the user could now expand on them to dive
 deeper into the Zettelkasten.
 
+* Customizations
+
+See =M-x customize-group delve= for a list of customizable variables,
+including the searches presented in the initial buffer.
+
+
 * Changelog
 :PROPERTIES:
 :TOC:      :depth 0
@@ -468,6 +476,8 @@ deeper into the Zettelkasten.
 
 *** Under the hood
 
+ + Added support of several timestamps (atime, ctime, mtime). Thanks
+   to github user @natask for the PR.
  + Rewrote the pretty printing of the line
  + Added tests
  + Switched from `makem.sh` to `Eldev`
