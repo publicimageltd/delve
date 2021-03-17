@@ -282,24 +282,20 @@ specific query for special usecases."
 
 ;; * Sorting query results:
 
-(defun delve-db-query-sort-by-mtime (zettel)
-  "Sort ZETTEL by mtime, last one first."
-  (cl-sort zettel (lambda (e1 e2) (time-less-p e2 e1))
-	   :key #'delve-zettel-mtime))
-
-(defun delve-db-query-sort-by-atime (zettel)
-  "Sort ZETTEL by mtime, last one first."
-  (cl-sort zettel (lambda (e1 e2) (time-less-p e2 e1))
-	   :key #'delve-zettel-atime))
-
-(defun delve-db-query-sort-by-ctime (zettel)
-  "Sort ZETTEL by mtime, last one first."
-  (cl-sort zettel (lambda (e1 e2) (time-less-p e2 e1))
-	   :key #'delve-zettel-ctime))
+(defmacro delve-db-zettel-sorting-pred (sorting-pred slot)
+  "Define a sorting predicate for comparing zettel items.
+SORTING-PRED is a sorting function which compares the SLOT values
+of the items Z1 and Z2."
+  `(lambda (z1 z2)
+    (funcall ,sorting-pred
+     (cl-struct-slot-value 'delve-zettel ,slot z1)
+     (cl-struct-slot-value 'delve-zettel ,slot z2))))
 
 (defun delve-db-query-last-10-modified (zettel)
   "Return the last 10 modified ZETTEL."
-  (seq-take (delve-db-query-sort-by-mtime zettel) 10))
+  (seq-take (cl-sort zettel
+		     (delve-db-zettel-sorting-pred #'time-less-p 'mtime)
+	    10)))
 
 ;; * Update a complete item tree
 

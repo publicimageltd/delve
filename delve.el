@@ -257,7 +257,7 @@ See `delve-pp-line' for possible values.")
 		  (atime  . ((delve-pp-zettel:atime (:format "%10s"
 						   :set-face delve-atime-face))))
 		  (ctime  . ((delve-pp-zettel:ctime (:format "%10s"
-			 			   :set-face delve-ctime-face)))))))
+						   :set-face delve-ctime-face)))))))
     ;;
     (mapconcat (lambda (time-key)
 		 (when-let ((pp-scheme (alist-get time-key schemes)))
@@ -487,31 +487,35 @@ operation unless UNMARK is nil."
       (with-temp-message "Updating the whole buffer, that might take some time...."
 	(lister-set-list buf (delve-db-update-tree all-data))))))
 
+(defun delve-sort--offer-predicates ()
+  "Let the user choose between sorting predicates."
+  (let* ((pred-alist `(("Modification time" . ,(delve-db-zettel-sorting-pred #'time-less-p 'mtime))
+		       ("Access time"       . ,(delve-db-zettel-sorting-pred #'time-less-p 'atime))
+		       ("Title (ascending)" . ,(delve-db-zettel-sorting-pred #'string-greaterp 'title))
+		       ("Title (descending)". ,(delve-db-zettel-sorting-pred #'string-lessp 'title)))))
+    (delve--acomplete "Sort by: " pred-alist t)))
 
-(defun delve-sort-buffer-function (buf function)
-  "sort all items in BUF by FUNCTION."
-  (when-let* ((all-data (lister-get-all-data buf))
-              (head (car all-data))
-              (tail (cdr all-data)))
-    (lister-with-locked-cursor buf
-      (with-temp-message "Updating the whole buffer, that might take some time...."
-	(lister-set-list buf (cons head (funcall function tail)))))))
+  (defun delve-sort-sublist (buf pos sort-pred)
+  "Sort the sublist at POS in delve buffer BUF.
+SORT-PRED has to be a function which returns the right order when
+comparing two zettel items. The macro
+`delve-db-zettel-sorting-pred' can be used for creating such
+functions on the fly.
 
-(defun delve-sort-buffer-by-atime (buf)
-  "Refresh all items in BUF."
-  (interactive (list (current-buffer)))
-  (delve-sort-buffer-function buf 'delve-db-query-sort-by-atime))
-
-(defun delve-sort-buffer-by-mtime (buf)
-  "Refresh all items in BUF."
-  (interactive (list (current-buffer)))
-  (delve-sort-buffer-function buf 'delve-db-query-sort-by-mtime))
-
-(defun delve-sort-buffer-by-ctime (buf)
-  "Refresh all items in BUF."
-  (interactive (list (current-buffer)))
-  (delve-sort-buffer-function buf 'delve-db-query-sort-by-ctime))
-
+If called interactively, let the user select the predicate for
+sorting the sublist at point."
+  (interactive (list (current-buffer)
+		     (point)
+		     (delve-sort--offer-predicates)))
+  (let (data)
+    (unless (lister-nonempty-p buf)
+      (user-error "Nothing to sort"))
+    (unless (and (lister-item-p buf pos)
+		 (setq data (lister-get-data buf pos))
+		 (delve-zettel-p data))
+      (user-error "For sorting, point must be on a zettel item"))
+    (pcase-let* ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
+      (lister-sort-list buf sort-pred beg end))))
 
 (defun delve-refresh-tainted-items (buf)
   "Update all items in BUF which are marked as needing update.
