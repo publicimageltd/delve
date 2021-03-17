@@ -294,8 +294,8 @@ of the items Z1 and Z2."
 (defun delve-db-query-last-10-modified (zettel)
   "Return the last 10 modified ZETTEL."
   (seq-take (cl-sort zettel
-		     (delve-db-zettel-sorting-pred #'time-less-p 'mtime)
-	    10)))
+		     (delve-db-zettel-sorting-pred #'time-less-p 'mtime))
+	    10))
 
 ;; * Update a complete item tree
 

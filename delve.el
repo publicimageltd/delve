@@ -198,6 +198,7 @@ Each action is simply an interactive function."
 List can contain the values `mtime' (modification time),
 `atime' (access time) and `ctime' (creation time).
 Currently, ctime is not supported by org roam."
+  ;; TODO Add type
   :group 'delve)
 
 (defvar delve-zettel-pp-scheme
