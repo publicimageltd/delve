@@ -490,13 +490,13 @@ operation unless UNMARK is nil."
 
 (defun delve-sort--offer-predicates ()
   "Let the user choose between sorting predicates."
-  (let* ((pred-alist `(("Modification time" . ,(delve-db-zettel-sorting-pred #'time-less-p 'mtime))
-		       ("Access time"       . ,(delve-db-zettel-sorting-pred #'time-less-p 'atime))
-		       ("Title (ascending)" . ,(delve-db-zettel-sorting-pred #'string-greaterp 'title))
-		       ("Title (descending)". ,(delve-db-zettel-sorting-pred #'string-lessp 'title)))))
+  (let* ((pred-alist `(("Modification time" . ,(delve-db-zettel-sorting-pred #'time-less-p     'mtime))
+		       ("Access time"       . ,(delve-db-zettel-sorting-pred #'time-less-p     'atime))
+		       ("Title (ascending)" . ,(delve-db-zettel-sorting-pred #'string-lessp    'title))
+		       ("Title (descending)". ,(delve-db-zettel-sorting-pred #'string-greaterp 'title)))))
     (delve--acomplete "Sort by: " pred-alist t)))
 
-  (defun delve-sort-sublist (buf pos sort-pred)
+(defun delve-sort-sublist (buf pos sort-pred)
   "Sort the sublist at POS in delve buffer BUF.
 SORT-PRED has to be a function which returns the right order when
 comparing two zettel items. The macro
