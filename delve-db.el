@@ -282,19 +282,23 @@ specific query for special usecases."
 
 ;; * Sorting query results:
 
-(defmacro delve-db-zettel-sorting-pred (sorting-pred slot)
+(defun delve-db-zettel-sorting-pred (sorting-pred slot &rest invert)
   "Define a sorting predicate for comparing zettel items.
 SORTING-PRED is a sorting function which compares the SLOT values
-of the items Z1 and Z2."
-  `(lambda (z1 z2)
-    (funcall ,sorting-pred
-     (cl-struct-slot-value 'delve-zettel ,slot z1)
-     (cl-struct-slot-value 'delve-zettel ,slot z2))))
-
+of the items Z1 and Z2. Optional arguments INVERT inverts the
+result value."
+  (let ((fn (lambda (z1 z2)
+	      (funcall sorting-pred
+		       (cl-struct-slot-value 'delve-zettel slot z1)
+		       (cl-struct-slot-value 'delve-zettel slot z2)))))
+    (if invert
+	(lambda (z1 z2) (not (funcall fn z1 z2)))
+      fn)))
+  
 (defun delve-db-query-last-10-modified (zettel)
   "Return the last 10 modified ZETTEL."
   (seq-take (cl-sort zettel
-		     (delve-db-zettel-sorting-pred #'time-less-p 'mtime))
+		     (delve-db-zettel-sorting-pred #'time-less-p 'mtime #'not))
 	    10))
 
 ;; * Update a complete item tree
