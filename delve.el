@@ -3,7 +3,7 @@
 ;; Copyright (C) 2020-2021
 
 ;; Author:  <joerg@joergvolbers.de>
-;; Version: 0.5
+;; Version: 0.6
 ;; Package-Requires: ((emacs "26.1") (org-roam "1.2.3") (lister "0.6"))
 ;;
 ;; Keywords: hypermedia, org-roam
@@ -50,7 +50,7 @@
   "Used internally: Bind this temporally to never use any icons
   when representing an item.")
 
-(defvar delve-version "0.5"
+(defvar delve-version "0.6"
   "Current version of delve.")
 
 ;; * Customizable Global variables
