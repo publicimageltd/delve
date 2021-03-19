@@ -1,6 +1,6 @@
 ;;; delve-edit.el --- functions for remote editing org roam files  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020  
+;; Copyright (C) 2020
 
 ;; Author:  <joerg@joergvolbers.de>
 
@@ -38,14 +38,14 @@
 ;; * Interactive Remote Editing Macro
 
 (defmacro delve-edit-in-file (file &rest body)
-  "Execute BODY in a buffer with FILE, saving all changes.
+  "Execute BODY in a buffer with FILE and save it.
 If FILE is already visited, use that buffer; else load it in a
 temporary buffer.
 Do not recurse this macro."
   (declare (indent 1) (debug t))
   (let* ((loaded-p-var (make-symbol "delve-edit-remote-file-loaded-p"))
 	 (file-buf-var (make-symbol "delve-edit-file-buffer")))
-    `(progn 
+    `(progn
        (unless (org-roam--org-roam-file-p ,file)
 	 (error "File nor an org roam file"))
        (let* ((,loaded-p-var (get-file-buffer ,file))
@@ -66,7 +66,7 @@ Do not recurse this macro."
 ;; are not factored out (yet). So we build our own.
 
 ;; -- parse relevant informations from org buffers
-    
+
 (defun delve-edit-map-keyword (org-tree keyword fn)
   "Apply FN to each KEYWORD in ORG-TREE, collecting the results.
 FN is called with the associated element property list as an
@@ -83,10 +83,10 @@ argument. ORG-TREE is the result of `org-element-parse-buffer'."
 (defun delve-edit-get-tags (org-tree)
   "Get all roam tags from ORG-TREE.
 ORG-TREE is the result of `org-element-parse-buffer'."
-    (apply #'append 
+    (apply #'append
 	   (delve-edit-map-keyword org-tree "ROAM_TAGS"
 				   (lambda (key)
- 				     (split-string (org-element-property :value key))))))
+				     (split-string (org-element-property :value key))))))
 
 (defun delve-edit-get-unused-tags (org-tree)
   "Return all tags known to the db, but not found in ORG-TREE."
@@ -106,8 +106,9 @@ beginning and the end of the respective regions."
 
 
 (defun delve-edit-get-new-keyword-position (org-tree)
-  "Return position for the first '+ROAM_TAGS' keyword."
-  (let* ((res (delve-edit-map-keyword org-tree "TITLE" 
+  "Return position for the first '+ROAM_TAGS' keyword.
+ORG-TREE is the result of `org-element-parse-buffer'."
+  (let* ((res (delve-edit-map-keyword org-tree "TITLE"
 				      (lambda (key)
 					(org-element-property :end key)))))
     (car res)))
@@ -115,7 +116,7 @@ beginning and the end of the respective regions."
 ;;  -- add or remove tags in an org buffer:
 
 (defun delve-edit-pos-to-marker (buf positions)
-  "Convert POSITIONS to marker."
+  "Convert POSITIONS to marker for BUF."
   (mapcar (lambda (pos)
 	    (set-marker (make-marker) pos buf))
 	  positions))
@@ -180,27 +181,27 @@ NEW-TAG can be a string or a list of strings."
   (delve-edit-in-file file
     (delve-edit-do-add-tag (current-buffer) new-tag)))
 
-(defun delve-edit-remove-tag (file new-tag)
-  "Remove TAG to org roam FILE.
+(defun delve-edit-remove-tag (file tag)
+  "Remove TAG from org roam FILE.
 TAG can be a string or a list of strings."
   (delve-edit-in-file file
-    (delve-edit-do-remove-tag (current-buffer) new-tag)))
+    (delve-edit-do-remove-tag (current-buffer) tag)))
 
 
 ;;; * Actual interactive functions
 
-;; TODO Try to implement this with our own functions 
+;; TODO Try to implement this with our own functions
 ;;;###autoload
 (defun delve-edit-prompt-add-alias (zettel-file)
-  "Interactively add an alias for ZETTEL-FILE"
+  "Interactively add an alias for ZETTEL-FILE."
   (interactive (list buffer-file-name))
   (delve-edit-in-file zettel-file
     (org-roam-alias-add)))
 
-;; TODO Try to implement this with our own functions 
+;; TODO Try to implement this with our own functions
 ;;;###autoload
 (defun delve-edit-prompt-remove-alias (zettel-file)
-  "Interactively remove an alias from ZETTEL-FILE"
+  "Interactively remove an alias from ZETTEL-FILE."
   (interactive (list buffer-file-name))
   (delve-edit-in-file zettel-file
     (org-roam-alias-delete)))

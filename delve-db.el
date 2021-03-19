@@ -48,8 +48,7 @@
 (defvar delve-db-sql--link-type-restriction
   '(or (= links:type "id")
        (= links:type "file"))
-  "If added to an SQL WHERE Clause, restrict links to the types
-'file' and 'id'.")
+  "Link restriction for building the SQL clause.")
 
 
 ;; * Helper
@@ -116,7 +115,7 @@ return nil."
 ;;
 ;; SELECT titles.file, titles.title, tags.tags, files.meta,
 ;;        (SELECT COUNT() FROM links WHERE links.[source]=titles.file) AS tolinks,
-;; 	   (SELECT COUNT() FROM links WHERE links.[dest] = titles.file) AS backlinks
+;;	   (SELECT COUNT() FROM links WHERE links.[dest] = titles.file) AS backlinks
 ;; FROM  titles
 ;; LEFT JOIN files USING (file)
 ;; LEFT JOIN tags USING (file)
@@ -188,8 +187,8 @@ specific query for special usecases."
 				:mtime     (plist-get times :mtime)
 				:atime     (plist-get times :atime)
 				;; NOTE Uncomment once ctime is
-				;; provided by org-roam 
-			        :ctime     nil ;; (plist-get times :ctime) 
+				;; provided by org-roam
+				:ctime     nil ;; (plist-get times :ctime)
 				:tolinks   tolinks
 				:backlinks backlinks)))))
 
@@ -271,7 +270,7 @@ specific query for special usecases."
 (defun delve-db-query-tolinks (zettel)
   "Return all zettel linking from ZETTEL."
   (let* ((with-clause `[:with tolinks :as [:select (as links:dest file)
-  						   :from links
+						   :from links
 						   :where (and ,delve-db-sql--link-type-restriction
 							       (= links:source $s1))]])
 	 (constraint [:join tolinks :using [[ file ]]
@@ -294,7 +293,7 @@ result value."
     (if invert
 	(lambda (z1 z2) (not (funcall fn z1 z2)))
       fn)))
-  
+
 (defun delve-db-query-last-10-modified (zettel)
   "Return the last 10 modified ZETTEL."
   (seq-take (cl-sort zettel

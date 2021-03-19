@@ -1,6 +1,6 @@
 ;;; delve-export.el --- export org roam pages        -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020  
+;; Copyright (C) 2021
 
 ;; Author:  <joerg@joergvolbers.de>
 
@@ -38,7 +38,7 @@
 (defvar delve-export-directory (concat
 				(expand-file-name user-emacs-directory)
 				"roam-file-exports")
-  "Directory for exporting org roam files. 
+  "Directory for exporting org roam files.
 Each exported org roam file will be copied in a separate, freshly
 created directory, in which the export is taking place.")
 
@@ -50,13 +50,13 @@ created directory, in which the export is taking place.")
        (when-let* ((file-name (buffer-file-name)))
 	 (locate-file file-name (list org-roam-directory)))))
 
-(defun delve-export-create-file-name (base-dir filename) 
+(defun delve-export-create-file-name (base-dir filename)
   "Return a file name for exporting FILENAME.
 The file will be within a subdirectory of BASE-DIR, the directory
 name being FILENAME without the file suffix. Create this
 directory if it does not exist."
   (unless (stringp filename)
-    (error "Argument FILENAME must be a string."))
+    (error "Argument FILENAME must be a string"))
   (let* ((new-file (concat (file-name-as-directory base-dir)
 			   (file-name-as-directory (file-name-base filename))
 			   (file-name-nondirectory filename))))
@@ -67,10 +67,10 @@ directory if it does not exist."
 (defun delve-export-put-warning ()
   "Add a warning header to current buffer."
   (setq header-line-format
-	'(:propertize "Use this copied file for exporting only."
+	'(:propertize "Use this copied file for exporting only"
 		      'face 'bold)))
 
-;;;###autoload 
+;;;###autoload
 (defun delve-export-find-original-file ()
   "In an exported org file, find the original org roam file."
   (interactive)
@@ -78,15 +78,15 @@ directory if it does not exist."
 	      (export-dir (file-name-directory
 			   (delve-export-create-file-name delve-export-directory file-name))))
     (unless (locate-file file-name (list export-dir))
-      (user-error "This file is not in a delve export directory."))
+      (user-error "This file is not in a delve export directory"))
     (if-let* ((original-file (locate-file file-name (list org-roam-directory))))
-	(progn 
+	(progn
 	  (find-file original-file)
-	  (message "Now visiting the original org roam file."))
-      (user-error "Could not find file %s in the org roam directory."
+	  (message "Now visiting the original org roam file"))
+      (user-error "Could not find file %s in the org roam directory"
 		  file-name))))
 
-;;;###autoload 
+;;;###autoload
 (defun delve-export-file (base-dir file)
   "Copy FILE to its own directory in BASE-DIR and call `delve-export-file'."
   (interactive (list delve-export-directory
