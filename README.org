@@ -2,6 +2,8 @@
 
 * NOTE: Waiting for org-roam v2
 
+This is the documentation for =Delve v0.6.=
+
 *NOTE*: I am currently waiting for the /new database version/ of =org-roam=
 to be published (branch "v2"). This adaptation, however, will most
 likely take some time. I am in a busy phase at work now and cannot
@@ -11,6 +13,9 @@ this new scheme -- I use it myself and want to keep on using it.
 So please *do not open an issue immediately* once the new version of
 =org-roam= is published, or only open an issue to make me aware that the
 new version of =org-roam= is available.
+
+Another *upcoming change* is that =Delve= will not query backlinks and
+tolinks per default, which speeds up the queries considerably.
 
 * What is Delve?
 
@@ -51,7 +56,7 @@ Delve inherits and extends the functionality from the now deprecated
     - [[#predefined-searches][Predefined Searches]]
     - [[#pretty-icons][Pretty Icons]]
     - [[#evil][Evil]]
-- [[#keybindings][Keybindings]]
+- [[#keybindings-and-commands][Keybindings and Commands]]
   - [[#delve][Delve]]
     - [[#viewing-items-and-expanding-queries][Viewing items and expanding queries]]
     - [[#navigation-and-ordering][Navigation and ordering]]
@@ -354,7 +359,7 @@ possible ways to integrate =delve= into =evil=. Eventually, it will be
 merged into the source code, but since I don't use =evil=, I won't be
 hurrying it. (Remember, that's a hobby horse!)
 
-* Keybindings
+* Keybindings and Commands
 
 ** Delve 
 
@@ -373,13 +378,18 @@ following keys apply:
 
 *** Navigation and ordering
 
-| Key    | Function                                                   |
-|--------+------------------------------------------------------------|
-| LEFT   | Insert list with all backlinks pointing to zettel at point |
-| RIGHT  | Insert list with all links in the zettel at point          |
-| M-up   | Move the current item up.                                  |
-| M-down | Move the current item down.                                |
-|--------+------------------------------------------------------------|
+| Key                       | Function                                                   |
+|---------------------------+------------------------------------------------------------|
+| LEFT                      | Insert list with all backlinks pointing to zettel at point |
+| RIGHT                     | Insert list with all links in the zettel at point          |
+| M-up                      | Move the current item up.                                  |
+| M-down                    | Move the current item down.                                |
+| M-left, M-right           | Indent or unindent item at point.                          |
+| s                         | Sort the sublist at point                                  |
+| M-x delve-filter-by-tag   | Filter all buffer items by tag                             |
+| M-x delve-filter-by-title | Filter all buffer items by title                           |
+| M-x delve-remove-filter   | Remove any filter                                          |
+|---------------------------+------------------------------------------------------------|
 
 *** Collecting
 
@@ -466,11 +476,23 @@ including the searches presented in the initial buffer.
 
 ** Current pre-release version
 
+** 0.6 
+
+** New Features
+
+ + Use =M-up=, =M-down, M-left, M-right= to move items.
+ + Add support for sorting (bound to =s=)..
+ + Marked items can now be moved into a separate buffer (=M-x
+   delve-collect=)
+ + Add basic support for filtering (not on keyboard yet, try =M-x
+   delve-filter-by-=).
+
+** Little improvements
+
  + =delve-open-or-select= now does not offer the current buffer for
    selection, if it is a delve buffer
  + Behavior of =C-l= is now more consistent
- + Added =M-up= and =M-down= to move items
- + Marked items can now be moved into a separate buffer (=M-x delve-collect=)
+ + Dependency on lister 0.6
 
 ** 0.5
 
