@@ -556,6 +556,16 @@ sorting the sublist at point."
     (pcase-let* ((`(,beg ,end _ ) (lister-sublist-boundaries buf pos)))
       (lister-sort-list buf sort-pred beg end))))
 
+;; * Refresh or update the display in various ways
+
+(defun delve-refresh-buffer (buf)
+  "Refresh all items in BUF."
+  (interactive (list (current-buffer)))
+  (when-let* ((all-data (lister-get-all-data-tree buf)))
+    (lister-with-locked-cursor buf
+      (with-temp-message "Updating the whole buffer, that might take some time...."
+	(lister-set-list buf (delve-db-update-tree all-data))))))
+
 (defun delve-refresh-tainted-items (buf)
   "Update all items in BUF which are marked as needing update.
 Also update all marked items, if any."
