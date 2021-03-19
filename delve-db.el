@@ -280,7 +280,7 @@ specific query for special usecases."
     (delve-db-query-all-zettel 'delve-make-tolink
 			       constraint args with-clause)))
 
-;; * Sorting query results:
+;; * Sorting or filtering query results:
 
 (defun delve-db-zettel-sorting-pred (sorting-pred slot &rest invert)
   "Define a sorting predicate for comparing zettel items.
