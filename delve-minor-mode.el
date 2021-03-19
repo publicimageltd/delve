@@ -1,6 +1,6 @@
 ;;; delve-minor-mode.el --- minor mode for optimized integration of delve and org roam  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020  
+;; Copyright (C) 2020
 
 ;; Author:  <joerg@joergvolbers.de>
 
@@ -28,12 +28,10 @@
 ;; * Variables
 
 (defvar delve-minor-mode-prefix-key (kbd "C-c d")
-  "When activating delve minor mode, bind `delve-local-map' to
-this key.''")
+  "Prefix for delve minor mode keys.")
 
 (defvar delve-minor-mode-old-prefix-key-command nil
-  "Backup value of the command associated with
-  `delve-minor-mode-prefix-key' before changing it.")
+  "Backup value of `delve-minor-mode-prefix-key'.")
 
 ;; * Functions
 
@@ -48,20 +46,11 @@ this key.''")
   "Open ZETTEL-FILE in a new delve buffer."
   (interactive (list (buffer-file-name)))
   (unless zettel-file
-    (user-error "Buffer is not visiting a file."))
+    (user-error "Buffer is not visiting a file"))
   (if (org-roam--org-file-p zettel-file)
       (delve (delve-db-get-page-from-file zettel-file))
     (user-error "%s is not an org roam file" zettel-file)))
 
-;; (defun delve-minor-mode-export-page (zettel-file)
-;;   "Call org export dispatcher for ZETTEL-FILE."
-;;   (interactive (list (buffer-file-name)))
-;;   (unless zettel-file
-;;     (user-error "Buffer is not visiting a file."))
-;;   (with-current-buffer zettel-file
-;;     (org-export-dispatch)))
-  
-  
 ;; * Map
 
 (defvar delve-local-map
