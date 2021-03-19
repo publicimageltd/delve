@@ -1,6 +1,6 @@
 ;;; delve-pp.el --- Pretty printer for delve         -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021  
+;; Copyright (C) 2021
 
 ;; This file is part of Delve.
 
@@ -63,7 +63,7 @@ If set to nil, return nil instead.")
     (insert s)
     (add-face-text-property (point-min) (point-max) face-or-spec t)
     (buffer-string)))
- 
+
 (defun delve-pp-apply-mods (s mod arg)
   "Return S modified by applying MOD using ARG.
 If MOD is not defined, return S unmodified.
@@ -76,10 +76,10 @@ The following mods are currently defined:
  (:format  \"format-string\")    ;; pass nonempty value to format
 
 If the global variable `delve-pp-inhibit-faces' is set to t, the
-face mods will be ignored. "
+face mods will be ignored."
   (pcase (list mod arg)
-    (`(:format   ,format-spec)     (delve-pp-mod:format s format-spec))    					       
-    (`(:width    ,width)           (delve-pp-mod:width  s width))    
+    (`(:format   ,format-spec)     (delve-pp-mod:format s format-spec))
+    (`(:width    ,width)           (delve-pp-mod:width  s width))
     ((and `(:set-face ,face-or-spec) (guard (null delve-pp-inhibit-faces)))
      (delve-pp-mod:set-face s face-or-spec))
     ((and `(:add-face ,face-or-spec) (guard (null delve-pp-inhibit-faces)))
@@ -102,7 +102,7 @@ MODS modify the resulting string. It can be either nil, leaving
 the string untouched, or a property list, which is processed in
 order. For a list of available mods, see `delve-pp-apply-mods'."
   (let (s format-spec)
-    ;; first create the string to be modified 
+    ;; first create the string to be modified
     (if (functionp pprinter)
 	(setq s (funcall pprinter object))
       (setq format-spec (plist-get mods :format))
@@ -116,15 +116,15 @@ order. For a list of available mods, see `delve-pp-apply-mods'."
 		      (setq s (delve-pp-apply-mods s mod arg))))))
       ;; finally pass the result
     s))
-  
+
 (cl-defun delve-pp-line (object pp-schemes &optional (separator " "))
-  "Returns a pretty printed representation of OBJECT.
+  "Return a pretty printed representation of OBJECT.
 
 PP-SCHEMES is a list. Each item of this list can either be a
 string, which is used as-is; or a pretty printer function
 returning a string, to which the object is passed; or a list with
 a pretty printer function and some properties determining how to
-further modify its results. 
+further modify its results.
 
 This property list can be either an additional cons cell (like in
 \(fn .\(:prop arg\)\) or a continuation of the list, like in \(fn
@@ -141,7 +141,7 @@ message in the result. This output is formed by passing
 variable to nil will inhibit any feedback on invalid schemes.
 Note that no check is being done on the values passed."
   (string-join
-   (cl-remove-if #'null 
+   (cl-remove-if #'null
 		 (mapcar (lambda (it)
 			   (pcase it
 			     ((pred stringp)   it)
@@ -156,6 +156,6 @@ Note that no check is being done on the values passed."
 					       (format delve-pp-invalid-scheme-error-string it)))))
 			 pp-schemes))
    separator))
-  
+
 (provide 'delve-pp)
 ;;; delve-pp.el ends here

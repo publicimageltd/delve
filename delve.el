@@ -47,8 +47,7 @@
 ;; * Non-Customizable Global variables
 
 (defvar delve-force-ignore-all-the-icons nil
-  "Used internally: Bind this temporally to never use any icons
-  when representing an item.")
+  "*Internal*: Do not use icons when representing an item.")
 
 (defvar delve-version "0.6"
   "Current version of delve.")
@@ -57,7 +56,7 @@
 
 (defcustom delve-new-buffer-add-creation-time " (%ER)"
   "Time string to add to heading when creating new delve buffers.
-If `nil', do not add anything."
+If nil, do not add anything."
   :type 'string
   :group 'delve)
 
@@ -109,7 +108,7 @@ A list of symbols each specifying which time value should be
 displayed when printing a zettel item. Possible values are
 `mtime' (modification time), `atime' (access time) and
 `ctime' (creation time). Several values result in several time
-values printed side by side. 
+values printed side by side.
 
 Currently, ctime is not supported by org roam."
   :type  '(repeat (choice (const :tag "mtime (Modification Time)" mtime)
@@ -176,7 +175,9 @@ Currently, ctime is not supported by org roam."
 ;; * Utilities
 
 (defun delve--acomplete (prompt collection &optional require-match history)
-  "Complete on alist COLLECTION and return the associated result."
+  "Complete on alist COLLECTION and return the associated result.
+For the values of PROMPT, REQUIRE-MATCH and HISTORY, see the
+documentation of `completing-read'."
   (let* ((res         (completing-read prompt collection nil require-match nil history))
 	 (associated  (alist-get res collection nil nil #'string=)))
     (if (and (not require-match) (not associated))
@@ -226,7 +227,7 @@ See `delve-pp-line' for possible values.")
   (list (delve-pp-line zettel delve-zettel-pp-scheme)))
 
 (defun delve-pp-zettel:needs-update (zettel)
-  "Inform that a zettel needs to be updated."
+  "Return information that ZETTEL needs to be updated."
   (when (delve-zettel-needs-update zettel)
     "item changed, not up to date ->"))
 
@@ -326,7 +327,7 @@ See `delve-pp-line' for possible values.")
 
 (defun delve-pp-error:message (error-object)
   "Return an informative message about the error.
-ERROR-OBJECT must be a delve object, not an emacs error object!"
+ERROR-OBJECT must be a delve object, not an Emacs error object."
   ;; TODO Use slot "message" in error object to
   ;; make this message even more specific
      (format " SQL error logged in buffer '%s' (press ENTER to view)"
@@ -457,7 +458,7 @@ can be an integer or the symbol `:point'."
 				       (mark-current-if-none t)
 				       (unmark t))
   "Apply ACTION-FN on all marked items in BUF.
- Return the accumulated results.
+Return the accumulated results.
 
 If no item is marked, apply the function to the item at point
 unless MARK-CURRENT-IF-NONE is nil. Remove the marks after
@@ -500,7 +501,7 @@ as-is."
       t)))
 
 (defun delve-filter--build-title-filter (title-pattern)
-  "Build predicate for all zettel titles matching TAG-PATTERN."
+  "Build predicate for all zettel titles matching TITLE-PATTERN."
   (delve-filter--build-filter-predicate 'title (apply-partially #'string-match-p title-pattern)))
 
 (defun delve-filter--match-tag-p (tags pattern)
@@ -535,7 +536,7 @@ as-is."
     (user-error "No filter active"))
   (lister-set-filter buf nil))
 
-;; * Sort 
+;; * Sort
 
 (defun delve-sort--offer-predicates ()
   "Let the user choose between sorting predicates."
@@ -658,8 +659,11 @@ switch to the target buffer."
       (delve-expand-and-insert buf pos))))
 
 (defun delve-expand-in-new-bufffer (buf pos &optional expand-parent)
-  "Expand the item at point in a new buffer (instead of inserting it).
-With prefix arg, open the current subtree in a new buffer."
+  "Expand the item at point in a new buffer.
+With prefix arg EXPAND-PARENT, open the current subtree to which
+the item at point belongs in a new buffer.
+
+BUF is a lister buffer, POS marks the position of the item."
   (interactive (list (current-buffer) (point) current-prefix-arg))
   (unless lister-local-marker-list
     (user-error "There are no items in this buffer"))
@@ -782,7 +786,7 @@ the editing will apply, and an additional argument ARG."
 
 ;; TODO Define all these faces explicitly via defface
 (defun delve--pretty-collection-header (collection-name)
-  "Return a pretty header for a collection buffer"
+  "Use COLLECTION-NAME to build a pretty lister header."
   (list
    (delve-pp-line nil `(("DELVE Collection" (:set-face font-lock-comment-face))
 			(,collection-name (:set-face '((t (:foreground-color "green")))))))))
@@ -794,7 +798,7 @@ argument."
   (apply #'list (funcall modify-fn (car l)) (cdr l)))
 
 (defun delve-new-buffer-with-expansion (delve-object)
-  "Returns a new buffer with an expansion of DELVE-OBJECT.
+  "Return a new buffer with an expansion of DELVE-OBJECT.
 If there are no expansions for this object, throw an error."
   (let (heading-prefix object-name)
     (unless (delve-expansion-operators-for delve-object)
@@ -832,7 +836,7 @@ nil, no heading will be displayed, and if HEADING is a string,
 implictly convert it into a valid item.
 
 The new buffer name will be created by using
-`delve-buffer-name-format' with the value of BUFFER-NAME "
+`delve-buffer-name-format' with the value of BUFFER-NAME."
   (let* ((buf (generate-new-buffer (format delve-buffer-name-format buffer-name))))
     (with-current-buffer buf
       (delve-mode)
@@ -945,7 +949,7 @@ Return the buffer created."
     buf))
 
 (defun delve-get-fn-documentation (fn)
-  "Return the first line of the documentation string of fn."
+  "Return the first line of the documentation string of FN."
   (if-let ((doc (documentation fn)))
       (car (split-string doc "[\\\n]+"))
     (format "undocumented function %s" fn)))
