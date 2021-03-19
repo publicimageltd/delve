@@ -528,6 +528,13 @@ as-is."
     (user-error "No pattern for filtering"))
   (lister-set-filter buf (delve-filter--build-title-filter title-pattern)))
 
+(defun delve-filter-remove (buf)
+  "Remove active filter in delve buffer BUF."
+  (interactive (list (current-buffer)))
+  (unless (lister-filter-active-p buf)
+    (user-error "No filter active"))
+  (lister-set-filter buf nil))
+
 ;; * Sort 
 
 (defun delve-sort--offer-predicates ()

@@ -388,7 +388,7 @@ following keys apply:
 | s                         | Sort the sublist at point                                  |
 | M-x delve-filter-by-tag   | Filter all buffer items by tag                             |
 | M-x delve-filter-by-title | Filter all buffer items by title                           |
-| M-x delve-remove-filter   | Remove any filter                                          |
+| M-x delve-filter-remove   | Remove any filter                                          |
 |---------------------------+------------------------------------------------------------|
 
 *** Collecting
