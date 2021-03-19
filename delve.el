@@ -716,6 +716,7 @@ the editing will apply, and an additional argument ARG."
     (define-key map "."                #'delve-refresh-tainted-items)
     ;;
     ;; edit the list:
+    (define-key map (kbd "s")          #'delve-sort-sublist)
     ;;
     ;; collect items:
     (define-key map (kbd "c")          #'delve-collect)
