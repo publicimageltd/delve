@@ -478,7 +478,7 @@ including the searches presented in the initial buffer.
 
 ** 0.6 
 
-** New Features
+*** New Features
 
  + Use =M-up=, =M-down, M-left, M-right= to move items.
  + Add support for sorting (bound to =s=)..
@@ -487,7 +487,7 @@ including the searches presented in the initial buffer.
  + Add basic support for filtering (not on keyboard yet, try =M-x
    delve-filter-by-=).
 
-** Little improvements
+*** Little improvements
 
  + =delve-open-or-select= now does not offer the current buffer for
    selection, if it is a delve buffer
