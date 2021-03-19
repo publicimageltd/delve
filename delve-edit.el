@@ -1,6 +1,8 @@
 ;;; delve-edit.el --- functions for remote editing org roam files  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020
+;; Copyright (C) 2020-2021
+
+;; This file is part of Delve.
 
 ;; Author:  <joerg@joergvolbers.de>
 

@@ -1,6 +1,8 @@
 ;;; delve-minor-mode.el --- minor mode for optimized integration of delve and org roam  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020
+;; Copyright (C) 2021
+
+;; This file is part of Delve.
 
 ;; Author:  <joerg@joergvolbers.de>
 

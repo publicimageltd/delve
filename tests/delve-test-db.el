@@ -75,36 +75,6 @@
     (expect (delve--flatten nil)
 	    :to-be nil)))
 
-(describe "delve-db-rearrange"
-  (it "rearranges using position index"
-    (expect (delve-db-rearrange [1 0] '((a b) (a b)))
-	    :to-equal
-	    '((b a) (b a))))
-  (it "discards non-indexed values when rearranging"
-    (expect (delve-db-rearrange [0] '((a b c) (a b c)))
-	    :to-equal
-	    '((a) (a))))
-  (it "rearranges and applies functions with arity 1"
-    (expect (delve-db-rearrange [1 (0 1+)] '((1 0) (1 0)))
-	    :to-equal
-	    '((0 2) (0 2))))
-  (it "rearranges and applies functions with anaphoric argument 'it'"
-    (expect (delve-db-rearrange [1 (0 (1+ it))] '((1 0) (1 0)))
-	    :to-equal
-	    '((0 2) (0 2))))
-  (it "adds keyword to the rearranged items:"
-    (expect (delve-db-rearrange [:count 1] '((0 20) (1 87)))
-	    :to-equal
-	    '((:count 20) (:count 87))))
-  (it "adds keywords to the rearranged items:"
-    (expect (delve-db-rearrange [:count 1 :yes 0] '((0 20) (1 87)))
-	    :to-equal
-	    '((:count 20 :yes 0) (:count 87 :yes 1))))
-  (it "it passes strings as-is when rearranging:"
-    (expect (delve-db-rearrange [:count 1 :string \"hi\"] '((0 20) (1 87)))
-	    :to-equal
-	    '((:count 20 :string \"hi\") (:count 87 :string \"hi\")))))
-
 (describe "Catching malformed queries"
   (before-all
     (delve-test-setup-db))
@@ -149,7 +119,8 @@
        :to-equal
        '(2 2 1))))
 
-  (describe "delve-db-count-backlinks"
+  ;; FIXME Wait until org roam v2
+  (xdescribe "delve-db-count-backlinks"
     (it "counts backlinks for file reference.org"
       (expect
        (delve-db-count-backlinks (delve-test-get-file "reference.org"))
@@ -167,7 +138,8 @@
        (delve-db-count-backlinks (delve-test-get-file "reference2.org"))
        :to-be 1)))
 
-  (describe "delve-db-count-tolinks"
+  ;; FIXME Wait until org roam v2
+  (xdescribe "delve-db-count-tolinks"
     (it "counts tolinks for file reference.org"
       (expect
        (delve-db-count-tolinks (delve-test-get-file "reference.org"))
@@ -267,8 +239,9 @@
 	  (expect (delve-page-title page)
 		  :to-match
 		  "Reference")))))
-  
-  (describe "delve-db-query-backlinks"
+
+  ;; FIXME Wait until org roam v2
+  (xdescribe "delve-db-query-backlinks"
     (describe "backlinks for 'reference.org'"
       :var (result file-name)
       (before-all
@@ -303,24 +276,7 @@
       (it "returns zettel objects"
 	(dolist (zettel result)
 	  (expect (delve-zettel-p zettel)
-		  :to-be-truthy)))))
-
-  (describe "delve-db-query-sort-by-mtime"
-    :var (zettel-list)
-    (before-all
-      (setq zettel-list
-	    (cl-loop for i from 1 to 5
-		     do (sleep-for 0.1)
-		     collect (delve-make-zettel  :title (format "%d" i)
-						 :mtime (current-time)))))
-    
-    (it "sorts zettel by mtime, last one first"
-      (expect (mapcar #'delve-zettel-title
-		      (delve-db-query-sort-by-mtime zettel-list))
-	      :to-equal
-	      '("5" "4" "3" "2" "1"))))
-      
-  (describe "delve-db-query-last-10-modified"))
+		  :to-be-truthy))))))
 
   
 (provide 'delve-test-db)

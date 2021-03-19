@@ -64,6 +64,12 @@ itself ommitted."
 ;; * The Specs
 
 (describe "Expanding"
+  :var (inhibit-message)
+  (before-all
+    ;; Eldev can't handle "with-temp-message", so mute it:
+    (setq inhibit-message t))
+  (after-all
+    (setq inhibit-message nil))
 
   (describe "delve-expand"
     (it "can be called with no operator"
