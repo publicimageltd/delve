@@ -445,7 +445,7 @@ can be an integer or the symbol `:point'."
 ;; -----------------------------------------------------------
 ;;; * Delve Mode: Interactive Functions, Mode Definition
 
-;;  Generic function to deal with marked items
+;;  Generic function for marked items
 
 (cl-defun delve-walk-marked-items (buf action-fn &optional
 				       (mark-current-if-none t)
@@ -478,22 +478,60 @@ operation unless UNMARK is nil."
 	(lister-mark-some-items buf marked-items nil))
       res)))
 
-;; Refresh or update the display in various ways
+;; * Filter
 
-(defun delve-refresh-buffer (buf)
-  "Refresh all items in BUF."
-  (interactive (list (current-buffer)))
-  (when-let* ((all-data (lister-get-all-data-tree buf)))
-    (lister-with-locked-cursor buf
-      (with-temp-message "Updating the whole buffer, that might take some time...."
-	(lister-set-list buf (delve-db-update-tree all-data))))))
+(defun delve-filter--build-filter-predicate (slot filter-fn &rest args)
+  "Build predicate applying FILTER-FN on SLOT for a zettel item.
+Optional arguments ARGS will also be passed to FILTER-FN.
+
+The resulting function filters out any zettel items where
+FILTER-FN, when applied to the value of the SLOT of the zettel,
+returns a nil value. Items of a different type will be left
+as-is."
+  (lambda (d)
+    (if (delve-zettel-p d)
+	(apply filter-fn (cl-struct-slot-value 'delve-zettel slot d) args)
+      t)))
+
+(defun delve-filter--build-title-filter (title-pattern)
+  "Build predicate for all zettel titles matching TAG-PATTERN."
+  (delve-filter--build-filter-predicate 'title (apply-partially #'string-match-p title-pattern)))
+
+(defun delve-filter--match-tag-p (tags pattern)
+  "Check if PATTERN matches any of TAGS."
+  (seq-find (apply-partially #'string-match-p pattern) tags))
+
+(defun delve-filter--build-tag-filter (tag-pattern)
+  "Build predicate for all zettel with tags matching TAG-PATTERN."
+  (delve-filter--build-filter-predicate 'tags #'delve-filter--match-tag-p
+					tag-pattern))
+
+(defun delve-filter-by-tag (buf tag-pattern)
+  "Show only zettel items in BUF matching TAG-PATTERN."
+  (interactive (list (current-buffer)
+		     (read-string "Enter tag pattern (regexp): ")))
+  (when (string-empty-p tag-pattern)
+    (user-error "No pattern for filtering"))
+  (lister-set-filter buf (delve-filter--build-tag-filter tag-pattern)))
+
+(defun delve-filter-by-title (buf title-pattern)
+  "Show only zettel items in BUF matching TITLE-PATTERN."
+  (interactive (list (current-buffer)
+		     (read-string "Enter title pattern (regexp): ")))
+  (when (string-empty-p title-pattern)
+    (user-error "No pattern for filtering"))
+  (lister-set-filter buf (delve-filter--build-title-filter title-pattern)))
+
+;; * Sort 
 
 (defun delve-sort--offer-predicates ()
   "Let the user choose between sorting predicates."
-  (let* ((pred-alist `(("Modification time" . ,(delve-db-zettel-sorting-pred #'time-less-p     'mtime))
-		       ("Access time"       . ,(delve-db-zettel-sorting-pred #'time-less-p     'atime))
-		       ("Title (ascending)" . ,(delve-db-zettel-sorting-pred #'string-lessp    'title))
-		       ("Title (descending)". ,(delve-db-zettel-sorting-pred #'string-greaterp 'title)))))
+  ;; FIXME rename "zettel-sorting-pred" to "build-sorting-pred."
+  (let* ((pred-alist `(("Modification time (oldest first)" . ,(delve-db-zettel-sorting-pred #'time-less-p     'mtime))
+		       ("Modification time (latest first)" . ,(delve-db-zettel-sorting-pred #'time-less-p 'mtime :not))
+		       ("Access time (oldest first)"     . ,(delve-db-zettel-sorting-pred #'time-less-p     'atime))
+		       ("Title (from a to z)" . ,(delve-db-zettel-sorting-pred #'string-lessp    'title))
+		       ("Title (from z to a)". ,(delve-db-zettel-sorting-pred #'string-greaterp 'title)))))
     (delve--acomplete "Sort by: " pred-alist t)))
 
 (defun delve-sort-sublist (buf pos sort-pred)
@@ -541,6 +579,8 @@ Also update all marked items, if any."
     (lister-set-list buf delve-local-initial-list)
     (lister-goto buf :first)))
 
+;; * Collect items
+
 (defun delve-collect (buf &optional keep-visible)
   "In BUF, copy marked items or item at point into a (new) buffer.
 After copying, unmark the items and switch to the target buffer.
@@ -564,6 +604,8 @@ switch to the target buffer."
 			  " new")
 			" buffer " (buffer-name new-buf))))
     (message msg)))
+
+;; * Expand items
 
 (defun delve-expand-insert-tolinks ()
   "Insert all tolinks from the item at point."
@@ -615,7 +657,7 @@ With prefix arg, open the current subtree in a new buffer."
       (user-error "Item at point is no zettel"))
     (find-file (delve-zettel-file data))))
 
-;;; Remote editing: add / remove tags
+;;; * Remote editing: add / remove tags
 
 (defun delve-remote-edit (buf edit-fn arg)
   "Apply EDIT-FN with ARG on all marked items, or the item at point.
