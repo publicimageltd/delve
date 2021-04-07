@@ -4,7 +4,7 @@
 
 ;; Author:  <joerg@joergvolbers.de>
 ;; Version: 0.6
-;; Package-Requires: ((emacs "26.1") (org-roam "1.2.3") (lister "0.6"))
+;; Package-Requires: ((emacs "26.1") (org-roam "1.2.3") (lister "0.7"))
 ;;
 ;; Keywords: hypermedia, org-roam
 ;; URL: https://github.com/publicimageltd/delve
@@ -49,7 +49,7 @@
 (defvar delve-force-ignore-all-the-icons nil
   "*Internal*: Do not use icons when representing an item.")
 
-(defvar delve-version "0.6"
+(defvar delve-version "0.7"
   "Current version of delve.")
 
 ;; * Customizable Global variables
