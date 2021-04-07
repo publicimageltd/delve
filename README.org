@@ -2,7 +2,7 @@
 
 * NOTE: Waiting for org-roam v2
 
-This is the documentation for =Delve v0.6.=
+This is the documentation for =Delve v0.7.=
 
 *NOTE*: I am currently waiting for the /new database version/ of =org-roam=
 to be published (branch "v2"). This adaptation, however, will most
@@ -475,6 +475,10 @@ including the searches presented in the initial buffer.
 :END:
 
 ** Current pre-release version
+
+** 0.7
+ + =Delve= is now using =Lister= v 0.7, so we upgrade =Delve= accordingly in
+   order to avoid confusion.
 
 ** 0.6 
 

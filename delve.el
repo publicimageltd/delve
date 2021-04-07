@@ -676,14 +676,6 @@ BUF is a lister buffer, POS marks the position of the item."
 	      (delve items))))
       (delve item-at-point))))
 
-(defun delve-visit-zettel ()
-  "Visit the zettel item on point, leaving delve."
-  (interactive)
-  (let* ((data (lister-get-data (current-buffer) :point)))
-    (unless (delve-zettel-p data)
-      (user-error "Item at point is no zettel"))
-    (find-file (delve-zettel-file data))))
-
 ;;; * Remote editing: add / remove tags
 
 (defun delve-remote-edit (buf edit-fn arg)
@@ -716,20 +708,24 @@ the editing will apply, and an additional argument ARG."
 
 ;; Act on the item at point
 
-(defun delve-action (data)
-  "Act on the delve object DATA."
-  (ignore data)
-  (pcase data
-    ((pred delve-error-p)  (switch-to-buffer (delve-error-buffer data)))
-    ((pred delve-zettel-p) (delve-visit-zettel))
-    (_                     (error "No action defined for this item"))))
+(defun delve-key-visit-zettel (buf pos)
+  "Visit the zettel at point."
+  (interactive (list (current-buffer) (point)))
+  (unless (lister-item-p buf pos)
+    (user-error "No item to visit"))
+  (let ((data (lister-get-data buf pos)))
+    (pcase data
+      ((pred delve-error-p)  (switch-to-buffer (delve-error-buffer data)))
+      ((pred delve-zettel-p) (find-file (delve-zettel-file data)))
+      (_                     (error "Cannot visit this item")))))
 
 ;;; Delve Major Mode
 
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map lister-mode-map)
-    ;; <RETURN> is mapped to #'delve-action (via lister-local-action)
+    ;; Visit Zettel at point:
+    (define-key map (kbd "<RET>")      #'delve-key-visit-zettel)
     ;;
     ;; expand items:
     (define-key map "\t"               #'delve-expand-toggle-sublist)
