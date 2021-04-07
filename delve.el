@@ -760,17 +760,13 @@ the editing will apply, and an additional argument ARG."
   "Major mode for browsing your org roam zettelkasten."
   ;; Setup lister first since it deletes all local vars:
   (lister-setup	(current-buffer) #'delve-mapper
-		nil                                     ;; initial data
-		(concat "DELVE Version " delve-version) ;; header
-		nil ;; footer
-		nil ;; filter
-		t   ;; no major-mode
-		)
+		nil
+		(concat "DELVE Version " delve-version))
   ;; --- Now add delve specific stuff:
+  ;; enable standard key bindings:
+  (lister-keys-mode) 
   ;; do not mark searches:
-  (setq-local lister-local-marking-predicate #'delve-zettel-p)
-  ;; pressing enter calls `delve-action:'
-  (setq-local lister-local-action #'delve-action))
+  (setq-local lister-local-marking-predicate #'delve-zettel-p))
 
 ;; * Some delve specific buffer handling
 
