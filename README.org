@@ -58,6 +58,7 @@ Delve inherits and extends the functionality from the now deprecated
     - [[#evil][Evil]]
 - [[#keybindings-and-commands][Keybindings and Commands]]
   - [[#delve][Delve]]
+    - [[#keymaps][Keymaps]]
     - [[#viewing-items-and-expanding-queries][Viewing items and expanding queries]]
     - [[#navigation-and-ordering][Navigation and ordering]]
     - [[#collecting][Collecting]]
@@ -363,8 +364,11 @@ hurrying it. (Remember, that's a hobby horse!)
 
 ** Delve 
 
-On standard emacs, use the usual navigation keys. Additionally, the
-following keys apply:
+*** Keymaps
+
+On standard emacs, use the usual navigation keys. Additionally, there
+are a variety of kebindings predefined in =delve-mode-map=. Change these
+bindings to your liking.
 
 *** Viewing items and expanding queries
 
