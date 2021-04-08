@@ -3,7 +3,7 @@
 ;; Copyright (C) 2020-2021
 
 ;; Author:  <joerg@joergvolbers.de>
-;; Version: 0.6
+;; Version: 0.7
 ;; Package-Requires: ((emacs "26.1") (org-roam "1.2.3") (lister "0.7"))
 ;;
 ;; Keywords: hypermedia, org-roam
