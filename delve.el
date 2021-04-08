@@ -723,7 +723,8 @@ the editing will apply, and an additional argument ARG."
 
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map lister-mode-map)
+    ;; inherit standard key bindings:
+    (set-keymap-parent map lister-keys-mode-map)
     ;; Visit Zettel at point:
     (define-key map (kbd "<RET>")      #'delve-key-visit-zettel)
     ;;
@@ -759,8 +760,6 @@ the editing will apply, and an additional argument ARG."
 		nil
 		(concat "DELVE Version " delve-version))
   ;; --- Now add delve specific stuff:
-  ;; enable standard key bindings:
-  (lister-keys-mode) 
   ;; do not mark searches:
   (setq-local lister-local-marking-predicate #'delve-zettel-p))
 
