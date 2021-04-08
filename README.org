@@ -116,7 +116,7 @@ right on their very left side, that marks them as "links pointing to
 the top file". The last item is a page for the concept "Artificial
 Intelligence" ("Künstliche Intelligenz"). As the item on its left side
 indicates, that's a link found in the top page ("Criticism of AI")
-itself. 
+itself.
 
 The most important feature is that the user can now look at each of
 these linked pages again, and investigate /their/ links. So we could
@@ -156,7 +156,7 @@ in this documentation).
 Press =q= to bury the delve buffer.
 
 If you then press =delve-open-or-select= again, you will be presented with a
-list of open delve buffers. 
+list of open delve buffers.
 
 ** Most fundamental workflows
 
@@ -264,10 +264,10 @@ you can download it with another package manager or manually.
   #+begin_src emacs-lisp
 (use-package lister
   :quelpa (lister :fetcher git
-  		  :url "https://github.com/publicimageltd/lister"))
+		  :url "https://github.com/publicimageltd/lister"))
 
 (use-package delve
-  :quelpa (delve :fetcher git 
+  :quelpa (delve :fetcher git
 		 :url "https://github.com/publicimageltd/delve")
   :config
   (use-package delve-minor-mode
@@ -334,7 +334,7 @@ If you want to test the results of a search query, you could use
 something like this:
 
 #+begin_src emacs-lisp
-  (delve-operate-search 
+  (delve-operate-search
    (delve-make-page-search :constraint [:order-by (desc backlinks) :limit 3]))
 #+end_src
 
@@ -346,7 +346,7 @@ icons when calling =delve-open-or-select=, use the following option:
 (setq delve-use-icons-in-completions t) ;; per default nil
 #+end_src
 
-*** Evil 
+*** Evil
 
 =evil-mode= users should add the following snippet to their
 configuration to use the default keybinding:
@@ -362,7 +362,7 @@ hurrying it. (Remember, that's a hobby horse!)
 
 * Keybindings and Commands
 
-** Delve 
+** Delve
 
 *** Keymaps
 
@@ -484,7 +484,7 @@ including the searches presented in the initial buffer.
  + =Delve= is now using =Lister= v 0.7, so we upgrade =Delve= accordingly in
    order to avoid confusion.
 
-** 0.6 
+** 0.6
 
 *** New Features
 
@@ -523,7 +523,7 @@ including the searches presented in the initial buffer.
  + List titles do not use icons anymore (for easier completion).
  + Predefined searches are now defined on the fly and thus can be
    changed easier.
- 
+
 *** Fixes
  + Include ID links.
 
@@ -548,7 +548,7 @@ Delve uses =Eldev= because one is an anagram of the other.
    duplicates is on the way.
  - There is a general problem with *duplicate items*, not related to
    aliases. I could not find out its source yet.
- 
+
 
 # Local Variables:
 # eval: (require 'org-make-toc)
