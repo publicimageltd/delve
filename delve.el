@@ -724,7 +724,11 @@ the editing will apply, and an additional argument ARG."
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
     ;; inherit standard key bindings:
-    (set-keymap-parent map lister-keys-mode-map)
+    ;; FIXME Remove reference to deprecated lister-keys-mode-map
+    ;; once we dependend on lister>0.7.1
+    (set-keymap-parent map (if (fboundp 'lister-keys-mode-map)
+			       lister-keys-mode-map
+			     lister-mode-map))
     ;; Visit Zettel at point:
     (define-key map (kbd "<RET>")      #'delve-key-visit-zettel)
     ;;
