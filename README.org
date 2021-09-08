@@ -1,23 +1,23 @@
 #+TITLE: delve.el
 
-* NOTE: Waiting for org-roam v2
+* NOTE: Status on Migration to org-roam v2
 
-This is the documentation for =Delve v0.7.=
+=Delve= is going to migrate to =v2=. It will not be a perfect copy, since
+the introduction of nodes let the number of Zettel to be searched
+explode. 
 
-*NOTE*: I am currently waiting for the /new database version/ of =org-roam=
-to be published (branch "v2"). This adaptation, however, will most
-likely take some time. I am in a busy phase at work now and cannot
-guarantee to adapt the code immediately, but I will adapt =Delve= to
-this new scheme -- I use it myself and want to keep on using it.
+The migration will take some time. Here are the planned steps to
+track progress; last update was on 9/8/2021:
 
-So please *do not open an issue immediately* once the new version of
-=org-roam= is published, or only open an issue to make me aware that the
-new version of =org-roam= is available.
+ - [X] Rewrite  =Lister= (on which =Delve= depends) which had a pretty bad performance on large
+   lists. This is done by now. The new version should be much more performant.
+ - [ ] Rebase =Delve= using the new =Lister= variant in a separate branch.
+ - [ ] Make the first stable release of that branch.
+ - [ ] Merge the v2 branch into the current one.
 
-Another *upcoming change* is that =Delve= will not query backlinks and
-tolinks per default, which speeds up the queries considerably.
 
 * What is Delve?
+This is the documentation for =Delve v0.7.=
 
 Delve is a tool to delve into your [[https://github.com/org-roam/org-roam][org roam zettelkasten]]. Its main
 purpose is to find pages by following links (either backlinks or
