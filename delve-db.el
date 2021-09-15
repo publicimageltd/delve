@@ -31,7 +31,7 @@
 
 ;; * Silence Byte Compiler
 
-(declare-function lister-replace "lister" (buf pos data &optional level) t)
+(declare-function delve-lister-replace "lister" (buf pos data &optional level) t)
 
 ;; * Global Variables
 
@@ -89,7 +89,7 @@ This is a simple copy of dash's `-flatten' using `seq'."
   (when (derived-mode-p 'delve-mode)
     ;; TODO Move this out of this module; this should be handled in
     ;; delve main
-    (lister-replace (current-buffer) :point
+    (delve-lister-replace (current-buffer) :point
 		    (delve-make-error :message "Useless message"
 				      :buffer (get-buffer-create delve-db-error-buffer)))))
 
