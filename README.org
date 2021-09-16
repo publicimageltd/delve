@@ -1,20 +1,32 @@
 #+TITLE: delve.el
 
-* NOTE: Status on Migration to org-roam v2
+* NOTE: DONT UPDATE IF YOU USE V1! - Status on Migration to org-roam v2
+
+9/16/21
 
 =Delve= is going to migrate to =v2=. It will not be a perfect copy, since
 the introduction of nodes let the number of Zettel to be searched
 explode. 
 
-The migration will take some time. Here are the planned steps to
-track progress; last update was on 9/8/2021:
+There will be no smooth transition, however, The problem is that =Delve=
+is heavily dependent on =Lister=, but =Lister= now just has been
+rewritten. /Updating =Lister= will therefore cause that out-dated version
+of =Delve= to break/. As a workaround, I have copied the legacy =Lister=
+code into that repository.
 
- - [X] Rewrite  =Lister= (on which =Delve= depends) which had a pretty bad performance on large
-   lists. This is done by now. The new version should be much more performant.
- - [ ] Rebase =Delve= using the new =Lister= variant in a separate branch.
- - [ ] Make the first stable release of that branch.
- - [ ] Merge the v2 branch into the current one.
+That new variant, however, is completely untested. I couldn't even
+start it because I do not have the old version of =org-roam= installed,
+and creating a separate .emacs profile for that turned out to be too
+much of a hazzle for me. 
 
+In sum, if you keep on using =Delve= with the outdated version of
+=org-roam=, you can:
+
+ - Try that 'integrated' version and hope that it works.
+ - If it does not work, use the previous commit and also install the
+   =Lister= branch =archive-version-0.7.2= as a dependency.
+
+The best thing, however, is simply to not upgrade.
 
 * What is Delve?
 This is the documentation for =Delve v0.7.=
