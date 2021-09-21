@@ -26,7 +26,7 @@
 ;;; * Dependencies
 
 ;; DONE Check v2 database structure with dbbrowser
-;; TODO Add version check for the "first" query call; store result in global variable
+;; DONE Add version check for the "first" query call; store result in global variable
 ;; TODO Write delve.el for a quick helper which displays query results
 ;; TODO Copy the all-query-gets-them-all-query from org-roam
 (require 'subr-x)
@@ -101,6 +101,10 @@ and return nil."
   (concat "\"" s "\""))
 
 ;;; * Some helping functions
+
+(defun delve-query-node-list ()
+  "Return all nodes."
+  (org-roam-node-list))
 
 ;; ;; This is a copy of org-roam--tags-table, copied here since it is not
 ;; ;; a public function
