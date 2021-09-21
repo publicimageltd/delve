@@ -39,8 +39,16 @@
 (require 'org-roam)
 (require 'lister)
 (require 'lister-mode)
-(require 'delve-query)
-(require 'delve-pp)
+(cl-eval-when (load)
+  (require 'delve-query)
+  (require 'delve-pp))
+
+(cl-eval-when (eval)
+  (let* ((dir (file-name-directory (buffer-file-name)))
+         (load-path (apply #'list dir load-path)))
+    (require 'delve-query)
+    (require 'delve-pp)))
+
 
 ;; * Silence Byte Compiler
 
