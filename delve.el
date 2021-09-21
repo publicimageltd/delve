@@ -88,6 +88,59 @@
   "An SQL query returning zettel objects."
   name query)
 
+;; * Faces
+
+(defface delve-tags-face
+  '((t (:inherit org-tag)))
+  "Face for displaying roam tags in a Delve list."
+  :group 'delve)
+
+(defface delve-title-face
+  '((t (:inherit org-document-title)))
+  "Face for displaying org roam page titles in a Delve list."
+  :group 'delve)
+
+(defface delve-subtype-face
+  '((t (:inherit font-lock-constant-face)))
+  "Face for displaying the subtype of a Delve item."
+  :group 'delve)
+
+(defface delve-mtime-face
+  '((t (:inherit org-document-info-keyword)))
+  "Face for displaying the mtime of a Delve item."
+  :group 'delve)
+
+(defface delve-atime-face
+  '((t (:inherit org-document-info-keyword)))
+  "Face for displaying the atime of a Delve item."
+  :group 'delve)
+
+(defface delve-ctime-face
+  '((t (:inherit org-document-info-keyword)))
+  "Face for displaying the ctime of a Delve item."
+  :group 'delve)
+
+(defface delve-nbacklinks-face
+  '((t (:weight bold)))
+  "Face for displaying the number of backlinks to a Delve zettel."
+  :group 'delve)
+
+(defface delve-ntolinks-face
+  '((t (:weight bold)))
+  "Face for displaying the number of tolinks to a Delve zettel."
+  :group 'delve)
+
+(defface delve-pile-face
+  '((t (:inherit org-level-1)))
+  "Face for displaying the title of a Delve pile."
+  :group 'delve)
+
+(defface delve-query-face
+  '((t (:inherit org-level-2)))
+  "Face for displaying the title of a Delve query."
+  :group 'delve)
+
+
 ;;; * The Lister Mapper
 
 ;; Printing anything
