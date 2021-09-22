@@ -277,6 +277,14 @@ any typechecking if TYPE is nil."
       (unless no-error
         (error "The item at point is not of the right type for that command")))))
 
+;;; Insert node(s)
+
+(defun delve-key-insert-node ()
+  "Interactively add NODE to current buffer's Delve list."
+  (let ((node (org-roam-node-read)))
+    (lister-insert-at lister-local-ewoc :point
+                      (delve--zettel-create node))))
+
 ;;; Visit thing
 
 (defun delve-key-visit-zettel (z)
@@ -334,34 +342,51 @@ Return the buffer object."
 
 ;;; Pile Zettels
 
-(defun delve-key-pile-marked-zettel (pile &optional interactively)
-  "Collect all marked Zettel items in a new PILE and insert it.
-If point is on a pile item and function is called with
-INTERACTIVELY non-nil, add to this pile instead.  Remove any
-duplicates in the final pile.  Skip non-zettel items when
-collecting."
-  (interactive (list (or (delve--current-item 'delve--pile t)
-                         (delve--pile-create :name (read-string "Name for the new pile: ")))
-                     t))
-  (let ((stuff-into-pile (delve--current-item 'delve--pile t)))
-    ;; prevent self-inclusion of pile item into the new pile:
-    (when (and interactively stuff-into-pile)
-      (lister-mark-unmark-at lister-local-ewoc :point nil))
-    ;; push all marked items in the pile:
-    (cl-labels ((push-on-pile (ewoc node)
-                              (let ((item (lister-node-get-data node)))
-                                (when (eq (type-of item) 'delve--zettel)
-                                  (push item (delve--pile-zettels pile))
-                                  (lister-delete-at ewoc node)))))
-      (lister-walk-marked-nodes lister-local-ewoc #'push-on-pile))
+(defun delve--stuff-into-pile (ewoc pile)
+  "In EWOC, stuff all marked nodes in PILE.
+Return the PILE object."
+  (cl-labels ((push-on-pile (ewoc node)
+                            (let ((item (lister-node-get-data node)))
+                              (when (eq (type-of item) 'delve--zettel)
+                                (push item (delve--pile-zettels pile))
+                                (lister-delete-at ewoc node)))))
+    (lister-walk-marked-nodes ewoc #'push-on-pile))
     ;; uniqify the pile zettels:
     (setf (delve--pile-zettels pile)
           (seq-uniq (delve--pile-zettels pile)))
-    ;; update display:
-    (if (and interactively stuff-into-pile)
-        (lister-refresh-at lister-local-ewoc :point)
-      (lister-insert-at lister-local-ewoc :point pile)
-      (message "Created new pile %s" (delve--pile-name pile)))))
+    pile)
+
+(defun delve--move-into-pile-at (ewoc pos)
+  "In EWOC, move all marked nodes into the pile at POS.
+Throw an error if there is no pile at POS, or if PILE is marked."
+  (let ((pile (lister-get-data-at ewoc pos)))
+    (unless (eq 'delve--pile (type-of pile))
+      (error "Item is not a pile"))
+    (when (lister-marked-at-p ewoc pos)
+      (error "Cannot move pile in itself"))
+    (delve--stuff-into-pile ewoc pile)
+    (lister-refresh-at ewoc pos)))
+
+(defun delve-key-pile ()
+  "Collect all marked Zettel items in a new pile and insert it.
+If point is on a pile item, add to this pile instead.  Remove any
+duplicates in the final pile.  Skip non-zettel items when
+collecting."
+  (interactive)
+  (let* ((ewoc    lister-local-ewoc)
+         (current (lister-get-data-at ewoc :point)))
+    (unless (lister-items-marked-p ewoc)
+      (error "No items marked"))
+    ;; insert empty pile at point if there is none:
+    (unless (eq 'delve--pile (type-of current))
+      (let ((name (read-string "Name for the new pile: ")))
+        (setq current (delve--pile-create :name name))
+        (lister-insert-at ewoc :point current)))
+    ;; now stuff it:
+    (delve--move-into-pile-at ewoc :point)
+    ;; TODO Once "lister-walk-marked" returns a count, use this to give
+    ;; feedback how many items have been moved
+    (lister-refresh-at ewoc :point)))
 
 (defun delve-key-insert-pile (pile)
   "Insert PILE as a sublist below point."
@@ -405,6 +430,13 @@ indentation of these items."
 
 ;;; Multiple action keys
 
+(defun delve-key-plus ()
+  "Pile marked items or insert a new one."
+  (interactive)
+  (if (lister-items-marked-p lister-local-ewoc)
+      (delve-key-pile)
+    (delve-key-insert-node)))
+
 (defun delve-key-ret (item)
   "Do something with the ITEM at point."
   (interactive (list (delve--current-item)))
@@ -420,7 +452,7 @@ indentation of these items."
     (define-key map (kbd "<delete>")   #'delve-key-delete)
     (define-key map (kbd "<RET>")      #'delve-key-ret)
     (define-key map (kbd "v")          #'delve-key-visit)
-    (define-key map (kbd "+")          #'delve-key-pile-marked-zettel)
+    (define-key map (kbd "+")          #'delve-key-plus)
     map)
   "Key map for `delve-mode'.")
 
