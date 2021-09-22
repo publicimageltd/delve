@@ -106,84 +106,71 @@ and return nil."
   "Return all nodes."
   (org-roam-node-list))
 
-;; ;; This is a copy of org-roam--tags-table, copied here since it is not
-;; ;; a public function
-;; (defun delve-query--get-tags-table ()
-;;   "Return a hash table of node ID to list of tags."
-;;   (let ((ht (make-hash-table :test #'equal)))
-;;     (pcase-dolist (`(,node-id ,tag) (org-roam-db-query [:select [node-id tag] :from tags]))
-;;       (puthash node-id (cons tag (gethash node-id ht)) ht))
-;;     ht))
+(defun delve-query-super-query (constraints)
+  "Call one big SQL query with CONSTRAINTS and return results as nodes.
+CONSTRAINTS must be a string with valid SQL syntax.  If
+CONSTRAINTS is nil, return all nodes.  See the query used in the
+function for allowed fields."
+  ;; This is a more or less direct copy of 'org-roam-nodes-list'
+  ;; TODO Open an issue in org roam which adds the additional
+  ;; constraint arg
+  (let ((query "SELECT id, file, \"level\", todo, pos, priority,
+           scheduled, deadline , title, properties, olp, atime,
+           mtime, '(' || group_concat(tags, ' ') || ')' as tags,
+           aliases, refs FROM -- outer from clause
+           (
+           SELECT  id,  file, \"level\", todo,  pos, priority,  scheduled, deadline ,
+             title, properties, olp, atime,  mtime, tags,
+             '(' || group_concat(aliases, ' ') || ')' as aliases,
+             refs
+           FROM
+           -- inner from clause
+             (
+             SELECT  nodes.id as id,  nodes.file as file,  nodes.\"level\" as \"level\",
+               nodes.todo as todo,   nodes.pos as pos,  nodes.priority as priority,
+               nodes.scheduled as scheduled,  nodes.deadline as deadline,  nodes.title as title,
+               nodes.properties as properties,  nodes.olp as olp,  files.atime as atime,
+               files.mtime as mtime,  tags.tag as tags,    aliases.alias as aliases,
+               '(' || group_concat(RTRIM (refs.\"type\", '\"') || ':' || LTRIM(refs.ref, '\"'), ' ') || ')' as refs
+             FROM nodes
+             LEFT JOIN files ON files.file = nodes.file
+             LEFT JOIN tags ON tags.node_id = nodes.id
+             LEFT JOIN aliases ON aliases.node_id = nodes.id
+             LEFT JOIN refs ON refs.node_id = nodes.id
+             GROUP BY nodes.id, tags.tag, aliases.alias )
+             -- end inner from clause
+           GROUP BY id, tags )
+           --- end outer from clause
+         GROUP BY id\n"))
+    (cl-loop for row in (delve-query (concat query constraints))
+             append (pcase-let* ((`(,id ,file ,level ,todo ,pos ,priority ,scheduled ,deadline
+                                        ,title ,properties ,olp ,atime ,mtime ,tags ,aliases ,refs)
+                                  row)
+                                 (all-titles (cons title aliases)))
+                      (mapcar (lambda (temp-title)
+                                (org-roam-node-create :id id
+                                                      :file file
+                                                      :file-atime atime
+                                                      :file-mtime mtime
+                                                      :level level
+                                                      :point pos
+                                                      :todo todo
+                                                      :priority priority
+                                                      :scheduled scheduled
+                                                      :deadline deadline
+                                                      :title temp-title
+                                                      :properties properties
+                                                      :olp olp
+                                                      :tags tags
+                                                      :refs refs))
+                              all-titles)))))
 
-;; ;;; * Plain queries returning simple strings
+(defun delve-query-nodes-by-id (id-list)
+  "Return all nodes in ID-LIST."
+  (delve-query-super-query (format "HAVING id IN (%s)"
+                                   (string-join (mapcar (lambda (s) (concat "'\"" s "\"'")) id-list)
+                                                ", "))))
 
-;; (defun delve-query-all-tags ()
-;;   "Return an alphabetically sorted list of all node tags."
-;;   (mapcar #'car
-;;           (delve-query [:select :distinct [tag] :from tags :order :by (asc tag)])))
-
-;; ;;; * Queries each returning a list of nodes
-
-;; ;; General function to query the 'nodes' table and convert the results
-;; ;; into a list of nodes.
-
-;; (defun delve-query--sql-populate-nodes (sql-addition &rest args)
-;;   "Build a query using SQL-ADDITION and return results as nodes.
-;; Run a query which combines a predefined SQL query with an
-;; SQL-ADDITION, optionally also passing ARGS to the SQL
-;; expression.  Convert the results of the query into a list of
-;; nodes.  Only fill the slots `file', `id', `level', `tag', `olp',
-;; `pos' and `title'.
-
-;; The predefined query selects fields from the table 'nodes'.  The
-;; additional query should add a constraint, e.g. a WHERE clause."
-;;   (let ((tag-table (delve-query--get-tags-table))
-;;         (query (vconcat [:select [file id title level olp pos]
-;;                          :from nodes]
-;;                         sql-addition)))
-;;     (cl-loop for row in (apply #'delve-query query args)
-;;              collect (pcase-let ((`(,file ,id ,title ,level ,olp ,pos) row))
-;;                        (org-roam-node-create :file file
-;;                                              :id id
-;;                                              :olp olp
-;;                                              :point pos
-;;                                              :tags (gethash id tag-table)
-;;                                              :level level
-;;                                              :title title)))))
-
-;; (defun delve-query-nodes-matching-tag (tag)
-;;   "Return partially populated nodes matching TAG.
-;; TAG must be a string.
-
-;; Does not fill all slots of the nodes; see
-;; `delve-query--sql-populate-nodes' for a detailed list."
-;;   (delve-query--sql-populate-nodes [:where
-;;                                   :exists [:select [tag node_id]
-;;                                                    :from tags
-;;                                                    :where (= tag $r1)
-;;                                                    :and (= nodes:id node_id)]]
-;;                                  (delve-query-quote-string tag)))
-
-;; ;; FIXME Die "IN" Abfrage führt dazu, dass mehrfache Backlinks in
-;; ;; einem Node nur als ein Eintrag geführt werden. Ist das ein Problem?
-;; ;; Lässt sich das vermeiden?
-;; (defun delve-query-backlinks-to-node (node)
-;;   "Return partially populated nodes pointing to NODE.
-;; NODE must be node struct.
-
-;; If one node contains several backlinks to NODE, only return one
-;; candidate for that node.  This behaviour differs from the
-;; backlinks section created by `org-roam-buffer', which is
-;; populated with all backlinks whatsovever.
-
-;; Does not fill all slots of the nodes; see
-;; `delve-query--sql-populate-nodes' for a detailed list."
-;;   (delve-query--sql-populate-nodes [ :WHERE nodes:id :IN
-;;                                           [:SELECT source :FROM links
-;;                                                    :WHERE (= links:dest $s1)
-;;                                                    :AND (= type "id")]]
-;;                                  (org-roam-node-id node)))
-
-
+;; for testing: '\"343cf09a-c197-4878-a16b-54215b525b17\"', '\"996632c7-5480-47ae-b885-485296267220\"'
 (provide 'delve-query)
 ;;; delve-query.el  ends here
