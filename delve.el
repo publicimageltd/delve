@@ -28,7 +28,7 @@
 
 ;;; Code:
 
-;;; TODO Add function to manually insert a node with completion
+;;; TODO Find word for "inserting something as a sublist below"
 ;;; TODO Add function to insert a node from an org roam buffer
 ;;; TODO Add function to insert backlinks below point
 ;;; TODO Add function to insert fromlinks below point
@@ -326,7 +326,7 @@ Return the buffer object."
                               (lambda (_ewoc node)
                                 (push (lister-node-get-data node) acc)))
     (let ((buf (delve--new-buffer
-                (format-time-string "Items collected at %X")
+                (format-time-string "DELVE Items collected at %X")
                 (nreverse acc))))
       (switch-to-buffer buf))))
 
