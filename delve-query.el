@@ -102,7 +102,7 @@ and return nil."
   "Quote string S for use as an emacsSQL argument."
   (concat "\"" s "\""))
 
-;;; * Some helping functions
+;;; * Some queries
 
 (defun delve-query-node-list ()
   "Return all nodes."
@@ -113,13 +113,17 @@ and return nil."
 CONSTRAINTS must be a string with valid SQL syntax.  If
 CONSTRAINTS is nil, return all nodes.  See the query used in the
 function for allowed fields."
-  ;; This is a more or less direct copy of 'org-roam-nodes-list'
+  ;; This is a more or less direct copy of 'org-roam-nodes-list' Only
+  ;; the field "tags" (with the group_concat) is changed to "taglist"
+  ;; So to compare against tags, use TAGLIST.
   ;; TODO Open an issue in org roam which adds the additional
   ;; constraint arg
-  (let ((query "SELECT id, file, \"level\", todo, pos, priority,
+  (let ((query
+         "SELECT id, file, \"level\", todo, pos, priority,
            scheduled, deadline , title, properties, olp, atime,
-           mtime, '(' || group_concat(tags, ' ') || ')' as tags,
-           aliases, refs FROM -- outer from clause
+           mtime, '(' || group_concat(tags, ' ') || ')' as taglist,
+           aliases, refs FROM
+           -- outer from clause
            (
            SELECT  id,  file, \"level\", todo,  pos, priority,  scheduled, deadline ,
              title, properties, olp, atime,  mtime, tags,
@@ -144,7 +148,8 @@ function for allowed fields."
            GROUP BY id, tags )
            --- end outer from clause
          GROUP BY id\n"))
-    (cl-loop for row in (delve-query (concat query constraints))
+    (cl-loop for row in (delve-query (concat query constraints "\nORDER BY title"))
+             ;; (org-roam-db-query (concat query constraints))
              append (pcase-let* ((`(,id ,file ,level ,todo ,pos ,priority ,scheduled ,deadline
                                         ,title ,properties ,olp ,atime ,mtime ,tags ,aliases ,refs)
                                   row)
@@ -167,12 +172,52 @@ function for allowed fields."
                                                       :refs refs))
                               all-titles)))))
 
+(defun delve-query--scalar-string (string)
+  "Return STRING as a quoted scalar string."
+  (thread-first string
+    (emacsql-quote-identifier)
+    (emacsql-quote-scalar)))
+
+(defun delve-query--scalar-strings (strings)
+  "Return STRINGS as a string with quoted scalar values."
+  (string-join (mapcar #'delve-query--scalar-string
+                       strings)
+               ", "))
+
+(defun delve-query-nodes-by-tag (tag-list)
+  "Return all nodes with tags TAG-LIST."
+  (delve-query-super-query
+   ;;     HAVING taglist LIKE '%"gedanke"%' AND taglist LIKE '%"Referenz"%'
+   (format "HAVING taglist LIKE %s"
+           (string-join (mapcar (lambda (s)
+                                  (thread-last s
+                                    (emacsql-quote-identifier)
+                                    ;; emacsql-parse passes SQL to
+                                    ;; #'format, so double % to avoid
+                                    ;; interpretation as format char
+                                    (format "%%%%%s%%%%")
+                                    (emacsql-quote-scalar)))
+                                tag-list)
+                        " AND taglist LIKE "))))
+
+;; (delve-query-nodes-by-tag '("Referenz" "gedanke"))
+
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST."
-  (delve-query-super-query (format "HAVING id IN (%s)"
-                                   (string-join (mapcar (lambda (s) (concat "'\"" s "\"'")) id-list)
-                                                ", "))))
+  (delve-query-super-query
+   (format "HAVING id IN (%s)" (delve-query--scalar-strings id-list))))
+
+(defun delve-query-node-by-id (id)
+  "Return node with ID."
+  (car (delve-query-nodes-by-id (list id))))
 
 ;; for testing: '\"343cf09a-c197-4878-a16b-54215b525b17\"', '\"996632c7-5480-47ae-b885-485296267220\"'
+;; (delve-query-nodes-by-id '("343cf09a-c197-4878-a16b-54215b525b17" "996632c7-5480-47ae-b885-485296267220"))
+
+;; TODO Add delve-query-backlinks-by-ids
+;; TODO Add delve-query-tolinks-by-ids
+;; NOTE Backlinks-Query in der alten DELVE Version suchen!
+
+
 (provide 'delve-query)
 ;;; delve-query.el  ends here
