@@ -460,3 +460,7 @@ indentation of these items."
 
 (provide 'delve)
 ;;; delve.el ends here
+
+;; Local Variables:
+;; eval: (add-to-list 'load-path (file-name-directory (buffer-file-name)))
+;; End:
