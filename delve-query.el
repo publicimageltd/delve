@@ -33,7 +33,9 @@
 (require 'cl-lib)
 (require 'seq)
 (require 'benchmark)
-(require 'org-roam)
+(require 'org-roam-db)
+(require 'org-roam-node)
+(require 'emacsql-compiler)
 
 ;;; * Framework for 'save' and 'verbose' querying
 

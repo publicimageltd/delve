@@ -41,8 +41,11 @@
 (require 'lister)
 (require 'lister-mode)
 (require 'button)
+(require 'delve-data-types)
 (require 'delve-query)
 (require 'delve-pp)
+;; TODO Rename delve-reader to delve-store
+(require 'delve-reader)
 
 ;; * Silence Byte Compiler
 
@@ -55,50 +58,6 @@
 
 (defvar delve--no-icons nil
   "If bound, do not use any icons when creating output.")
-
-;;; * Data Types
-
-;; Each list item has to be derived from this unspecific structure:
-(cl-defstruct (delve--item (:constructor delve--item-create))
-  "A generic single delve list item.")
-
-(cl-defstruct (delve--zettel
-            (:include delve--item)
-            (:constructor delve--zettel-create (node)))
-  "A Zettel item storing an org roam node."
-  node)
-
-;; Some shortcuts to the node element of a zettel:
-(defmacro zettel--accessor-fn (name slot-name)
-  "Define an accessor function for the node in a Zettel item.
-SLOT-NAME must be the name of a slot of an org-roam-node.  Give
-  the function the name NAME."
-  `(defun ,name (z)
-     ,(format "Access the slot %s of the node object stored in a Zettel item." slot-name)
-     (cl-struct-slot-value 'org-roam-node ,slot-name (delve--zettel-node z))))
-
-(zettel--accessor-fn delve--zettel-title   'title)
-(zettel--accessor-fn delve--zettel-id      'id)
-(zettel--accessor-fn delve--zettel-file    'file)
-(zettel--accessor-fn delve--zettel-tags    'tags)
-(zettel--accessor-fn delve--zettel-level   'level)
-(zettel--accessor-fn delve--zettel-aliases 'aliases)
-(zettel--accessor-fn delve--zettel-mtime   'file-mtime)
-(zettel--accessor-fn delve--zettel-atime   'file-atime)
-
-(cl-defstruct (delve--pile
-            (:include delve--item)
-            (:constructor delve--pile-create))
-  "A pile (list) of Zettels."
-  name zettels)
-
-;; TODO Somehow differentiate zettel queries and queries yielding
-;; other results, e.g. browsable tag lists.
-(cl-defstruct (delve--query
-            (:include delve--item)
-            (:constructor delve--query-create))
-  "An SQL query returning zettel objects."
-  name query)
 
 ;; * Faces
 
@@ -427,6 +386,25 @@ indentation of these items."
           (when top-deleted?
             (lister-walk-marked-nodes ewoc #'lister-move-item-left))
           (lister-mark-unmark-sublist-at ewoc sublist-beg nil))))))
+
+;;; * Storing and reading buffer lists in a file
+
+;; TODO Rename; refactor
+(defun delve-reader-write-buffer (buf file-name)
+  "Store the Delve list of BUF in FILE-NAME."
+  (interactive (list (current-buffer) (delve-reader-file-name)))
+  (unless (eq 'delve-mode (with-current-buffer buf major-mode))
+    (error "Buffer must be in Delve mode"))
+  (delve-reader-write file-name (delve-reader-buffer-as-list buf)))
+
+;; TODO Rename; refactor
+(defun delve-reader-read-buffer (file-name)
+  "Create a new Delve buffer from FILE-NAME."
+  (interactive (list (delve-reader-file-name)))
+  (let* ((l                 (delve-reader-read file-name))
+         (delve-object-list (delve-reader-create-object-list l)))
+    (switch-to-buffer
+     (delve--new-buffer "DELVE imported buffer" delve-object-list))))
 
 ;;; Multiple action keys
 

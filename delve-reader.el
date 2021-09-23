@@ -25,7 +25,8 @@
 ;;; Code:
 (require 'seq)
 (require 'lister)
-(require 'delve)
+(require 'delve-data-types)
+(require 'delve-query)
 
 (defun delve-reader-write (filename lisp-object &optional header)
   "Write LISP-OBJECT to FILENAME.
@@ -120,21 +121,6 @@ Determine the type of the object with the CAR of L. Use the CDR
   "Return a file name with full path for storing a Delve buffer."
   (concat (file-name-directory user-emacs-directory)
           "delve-buffer-store.el"))
-
-(defun delve-reader-write-buffer (buf file-name)
-  "Store the Delve list of BUF in FILE-NAME."
-  (interactive (list (current-buffer) (delve-reader-file-name)))
-  (unless (eq 'delve-mode (with-current-buffer buf major-mode))
-    (error "Buffer must be in Delve mode"))
-  (delve-reader-write file-name (delve-reader-buffer-as-list buf)))
-
-(defun delve-reader-read-buffer (file-name)
-  "Create a new Delve buffer from FILE-NAME."
-  (interactive (list (delve-reader-file-name)))
-  (let* ((l                 (delve-reader-read file-name))
-         (delve-object-list (delve-reader-create-object-list l)))
-    (switch-to-buffer
-     (delve--new-buffer "DELVE imported buffer" delve-object-list))))
 
 (provide 'delve-reader)
 ;;; delve-reader.el ends here
