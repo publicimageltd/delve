@@ -44,8 +44,7 @@
 (require 'delve-data-types)
 (require 'delve-query)
 (require 'delve-pp)
-;; TODO Rename delve-reader to delve-store
-(require 'delve-reader)
+(require 'delve-store)
 
 ;; * Silence Byte Compiler
 
@@ -389,22 +388,23 @@ indentation of these items."
 
 ;;; * Storing and reading buffer lists in a file
 
-;; TODO Rename; refactor
-(defun delve-reader-write-buffer (buf file-name)
+;; TODO refactor
+(defun delve-store-write-buffer (buf file-name)
   "Store the Delve list of BUF in FILE-NAME."
-  (interactive (list (current-buffer) (delve-reader-file-name)))
+  (interactive (list (current-buffer) (delve-store-file-name)))
   (unless (eq 'delve-mode (with-current-buffer buf major-mode))
     (error "Buffer must be in Delve mode"))
-  (delve-reader-write file-name (delve-reader-buffer-as-list buf)))
+  (delve-store-write file-name (delve-store-buffer-as-list buf)))
 
-;; TODO Rename; refactor
-(defun delve-reader-read-buffer (file-name)
+;; TODO refactor
+(defun delve-store-read-buffer (file-name)
   "Create a new Delve buffer from FILE-NAME."
-  (interactive (list (delve-reader-file-name)))
-  (let* ((l                 (delve-reader-read file-name))
-         (delve-object-list (delve-reader-create-object-list l)))
-    (switch-to-buffer
-     (delve--new-buffer "DELVE imported buffer" delve-object-list))))
+  (interactive (list (delve-store-file-name)))
+  (let* ((l                 (delve-store-read file-name))
+         (delve-object-list (delve-store-create-object-list l)))
+    (if l (switch-to-buffer
+           (delve--new-buffer "DELVE imported buffer" delve-object-list))
+      (user-error "File %s seems to be empty"))))
 
 ;;; Multiple action keys
 

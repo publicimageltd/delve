@@ -1,4 +1,4 @@
-;;; delve-reader.el --- file i/o for the Delve tool  -*- lexical-binding: t; -*-
+;;; delve-store.el --- file i/o for the Delve tool  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021
 
@@ -28,7 +28,7 @@
 (require 'delve-data-types)
 (require 'delve-query)
 
-(defun delve-reader-write (filename lisp-object &optional header)
+(defun delve-store-write (filename lisp-object &optional header)
   "Write LISP-OBJECT to FILENAME.
 Add string HEADER as a comment line to the top of the file.
 Return LISP-OBJECT."
@@ -48,7 +48,7 @@ Return LISP-OBJECT."
       (encode-coding-string content 'utf-8 nil (current-buffer)))
   lisp-object))
 
-(defun delve-reader-read (file-name)
+(defun delve-store-read (file-name)
   "Read FILE-NAME as Lisp expression and return it."
   (if (file-exists-p file-name)
       (with-temp-buffer
@@ -62,7 +62,7 @@ Return LISP-OBJECT."
           (error (error "Error reading data base: %s" (error-message-string err)))))
     (error "File not found: %s" file-name)))
 
-(defun delve-reader-object-as-list (delve-object)
+(defun delve-store--object-as-list (delve-object)
   "Represent DELVE-OBJECT as a special list item.
 The return value is a list with the object type as its CAR and
 additional information as its CDR.  The data in the CDR must
@@ -72,55 +72,45 @@ suffice to fully reconstruct the complete item."
    (cl-typecase delve-object
      (delve--zettel (list :id (delve--zettel-id delve-object)))
      (delve--pile   (list :name    (delve--pile-name delve-object)
-                          :zettels (seq-reduce (lambda (acc elt)
-                                                 (cons (delve-reader-object-as-list elt) acc))
-                                               (delve--pile-zettels delve-object)
-                                               nil)))
+                          :zettels (mapcar #'delve-store--object-as-list
+                                           (delve--pile-zettels delve-object))))
      (t             nil))))
 
-(defun delve-reader-create-object (l)
+(defun delve-store--create-object (l)
   "Create a Delve object using L.
 Determine the type of the object with the CAR of L. Use the CDR
-  as arguments to actually create the object.  Return the
-  object."
-  (let ((type (car l))
-        (args (cdr l)))
-    (pcase type
-      ;; TODO Use destructuring, it's pcase!
-      (`delve--zettel (delve--zettel-create
-                       (car (delve-query-nodes-by-id
-                             (list (plist-get args :id))))))
-      (`delve--pile   (delve--pile-create
-                       :name    (plist-get args :name)
-                       :zettels (seq-reduce (lambda (acc elt)
-                                              (cons (delve-reader-create-object elt) acc))
-                                            (plist-get args :zettels)
-                                            nil)))
+as arguments to actually create the object.  Return the object."
+  (pcase l
+    (`(delve--zettel :id ,id)
+     (delve--zettel-create (delve-query-node-by-id id)))
+    (`(delve--pile   :name ,name
+                     :zettels ,zettels)
+     (delve--pile-create :name name
+                         :zettels (mapcar #'delve-store--create-object zettels)))
       ;; TODO add a text object to inform the user of the malformed expression
-      (_  nil))))
+    (_  nil)))
 
-(defun delve-reader-create-object-list (l)
+(defun delve-store--create-object-list (l)
   "Recursively create a list of delve-objects out of L."
-  (nreverse  (seq-reduce (lambda (acc elt)
-                           (cons
-                            (if (listp (car elt))
-                                (delve-reader-create-object-list elt)
-                              (delve-reader-create-object elt))
-                            acc))
-                         l nil)))
+  (cl-labels ((create (elt)
+                      ;; TODO return informative text object if elt==nil
+                      (if (listp (car elt))
+                          (delve-store--create-object-list elt)
+                        (delve-store--create-object elt))))
+    (mapcar #'create l)))
 
-(defun delve-reader-buffer-as-list (buf)
+(defun delve-store-buffer-as-list (buf)
   "Return contents of Delve buffer BUF as a writeable list."
   (let ((ewoc (with-current-buffer buf lister-local-ewoc)))
     (lister--get-nested ewoc nil nil 0 #'identity
                         (lambda (ewoc-data)
-                          (delve-reader-object-as-list
+                          (delve-store--object-as-list
                            (lister--item-data ewoc-data))))))
 
-(defun delve-reader-file-name ()
+(defun delve-store-file-name ()
   "Return a file name with full path for storing a Delve buffer."
   (concat (file-name-directory user-emacs-directory)
           "delve-buffer-store.el"))
 
-(provide 'delve-reader)
-;;; delve-reader.el ends here
+(provide 'delve-store)
+;;; delve-store.el ends here
