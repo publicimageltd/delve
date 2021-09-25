@@ -147,23 +147,21 @@
   "Return a string or icon representing the type of DELVE-ITEM.
 If the global variable `delve--no-icons' is bound, always only
 return strings."
-  (let* ((representation
-          (pcase (type-of delve-item)
-            (`delve--query  (list "QUERY" "search"))
-            (`delve--pile   (list "PILE"  "list-ul"))
-            (`delve--info   (list "INFO"   "info"))
-            (`delve--note   (list "NOTE"  "pencil"))
-            (`delve--zettel
-             (if (eq 0 (delve--zettel-level delve-item))
-                 (list "FILE" "file-text-o")
-               (list "NODE" "dot-circle-o")))
-            (_              (list "TYPE?" "question"))))
-         (type-as-string (cl-first representation))
-         (icon-name      (cl-second representation)))
+  (pcase-let ((`(,s ,icon-name)
+              (pcase (type-of delve-item)
+                (`delve--query  (list "QUERY" "search"))
+                (`delve--pile   (list "PILE"  "list-ul"))
+                (`delve--info   (list "INFO"  "info"))
+                (`delve--note   (list "NOTE"  "pencil"))
+                (`delve--zettel
+                 (if (eq 0 (delve--zettel-level delve-item))
+                     (list "FILE" "file-text-o")
+                   (list "NODE" "dot-circle-o")))
+                (_              (list "TYPE?" "question")))))
     (if (and (featurep 'all-the-icons)
              (not delve--no-icons))
         (concat (all-the-icons-faicon icon-name) " ")
-      (delve-pp--set-width type-as-string 6))))
+      (delve-pp--set-width s 6))))
 
 ;; Printing Zettel
 
@@ -228,16 +226,21 @@ Optionally add string PREFIX to each non-nil item."
   "Format STRING as a paragraph and return it as a list of strings."
   (split-string
    (with-temp-buffer
-     (insert string)
+     (insert "  " string)
      (goto-char (point-min))
      (fill-paragraph)
      (buffer-string))
-    "\n" nil t))
+    "\n"))
 
 (defun delve--note-strings (note)
   "Return a list of strings representing NOTE."
-  (list
-   (delve--note-s-to-list (delve--note-text note))))
+  (delve--note-s-to-list
+     (delve-pp--add-face (delve--note-text note) 'delve-note-face)))
+
+(defun delve--info-strings (info)
+  "Return a list of strings representing INFO."
+  (delve--note-s-to-list
+     (delve-pp--add-face (delve--note-text info) 'delve-info-face)))
 
 ;; The actual mapper
 
@@ -247,7 +250,7 @@ Optionally add string PREFIX to each non-nil item."
          (datastrings (cl-typecase item
                         (delve--zettel (delve--zettel-strings item))
                         (delve--pile   (delve--pile-strings item))
-                        (delve--info   (delve--note-strings item))
+                        (delve--info   (delve--info-strings item))
                         (delve--note   (delve--note-strings item))
                         (t (list "no printer available for that item type")))))
     ;; hanging indent:
@@ -302,7 +305,8 @@ Return the buffer object."
   (let ((buf (generate-new-buffer name)))
     (with-current-buffer buf
       (delve-mode)
-      (lister-setup buf #'delve-mapper name)
+      (lister-setup buf #'delve-mapper
+                    (propertize name 'face 'delve-header-face))
       (lister-mode)
       (when initial-list
         (lister-set-list lister-local-ewoc initial-list)))
@@ -466,13 +470,14 @@ non-nil.  Offer completion in the directory `delve-store-directory'."
 (defun delve-read-buffer (file-name)
   "Create a new Delve buffer from FILE-NAME."
   (interactive (list (delve--ask-file-name :existing-only)))
-  (let* ((l                 (delve-store--read file-name))
-         (delve-object-list
-          (with-temp-message "Creating data objects..."
-            (delve-store--create-object-list l))))
-    (if l (switch-to-buffer
-           (delve--new-buffer "DELVE imported buffer" delve-object-list))
-      (user-error "File %s seems to be empty"))))
+  (let* ((file-name-nondirectory    (file-name-nondirectory file-name))
+         (l (delve-store--read file-name)))
+    (unless l
+      (user-error "File %s seems to be empty" file-name-nondirectory))
+    (let* ((delve-list (with-temp-message "Creating data objects..."
+                         (delve-store--create-object-list l)))
+           (buf-name   (format "DELVE import from '%s'" file-name-nondirectory)))
+      (switch-to-buffer (delve--new-buffer buf-name delve-list)))))
 
 ;;; Multiple action keys
 
