@@ -28,7 +28,6 @@
 
 ;;; Code:
 
-;;; TODO Add function to insert a node from an org roam buffer (delve-minor-mode)
 ;;; TODO delve-query.el: Add general limitation and warning system for
 ;;;                      "too long queries"
 ;;; TODO delve-query.el: Add function which queries for last mtime
@@ -255,9 +254,40 @@ Optionally add string PREFIX to each non-nil item."
                                (cdr datastrings))))
       (apply #'list first-line rest-lines))))
 
+;; * Buffer handling
+
+(defun delve--new-buffer (name &optional initial-list)
+  "Create a new delve buffer NAME with INITIAL-LIST.
+Return the buffer object."
+  (let ((buf (generate-new-buffer name)))
+    (with-current-buffer buf
+      (delve-mode)
+      (lister-setup buf #'delve-mapper
+                    (propertize name 'face 'delve-header-face))
+      (lister-mode)
+      (when initial-list
+        (lister-set-list lister-local-ewoc initial-list)))
+    buf))
+
+(defun delve-buffer-list ()
+  "Return a list of all Delve buffers."
+  (seq-filter (lambda (buf)
+                (with-current-buffer buf
+                  (eq major-mode 'delve-mode)))
+              (buffer-list)))
+
+(defun delve-select-buffer ()
+  "Select an existing Delve buffer or create a new one."
+  ;; TODO Add history variable
+  (let* ((buffer-alist (seq-group-by #'buffer-name (delve-buffer-list)))
+         (new-name (completing-read " Select Delve buffer or enter new name: "
+                                    buffer-alist)))
+    (or (car (alist-get new-name buffer-alist nil nil #'string=))
+        (delve--new-buffer new-name))))
+
 ;;; * Keys
 
-;;; Generic stuff
+;;; Generic key related stuff
 
 (defun delve--push-to-global-mark-ring ()
   "Push current point on the global mark ring."
@@ -308,19 +338,6 @@ If MULTIPLE-NODES is non-nil, insert multiple nodes."
   (delve--push-to-global-mark-ring)
   (with-current-buffer (org-roam-node-visit (delve--zettel-node z))
     (org-show-entry)))
-
-(defun delve--new-buffer (name &optional initial-list)
-  "Create a new delve buffer NAME with INITIAL-LIST.
-Return the buffer object."
-  (let ((buf (generate-new-buffer name)))
-    (with-current-buffer buf
-      (delve-mode)
-      (lister-setup buf #'delve-mapper
-                    (propertize name 'face 'delve-header-face))
-      (lister-mode)
-      (when initial-list
-        (lister-set-list lister-local-ewoc initial-list)))
-    buf))
 
 (defun delve-key-visit-pile (pile)
   "Open PILE at point in a new Delve buffer."
@@ -532,22 +549,29 @@ ask user for multiple nodes for insertion."
                (concat "DELVE Version " delve-version))
   (lister-mode))
 
-(defun delve-test ()
-  "BLABLA."
+;;; * Main Entry Point
+
+(defun delve ()
+  "Select a live Delve buffer or create a Delve Dashboard."
   (interactive)
-  (let ((buf (generate-new-buffer "DELVE")))
-    (switch-to-buffer buf)
-    (with-current-buffer buf
-      (delve-mode)
-      (let* ((ewoc lister-local-ewoc)
-             (allnodes   (delve-query-node-list))
-             (nodes      (seq-take allnodes 10))
-             (zettel     (mapcar #'delve--zettel-create nodes))
-             (pilenodes  (seq-subseq allnodes 10 15))
-             (pilezettel (mapcar #'delve--zettel-create pilenodes)))
-        (lister-set-list ewoc zettel)
-        (lister-insert-at ewoc :first (delve--pile-create :name "Ein Haufen Zettel!"
-                                                          :zettels pilezettel))))))
+  (let ((buf
+         (if (delve-buffer-list)
+             (delve-select-buffer)
+           ;; dashboard:
+           ;; TODO put some useful stuff in here
+           (with-temp-message "Setting up dashboard..."
+             (let* ((allnodes   (delve-query-node-list))
+                    (nodes      (seq-take allnodes 10))
+                    (zettel     (mapcar #'delve--zettel-create nodes))
+                    (pilenodes  (seq-subseq allnodes 10 15))
+                    (pilezettel (mapcar #'delve--zettel-create pilenodes)))
+               (delve--new-buffer "DELVE DASHBOARD"
+                                  (append (list (delve--pile-create :name "Ein Haufen Zettel!"
+                                                                    :zettels pilezettel))
+                                          zettel)))))))
+    (switch-to-buffer buf)))
+
+;; (bind-key (kbd "<f12>") 'delve)
 
 (provide 'delve)
 ;;; delve.el ends here
