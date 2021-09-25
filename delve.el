@@ -28,11 +28,6 @@
 
 ;;; Code:
 
-;;; TODO Create an abstraction which either tries to creata delve
-;;; object or, if an error occurs, shows that error in a note object.
-;;; That would mean that a function cannot rely that the real object
-;;  has been created, so we'd need a wrapper function / Macro
-;;; TODO Find word for "inserting something as a sublist below"
 ;;; TODO Add function to insert a node from an org roam buffer (delve-minor-mode)
 ;;; TODO delve-query.el: Add general limitation and warning system for
 ;;;                      "too long queries"
@@ -284,11 +279,26 @@ any typechecking if TYPE is nil."
 
 ;;; Insert node(s)
 
-(defun delve-key-insert-node ()
-  "Interactively add NODE to current buffer's Delve list."
-  (let ((node (org-roam-node-read)))
-    (lister-insert-at lister-local-ewoc :point
-                      (delve--zettel-create node))))
+(defun delve--complete-multiple-nodes ()
+  "Get multiple nodes using the completing read interface."
+  (let* ((node-alist
+          (with-temp-message "Collecting all org roam nodes..."
+            (org-roam-node-read--completions)))
+         (node-selected (completing-read-multiple "Nodes: " node-alist)))
+    (mapcar (lambda (cand)
+              (alist-get cand node-alist nil nil #'string=))
+            node-selected)))
+
+(defun delve-key-insert-node (&optional multiple-nodes)
+  "Interactively add node to current buffer's Delve list.
+If MULTIPLE-NODES is non-nil, insert multiple nodes."
+  (let ((nodes (if multiple-nodes
+                   (delve--complete-multiple-nodes)
+                 (list
+                  (with-temp-message "Collecting all org roam nodes..."
+                    (org-roam-node-read))))))
+    (lister-insert-list-at lister-local-ewoc :point
+                           (mapcar #'delve--zettel-create nodes))))
 
 ;;; Visit thing
 
@@ -394,7 +404,7 @@ collecting."
     ;; feedback how many items have been moved
     (lister-refresh-at ewoc :point)))
 
-(defun delve-key-insert-pile (pile)
+(defun delve-key-insert-pile-below (pile)
   "Insert PILE as a sublist below point."
   (interactive (list (delve--current-item 'delve--pile)))
   (let ((zettels (delve--pile-zettels pile)))
@@ -405,9 +415,14 @@ collecting."
 
 (defun delve-key-delete ()
   "Delete all marked items or the single ITEM at point.
-If the single item to be deleted has a sublist, also decrease the
-indentation of these items."
+If a region is active, first mark all the items in the region.
+Then delete all marked items, if there are any.  If there are no
+marked items, delete the item at point.  If the single item has a
+sublist, also decrease the indentation of these items."
   (interactive)
+  (when (use-region-p)
+    (lister-mode--mark-unmark-region lister-local-ewoc
+                                     (region-beginning) (region-end) t))
   (let* ((ewoc         lister-local-ewoc)
          (sublist-beg  (and (lister-sublist-below-p ewoc :point)
                             (lister-get-node-at ewoc :next)))
@@ -478,19 +493,24 @@ non-nil.  Offer completion in the directory `delve-store-directory'."
 
 ;;; Multiple action keys
 
-(defun delve-key-plus ()
-  "Pile marked items or insert a new one."
-  (interactive)
+(defun delve-key-plus (&optional prefix)
+  "Pile marked items or insert a new one.
+If called with a PREFIX argument and there are no marked items,
+ask user for multiple nodes for insertion."
+  (interactive "P")
+  (when (use-region-p)
+    (lister-mode--mark-unmark-region lister-local-ewoc
+                                     (region-beginning) (region-end) t))
   (if (lister-items-marked-p lister-local-ewoc)
       (delve-key-pile)
-    (delve-key-insert-node)))
+    (delve-key-insert-node prefix)))
 
 (defun delve-key-ret (item)
   "Do something with the ITEM at point."
   (interactive (list (delve--current-item)))
   (cl-typecase item
     (delve--zettel  (delve-key-visit-zettel item))
-    (delve--pile    (delve-key-insert-pile   item))
+    (delve--pile    (delve-key-visit-pile   item))
     (t              (error "No action defined for this item"))))
 
 ;;; * Delve Major Mode
@@ -499,6 +519,7 @@ non-nil.  Offer completion in the directory `delve-store-directory'."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "<delete>")   #'delve-key-delete)
     (define-key map (kbd "<RET>")      #'delve-key-ret)
+    (define-key map (kbd "i")          #'delve-key-insert-pile-below)
     (define-key map (kbd "v")          #'delve-key-visit)
     (define-key map (kbd "+")          #'delve-key-plus)
     map)
