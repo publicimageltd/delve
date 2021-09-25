@@ -40,11 +40,8 @@ Return LISP-OBJECT."
                            (format-time-string "%x")
                            (format-time-string "%H:%M"))
                    "\n\n"
-                   (when header
-                     (concat header "\n\n"))
                    (pp-to-string lisp-object)
-                   (when footer
-                     (concat footer "\n\n")))))
+                   "\n;; Local Variables:\n;; eval: (when (featurep 'flycheck) (flycheck-mode -1))\n;; End:\n")))
     (with-temp-file filename
       (set-buffer-multibyte nil)
       (encode-coding-string content 'utf-8 nil (current-buffer)))
