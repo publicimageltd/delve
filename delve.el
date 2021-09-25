@@ -68,13 +68,28 @@
 
 ;; * Faces
 
+(defface delve-header-face
+  '((t (:inherit org-document-title)))
+  "Face for displaying the header of a Delve list."
+  :group 'delve)
+
+(defface delve-note-face
+  '((t (:inherit font-lock-comment-face)))
+  "Face for displaying note items in a Delve list."
+  :group 'delve)
+
+(defface delve-info-face
+  '((t (:inherit warning)))
+  "Face for displaying info items in a Delve list."
+  :group 'delve)
+
 (defface delve-tags-face
   '((t (:inherit org-tag)))
   "Face for displaying roam tags in a Delve list."
   :group 'delve)
 
 (defface delve-title-face
-  '((t (:inherit org-document-title)))
+  '((t (:inherit org-roam-title)))
   "Face for displaying org roam page titles in a Delve list."
   :group 'delve)
 
@@ -192,7 +207,7 @@ Optionally add string PREFIX to each non-nil item."
   "Return a list of strings representing ZETTEL."
   (let ((node (delve--zettel-node zettel)))
     (list
-     (delve-pp-fields node '((org-roam-node-title   (:set-face delve-title-face))))
+     (delve-pp-fields node '((org-roam-node-title   (:add-face delve-title-face))))
      (delve-pp-fields node '((delve--tags-as-string (:add-face delve-tags-face)))))))
 
 ;; Printing a pile item
