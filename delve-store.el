@@ -28,9 +28,9 @@
 (require 'delve-data-types)
 (require 'delve-query)
 
-(defun delve-store-write (filename lisp-object &optional header)
+(defun delve-store--write (filename lisp-object &optional header footer)
   "Write LISP-OBJECT to FILENAME.
-Add string HEADER as a comment line to the top of the file.
+Add string HEADER to the top and FOOTER to the end of the file.
 Return LISP-OBJECT."
   (let* ((coding-system-for-write 'binary)
          (print-level nil)
@@ -42,13 +42,15 @@ Return LISP-OBJECT."
                    "\n\n"
                    (when header
                      (concat header "\n\n"))
-                   (pp-to-string lisp-object))))
+                   (pp-to-string lisp-object)
+                   (when footer
+                     (concat footer "\n\n")))))
     (with-temp-file filename
       (set-buffer-multibyte nil)
       (encode-coding-string content 'utf-8 nil (current-buffer)))
   lisp-object))
 
-(defun delve-store-read (file-name)
+(defun delve-store--read (file-name)
   "Read FILE-NAME as Lisp expression and return it."
   (if (file-exists-p file-name)
       (with-temp-buffer
@@ -99,18 +101,13 @@ as arguments to actually create the object.  Return the object."
                         (delve-store--create-object elt))))
     (mapcar #'create l)))
 
-(defun delve-store-buffer-as-list (buf)
+(defun delve-store--buffer-as-list (buf)
   "Return contents of Delve buffer BUF as a writeable list."
   (let ((ewoc (with-current-buffer buf lister-local-ewoc)))
     (lister--get-nested ewoc nil nil 0 #'identity
                         (lambda (ewoc-data)
                           (delve-store--object-as-list
                            (lister--item-data ewoc-data))))))
-
-(defun delve-store-file-name ()
-  "Return a file name with full path for storing a Delve buffer."
-  (concat (file-name-directory user-emacs-directory)
-          "delve-buffer-store.el"))
 
 (provide 'delve-store)
 ;;; delve-store.el ends here

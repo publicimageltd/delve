@@ -28,8 +28,16 @@
 
 ;;; Code:
 
+;;; TODO Create an abstraction which either tries to creata delve
+;;; object or, if an error occurs, shows that error in a note object.
+;;; That would mean that a function cannot rely that the real object
+;;  has been created, so we'd need a wrapper function / Macro
 ;;; TODO Find word for "inserting something as a sublist below"
-;;; TODO Add function to insert a node from an org roam buffer
+;;; TODO Add function to insert a node from an org roam buffer (delve-minor-mode)
+;;; TODO delve-query.el: Add general limitation and warning system for
+;;;                      "too long queries"
+;;; TODO delve-query.el: Add function which queries for last mtime
+;;; TODO delve-query.el: Add function which queries for backlinks
 ;;; TODO Add function to insert backlinks below point
 ;;; TODO Add function to insert fromlinks below point
 ;;; TODO ? Add query to insert tagged nodes, with "limit" value (>100)
@@ -128,6 +136,8 @@ return strings."
           (pcase (type-of delve-item)
             (`delve--query  (list "QUERY" "search"))
             (`delve--pile   (list "PILE"  "list-ul"))
+            (`delve--info   (list "INFO"   "info"))
+            (`delve--note   (list "NOTE"  "pencil"))
             (`delve--zettel
              (if (eq 0 (delve--zettel-level delve-item))
                  (list "FILE" "file-text-o")
@@ -197,6 +207,23 @@ Optionally add string PREFIX to each non-nil item."
    (delve-pp-fields pile '((delve--pile-size     (:set-face delve-pile-face))
                            (delve--pile-name     (:set-face delve-pile-face))))))
 
+;; Printing Notes
+
+(defun delve--note-s-to-list (string)
+  "Format STRING as a paragraph and return it as a list of strings."
+  (split-string
+   (with-temp-buffer
+     (insert string)
+     (goto-char (point-min))
+     (fill-paragraph)
+     (buffer-string))
+    "\n" nil t))
+
+(defun delve--note-strings (note)
+  "Return a list of strings representing NOTE."
+  (list
+   (delve--note-s-to-list (delve--note-text note))))
+
 ;; The actual mapper
 
 (defun delve-mapper (item)
@@ -205,6 +232,8 @@ Optionally add string PREFIX to each non-nil item."
          (datastrings (cl-typecase item
                         (delve--zettel (delve--zettel-strings item))
                         (delve--pile   (delve--pile-strings item))
+                        (delve--info   (delve--note-strings item))
+                        (delve--note   (delve--note-strings item))
                         (t (list "no printer available for that item type")))))
     ;; hanging indent:
     (let* ((pad        (make-string (length typestring) ? ))
@@ -388,20 +417,44 @@ indentation of these items."
 
 ;;; * Storing and reading buffer lists in a file
 
-;; TODO refactor
-(defun delve-store-write-buffer (buf file-name)
+(defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
+                                         "delve-store")
+  "Path to a default directory for storing Delve buffers in."
+  :group 'delve
+  :type  'directory)
+
+(defun delve--ask-file-name (&optional existing-only)
+  "Ask for a file name for a Delve store.
+Limit selection to only existing files if EXISTING-ONLY is
+non-nil.  Offer completion in the directory `delve-store-directory'."
+  (let* ((default-dir (concat (file-name-as-directory delve-store-directory)))
+         (file-name (read-file-name "File name for a Delve store: " default-dir
+                                    nil existing-only)))
+    (cond
+     ((file-directory-p file-name)
+      (user-error "File must not be a directory"))
+     ((and (not existing-only) (file-exists-p file-name))
+      (if (y-or-n-p "File exists, overwrite it? ")
+          file-name
+        (user-error "Canceled")))
+     (t file-name))))
+
+(defun delve-store-buffer (buf file-name)
   "Store the Delve list of BUF in FILE-NAME."
-  (interactive (list (current-buffer) (delve-store-file-name)))
+  (interactive (list (current-buffer) (delve--ask-file-name)))
   (unless (eq 'delve-mode (with-current-buffer buf major-mode))
     (error "Buffer must be in Delve mode"))
-  (delve-store-write file-name (delve-store-buffer-as-list buf)))
+  (unless (file-exists-p file-name)
+    (make-empty-file file-name t))
+  (delve-store--write file-name (delve-store--buffer-as-list buf)))
 
-;; TODO refactor
-(defun delve-store-read-buffer (file-name)
+(defun delve-read-buffer (file-name)
   "Create a new Delve buffer from FILE-NAME."
-  (interactive (list (delve-store-file-name)))
-  (let* ((l                 (delve-store-read file-name))
-         (delve-object-list (delve-store-create-object-list l)))
+  (interactive (list (delve--ask-file-name :existing-only)))
+  (let* ((l                 (delve-store--read file-name))
+         (delve-object-list
+          (with-temp-message "Creating data objects..."
+            (delve-store--create-object-list l))))
     (if l (switch-to-buffer
            (delve--new-buffer "DELVE imported buffer" delve-object-list))
       (user-error "File %s seems to be empty"))))
