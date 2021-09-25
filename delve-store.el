@@ -28,9 +28,8 @@
 (require 'delve-data-types)
 (require 'delve-query)
 
-(defun delve-store--write (filename lisp-object &optional header footer)
+(defun delve-store--write (filename lisp-object)
   "Write LISP-OBJECT to FILENAME.
-Add string HEADER to the top and FOOTER to the end of the file.
 Return LISP-OBJECT."
   (let* ((coding-system-for-write 'binary)
          (print-level nil)
