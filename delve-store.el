@@ -81,7 +81,10 @@ Determine the type of the object with the CAR of L. Use the CDR
 as arguments to actually create the object.  Return the object."
   (pcase l
     (`(delve--zettel :id ,id)
-     (delve--zettel-create (delve-query-node-by-id id)))
+     (let ((node (delve-query-node-by-id id)))
+       (if node
+           (delve--zettel-create node)
+         (delve--info-create :text (format "Could not create zettel with ID %s" id)))))
     (`(delve--pile   :name ,name
                      :zettels ,zettels)
      (delve--pile-create :name name
