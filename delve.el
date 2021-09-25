@@ -470,14 +470,11 @@ non-nil.  Offer completion in the directory `delve-store-directory'."
 (defun delve-read-buffer (file-name)
   "Create a new Delve buffer from FILE-NAME."
   (interactive (list (delve--ask-file-name :existing-only)))
-  (let* ((file-name-nondirectory    (file-name-nondirectory file-name))
-         (l (delve-store--read file-name)))
-    (unless l
-      (user-error "File %s seems to be empty" file-name-nondirectory))
-    (let* ((delve-list (with-temp-message "Creating data objects..."
-                         (delve-store--create-object-list l)))
-           (buf-name   (format "DELVE import from '%s'" file-name-nondirectory)))
-      (switch-to-buffer (delve--new-buffer buf-name delve-list)))))
+  (let* ((l          (delve-store--read file-name))
+         (delve-list (with-temp-message "Creating data objects..."
+                       (delve-store--create-object-list l)))
+         (buf-name   (format "DELVE import from '%s'" (file-name-nondirectory file-name))))
+      (switch-to-buffer (delve--new-buffer buf-name delve-list))))
 
 ;;; Multiple action keys
 
