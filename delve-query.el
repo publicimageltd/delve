@@ -25,10 +25,6 @@
 
 ;;; * Dependencies
 
-;; DONE Check v2 database structure with dbbrowser
-;; DONE Add version check for the "first" query call; store result in global variable
-;; TODO Write delve.el for a quick helper which displays query results
-;; TODO Copy the all-query-gets-them-all-query from org-roam
 (require 'subr-x)
 (require 'cl-lib)
 (require 'seq)
@@ -104,22 +100,8 @@ and return nil."
 
 ;;; * Some queries
 
-(defun delve-query-node-list ()
-  "Return all nodes."
-  (org-roam-node-list))
-
-(defun delve-query-super-query (constraints)
-  "Call one big SQL query with CONSTRAINTS and return results as nodes.
-CONSTRAINTS must be a string with valid SQL syntax.  If
-CONSTRAINTS is nil, return all nodes.  See the query used in the
-function for allowed fields."
-  ;; This is a more or less direct copy of 'org-roam-nodes-list' Only
-  ;; the field "tags" (with the group_concat) is changed to "taglist"
-  ;; So to compare against tags, use TAGLIST.
-  ;; TODO Open an issue in org roam which adds the additional
-  ;; constraint arg
-  (let ((query
-         "SELECT id, file, \"level\", todo, pos, priority,
+(defvar delve-query--super-query
+  "SELECT id, file, \"level\", todo, pos, priority,
            scheduled, deadline , title, properties, olp, atime,
            mtime, '(' || group_concat(tags, ' ') || ')' as taglist,
            aliases, refs FROM
@@ -147,30 +129,42 @@ function for allowed fields."
              -- end inner from clause
            GROUP BY id, tags )
            --- end outer from clause
-         GROUP BY id\n"))
-    (cl-loop for row in (delve-query (concat query constraints "\nORDER BY title"))
-             ;; (org-roam-db-query (concat query constraints))
-             append (pcase-let* ((`(,id ,file ,level ,todo ,pos ,priority ,scheduled ,deadline
-                                        ,title ,properties ,olp ,atime ,mtime ,tags ,aliases ,refs)
-                                  row)
-                                 (all-titles (cons title aliases)))
-                      (mapcar (lambda (temp-title)
-                                (org-roam-node-create :id id
-                                                      :file file
-                                                      :file-atime atime
-                                                      :file-mtime mtime
-                                                      :level level
-                                                      :point pos
-                                                      :todo todo
-                                                      :priority priority
-                                                      :scheduled scheduled
-                                                      :deadline deadline
-                                                      :title temp-title
-                                                      :properties properties
-                                                      :olp olp
-                                                      :tags tags
-                                                      :refs refs))
-                              all-titles)))))
+         GROUP BY id\n"
+  "Query which returns all nodes with all fields.")
+
+(defun delve-query-node-list ()
+  "Return all nodes."
+  (org-roam-node-list))
+
+(defun delve-query-do-super-query (query)
+  "Call one big SQL QUERY and return results as nodes.
+QUERY must be `delve-query--super-query' or a subset.  See the
+query `delve-query--super-query' for allowed fields."
+  ;; This is a more or less direct copy of 'org-roam-nodes-list' Only
+  ;; the field "tags" (with the group_concat) is changed to "taglist"
+  ;; So to compare against tags, use TAGLIST.
+  (cl-loop for row in (delve-query query)
+           append (pcase-let* ((`(,id ,file ,level ,todo ,pos ,priority ,scheduled ,deadline
+                                      ,title ,properties ,olp ,atime ,mtime ,tags ,aliases ,refs)
+                                row)
+                               (all-titles (cons title aliases)))
+                    (mapcar (lambda (temp-title)
+                              (org-roam-node-create :id id
+                                                    :file file
+                                                    :file-atime atime
+                                                    :file-mtime mtime
+                                                    :level level
+                                                    :point pos
+                                                    :todo todo
+                                                    :priority priority
+                                                    :scheduled scheduled
+                                                    :deadline deadline
+                                                    :title temp-title
+                                                    :properties properties
+                                                    :olp olp
+                                                    :tags tags
+                                                    :refs refs))
+                            all-titles))))
 
 (defun delve-query--scalar-string (string)
   "Return STRING as a quoted scalar string."
@@ -186,26 +180,33 @@ function for allowed fields."
 
 (defun delve-query-nodes-by-tag (tag-list)
   "Return all nodes with tags TAG-LIST."
-  (delve-query-super-query
+  (delve-query-do-super-query
+   (concat delve-query--super-query
    ;;     HAVING taglist LIKE '%"gedanke"%' AND taglist LIKE '%"Referenz"%'
-   (format "HAVING taglist LIKE %s"
-           (string-join (mapcar (lambda (s)
-                                  (thread-last s
-                                    (emacsql-quote-identifier)
-                                    ;; emacsql-parse passes SQL to
-                                    ;; #'format, so double % to avoid
-                                    ;; interpretation as format char
-                                    (format "%%%%%s%%%%")
-                                    (emacsql-quote-scalar)))
-                                tag-list)
-                        " AND taglist LIKE "))))
+           (format "HAVING taglist LIKE %s"
+                   (string-join (mapcar (lambda (s)
+                                          (thread-last s
+                                            (emacsql-quote-identifier)
+                                            ;; emacsql-parse passes SQL to
+                                            ;; #'format, so double % to avoid
+                                            ;; interpretation as format char
+                                            (format "%%%%%s%%%%")
+                                            (emacsql-quote-scalar)))
+                                        tag-list)
+                                " AND taglist LIKE "))
+           "\nORDER BY title")))
 
 ;; (delve-query-nodes-by-tag '("Referenz" "gedanke"))
 
+(defun delve-query-nodes-by-tag-alternative (tag-list)
+  "Return all nodes with tags TAG-LIST."
+  (ignore tag-list))
+
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST."
-  (delve-query-super-query
-   (format "HAVING id IN (%s)" (delve-query--scalar-strings id-list))))
+  (delve-query-do-super-query
+   (concat delve-query--super-query
+           (format "HAVING id IN (%s)" (delve-query--scalar-strings id-list)))))
 
 (defun delve-query-node-by-id (id)
   "Return node with ID."
