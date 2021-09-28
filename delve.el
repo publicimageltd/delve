@@ -319,6 +319,7 @@ any typechecking if TYPE is nil."
               (alist-get cand node-alist nil nil #'string=))
             node-selected)))
 
+;; TODO Let user also "add to end of list"
 (defun delve-key-insert-node (&optional multiple-nodes)
   "Interactively add node to current buffer's Delve list.
 If MULTIPLE-NODES is non-nil, insert multiple nodes."
@@ -328,7 +329,30 @@ If MULTIPLE-NODES is non-nil, insert multiple nodes."
                   (with-temp-message "Collecting all org roam nodes..."
                     (org-roam-node-read))))))
     (lister-insert-list-at lister-local-ewoc :point
-                           (mapcar #'delve--zettel-create nodes))))
+                           (mapcar #'delve--zettel-create nodes)
+                           nil (lister-eolp))))
+
+;;; Remote Editing
+
+(defun delve--sync-zettel (zettels)
+  "Force sync of all ZETTELS with the org roam db.
+First update the db, then reload the ZETTELS."
+  (let* ((filelist (mapcar #'delve--zettel-file zettels)))
+    (cl-dolist (file (seq-uniq filelist #'string=))
+      (org-roam-db-update-file file))
+    (cl-dolist (z zettels)
+      (setf (delve--zettel-node z)
+            (delve-query-node-by-id (delve--zettel-id z))))))
+
+;; TODO Test!
+(defun delve--sync-marked (ewoc)
+  "Force sync all marked list items of EWOC."
+  (let ((nodes (lister-collect-nodes ewoc nil nil
+                                     #'lister-node-marked-p)))
+    (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
+    (cl-dolist (n nodes)
+      (setf (lister--item-marked (ewoc-data n)) nil))
+    (ewoc-invalidate ewoc nodes)))
 
 ;;; Visit thing
 

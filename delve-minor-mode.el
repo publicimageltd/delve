@@ -55,6 +55,7 @@ Recognize the node by the ID property of the current org entry.
 If there is no node, refer to the whole file.  If the file has no
 ID either, throw an error."
   (interactive)
+  ;; TODO Use org-roam-id-at-point instead!
   (let* ((id (or (org-id-get)
                  (save-excursion
                    (org-with-wide-buffer

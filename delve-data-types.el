@@ -59,6 +59,7 @@ SLOT-NAME must be the name of a slot of an org-roam-node.  Give
      (cl-struct-slot-value 'org-roam-node ,slot-name (delve--zettel-node z))))
 
 (zettel--accessor-fn delve--zettel-title   'title)
+(zettel--accessor-fn delve--zettel-point   'point)
 (zettel--accessor-fn delve--zettel-id      'id)
 (zettel--accessor-fn delve--zettel-file    'file)
 (zettel--accessor-fn delve--zettel-tags    'tags)
