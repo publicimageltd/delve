@@ -309,25 +309,22 @@ any typechecking if TYPE is nil."
 
 ;;; Insert node(s)
 
-(defun delve--complete-multiple-nodes ()
-  "Get multiple nodes using the completing read interface."
-  (let* ((node-alist
-          (with-temp-message "Collecting all org roam nodes..."
-            (org-roam-node-read--completions)))
-         (node-selected (completing-read-multiple "Nodes: " node-alist)))
+(defun delve--select-multiple-nodes (node-fn)
+  "Let the user select multiple nodes from NODE-FN."
+  (let* ((node-alist (with-temp-message "Collecting nodes..."
+                       (funcall node-fn)))
+         (node-selected (completing-read-multiple "Select nodes: " node-alist)))
     (mapcar (lambda (cand)
               (alist-get cand node-alist nil nil #'string=))
             node-selected)))
-
-;; TODO Let user also "add to end of list"
+  
 (defun delve-key-insert-node (&optional multiple-nodes)
   "Interactively add node to current buffer's Delve list.
 If MULTIPLE-NODES is non-nil, insert multiple nodes."
   (let ((nodes (if multiple-nodes
-                   (delve--complete-multiple-nodes)
-                 (list
-                  (with-temp-message "Collecting all org roam nodes..."
-                    (org-roam-node-read))))))
+                   (delve--select-multiple-nodes #'org-roam-node-read--completions)
+                 (with-temp-message "Collecting all org roam nodes..."
+                   (list (org-roam-node-read))))))
     (lister-insert-list-at lister-local-ewoc :point
                            (mapcar #'delve--zettel-create nodes)
                            nil (lister-eolp))))
