@@ -28,11 +28,17 @@
 
 ;;; Code:
 
+;;; TODO add fn "delve-dashboard-p (optional buf)"
+;;; TODO disable inserting in dashboard
+;;; TODO f12: if in delve buffer but not in dashboard, go to dashboard
+;;; TODO Add all store files to dashboard (no sublist)
+;;; TODO add r / g to update dashboard, display it in header
+;;; TODO add db info in header in dashboard
+;;; TODO Use org roam mode's function to toggle information in item
 ;;; TODO delve-query.el: Add function which queries for last mtime
 ;;; TODO delve-query.el: Add function which queries for backlinks
 ;;; TODO Add function to insert backlinks below point
 ;;; TODO Add function to insert fromlinks below point
-;;; TODO ? Add query to insert tagged nodes, with "limit" value (>100)
 
 ;; * Dependencies
 
@@ -57,6 +63,9 @@
 
 (defvar delve--no-icons nil
   "If bound, do not use any icons when creating output.")
+
+(defvar delve-dashboard-name "DELVE Dashboard"
+  "Name of the dashboard buffer.")
 
 ;; * Faces
 
@@ -129,7 +138,6 @@
   '((t (:inherit org-level-2)))
   "Face for displaying the title of a Delve query."
   :group 'delve)
-
 
 ;;; * The Lister Mapper
 
@@ -267,15 +275,43 @@ Return the buffer object."
         (lister-set-list lister-local-ewoc initial-list)))
     buf))
 
+(defun delve--new-dashboard ()
+  "Create a new Delve dashboard buffer."
+  (with-temp-message "Setting up dashboard..."
+    (let* ((allnodes     (delve-query-node-list))
+           (nodes        (seq-take allnodes 10))
+           (zettel       (mapcar #'delve--zettel-create nodes))
+           (pilenodes    (seq-subseq allnodes 10 15))
+           (pilezettel   (mapcar #'delve--zettel-create pilenodes))
+           (initial-list (append (list (delve--pile-create :name "Ein Haufen Zettel!"
+                                                           :zettels pilezettel))
+                                 zettel)))
+  (delve--new-buffer delve-dashboard-name initial-list))))
+
+(defun delve--dashboard-p (&optional buf)
+  "Check if BUF is the Delve dashboard."
+  (string= delve-dashboard-name (buffer-name buf)))
+
+(defun delve--dashboard-buf ()
+  "Return the dashboard buffer, if existing."
+  (seq-find #'delve--dashboard-p (buffer-list)))
+
+(defun delve--buffer-p (&optional buf)
+  "Check if BUF is a Delve buffer."
+  (and (eq (buffer-local-value 'major-mode (or buf (current-buffer)))
+           'delve-mode)))
+
+(defun delve--buffer-and-not-dashboard-p (&optional buf)
+  "Check if BUF is Delve buffer and not the dashboard."
+  (and (delve--buffer-p buf)
+       (not (string= (buffer-name buf) delve-dashboard-name))))
+
 (defun delve-buffer-list ()
   "Return a list of all Delve buffers."
-  (seq-filter (lambda (buf)
-                (with-current-buffer buf
-                  (eq major-mode 'delve-mode)))
-              (buffer-list)))
+  (seq-filter #'delve--buffer-p (buffer-list)))
 
-(defun delve-select-buffer ()
-  "Select an existing Delve buffer or create a new one."
+(defun delve--select-buffers ()
+  "Select from existing Delve buffers or create a new one."
   ;; TODO Add history variable
   (let* ((buffer-alist (seq-group-by #'buffer-name (delve-buffer-list)))
          (new-name (completing-read " Select Delve buffer or enter new name: "
@@ -309,20 +345,33 @@ any typechecking if TYPE is nil."
 
 (defun delve--select-multiple-nodes (node-fn)
   "Let the user select multiple nodes from NODE-FN."
-  (let* ((node-alist (with-temp-message "Collecting nodes..."
-                       (funcall node-fn)))
-         (node-selected (completing-read-multiple "Select nodes: " node-alist)))
-    (mapcar (lambda (cand)
-              (alist-get cand node-alist nil nil #'string=))
-            node-selected)))
+  (setq org-roam-node-read--cached-display-format nil)
+  (cl-letf (((symbol-function 'completing-read-multiple)
+             (cond
+              ((featurep 'consult) #'consult-completing-read-multiple)
+              (t #'completing-read))))
+    (let* ((node-alist (with-temp-message "Collecting nodes..."
+                         (mapcar #'org-roam-node-read--to-candidate (funcall node-fn))))
+           (node-selected
+            (if node-alist
+                (completing-read-multiple "Choose: " node-alist)
+              (user-error "No nodes to choose from"))))
+      (mapcar (lambda (cand)
+                (alist-get cand node-alist nil nil #'string=))
+              (if (listp node-selected) node-selected (list node-selected))))))
   
-(defun delve-key-insert-node (&optional multiple-nodes)
-  "Interactively add node to current buffer's Delve list.
-If MULTIPLE-NODES is non-nil, insert multiple nodes."
-  (let ((nodes (if multiple-nodes
-                   (delve--select-multiple-nodes #'org-roam-node-read--completions)
-                 (with-temp-message "Collecting all org roam nodes..."
-                   (list (org-roam-node-read))))))
+(defun delve-key-insert-node (&optional limit-to-tags)
+  "Interactively add node(s) to current buffer's Delve list.
+With prefix LIMIT-TO-TAGS, let the user first limit the candidate
+list to nodes matching specific tags."
+  (interactive "P")
+  (let* ((node-fn  (if limit-to-tags
+                       (apply-partially #'delve-query-nodes-by-tags
+                                        (completing-read-multiple " Limit to nodes matching tags: "
+                                                         (delve-query-tags)))
+                     #'delve-query-node-list))
+         (nodes    (delve--select-multiple-nodes node-fn)))
+    ;;
     (lister-insert-list-at lister-local-ewoc :point
                            (mapcar #'delve--zettel-create nodes)
                            nil (lister-eolp))))
@@ -485,7 +534,27 @@ sublist, also decrease the indentation of these items."
             (lister-walk-marked-nodes ewoc #'lister-move-item-left))
           (lister-mark-unmark-sublist-at ewoc sublist-beg nil))))))
 
-;;; * Storing and reading buffer lists in a file
+;; * Show some information
+
+(defun delve-key-context (zettel)
+  "Show some context for ZETTEL."
+  (interactive (list (delve--current-item 'delve--zettel)))
+  (let ((text (delve--zettel-olp zettel)))
+    (if text
+        (lister-insert-at lister-local-ewoc :point
+                          (delve--info-create :text (format "%s" text))
+                          nil t)
+      (user-error "No context info available"))))
+    
+
+;; * Open the org roam buffer
+
+(defun delve-key-roam (zettel)
+  "Open the org roam buffer for ZETTEL."
+  (interactive (list (delve--current-item 'delve--zettel)))
+  (org-roam-buffer-display-dedicated (delve--zettel-node zettel)))
+
+;; * Storing and reading buffer lists in a file
 
 (defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
                                          "delve-store")
@@ -557,6 +626,7 @@ ask user for multiple nodes for insertion."
     (define-key map (kbd "<RET>")      #'delve-key-ret)
     (define-key map (kbd "i")          #'delve-key-insert-pile-below)
     (define-key map (kbd "v")          #'delve-key-visit)
+    (define-key map (kbd "r")          #'delve-key-roam)
     (define-key map (kbd "+")          #'delve-key-plus)
     map)
   "Key map for `delve-mode'.")
@@ -571,23 +641,12 @@ ask user for multiple nodes for insertion."
 ;;; * Main Entry Point
 
 (defun delve ()
-  "Select a live Delve buffer or create a Delve Dashboard."
+  "Select a Delve buffer, create a Dashboard or switch to it."
   (interactive)
-  (let ((buf
-         (if (delve-buffer-list)
-             (delve-select-buffer)
-           ;; dashboard:
-           ;; TODO put some useful stuff in here
-           (with-temp-message "Setting up dashboard..."
-             (let* ((allnodes   (delve-query-node-list))
-                    (nodes      (seq-take allnodes 10))
-                    (zettel     (mapcar #'delve--zettel-create nodes))
-                    (pilenodes  (seq-subseq allnodes 10 15))
-                    (pilezettel (mapcar #'delve--zettel-create pilenodes)))
-               (delve--new-buffer "DELVE DASHBOARD"
-                                  (append (list (delve--pile-create :name "Ein Haufen Zettel!"
-                                                                    :zettels pilezettel))
-                                          zettel)))))))
+  (let ((buf  (if (delve--dashboard-p)
+                  (delve-select-buffer)
+                (or (delve--dashboard-buf)
+                    (delve--new-dashboard)))))
     (switch-to-buffer buf)))
 
 ;; (bind-key (kbd "<f12>") 'delve)

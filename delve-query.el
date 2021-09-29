@@ -25,6 +25,10 @@
 
 ;;; * Dependencies
 
+;; TODO Add delve-query-backlinks-by-ids
+;; TODO Add delve-query-tolinks-by-ids
+;; NOTE Backlinks-Query in der alten DELVE Version suchen!
+
 (require 'subr-x)
 (require 'cl-lib)
 (require 'seq)
@@ -103,7 +107,7 @@ and return nil."
 (defvar delve-query--super-query
   "SELECT id, file, \"level\", todo, pos, priority,
            scheduled, deadline , title, properties, olp, atime,
-           mtime, '(' || group_concat(tags, ' ') || ')' as taglist,
+           mtime, '(' || group_concat(tags, ' ') || ')' as tags,
            aliases, refs FROM
            -- outer from clause
            (
@@ -140,9 +144,6 @@ and return nil."
   "Call one big SQL QUERY and return results as nodes.
 QUERY must be `delve-query--super-query' or a subset.  See the
 query `delve-query--super-query' for allowed fields."
-  ;; This is a more or less direct copy of 'org-roam-nodes-list' Only
-  ;; the field "tags" (with the group_concat) is changed to "taglist"
-  ;; So to compare against tags, use TAGLIST.
   (cl-loop for row in (delve-query query)
            append (pcase-let* ((`(,id ,file ,level ,todo ,pos ,priority ,scheduled ,deadline
                                       ,title ,properties ,olp ,atime ,mtime ,tags ,aliases ,refs)
@@ -178,12 +179,11 @@ query `delve-query--super-query' for allowed fields."
                        strings)
                ", "))
 
-(defun delve-query-nodes-by-tag (tag-list)
+(defun delve-query-nodes-by-tags (tag-list)
   "Return all nodes with tags TAG-LIST."
   (delve-query-do-super-query
-   (concat delve-query--super-query
-   ;;     HAVING taglist LIKE '%"gedanke"%' AND taglist LIKE '%"Referenz"%'
-           (format "HAVING taglist LIKE %s"
+   (concat "SELECT * FROM ( " delve-query--super-query " ) "
+           (format "WHERE tags LIKE %s"
                    (string-join (mapcar (lambda (s)
                                           (thread-last s
                                             (emacsql-quote-identifier)
@@ -193,14 +193,13 @@ query `delve-query--super-query' for allowed fields."
                                             (format "%%%%%s%%%%")
                                             (emacsql-quote-scalar)))
                                         tag-list)
-                                " AND taglist LIKE "))
-           "\nORDER BY title")))
+                                " AND tags LIKE ")))))
 
-;; (delve-query-nodes-by-tag '("Referenz" "gedanke"))
+;; (delve-query-nodes-by-tags '("Referenz" "gedanke"))
 
-(defun delve-query-nodes-by-tag-alternative (tag-list)
-  "Return all nodes with tags TAG-LIST."
-  (ignore tag-list))
+(defun delve-query-tags ()
+  "Return all tags as a sorted list of strings."
+  (seq-sort #'string< (seq-uniq (mapcar #'car (delve-query [:select :distinct [tag] :from tags])))))
 
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST."
@@ -212,12 +211,7 @@ query `delve-query--super-query' for allowed fields."
   "Return node with ID."
   (car (delve-query-nodes-by-id (list id))))
 
-;; for testing: '\"343cf09a-c197-4878-a16b-54215b525b17\"', '\"996632c7-5480-47ae-b885-485296267220\"'
 ;; (delve-query-nodes-by-id '("343cf09a-c197-4878-a16b-54215b525b17" "996632c7-5480-47ae-b885-485296267220"))
-
-;; TODO Add delve-query-backlinks-by-ids
-;; TODO Add delve-query-tolinks-by-ids
-;; NOTE Backlinks-Query in der alten DELVE Version suchen!
 
 
 (provide 'delve-query)
