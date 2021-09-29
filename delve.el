@@ -28,8 +28,6 @@
 
 ;;; Code:
 
-;;; TODO delve-query.el: Add general limitation and warning system for
-;;;                      "too long queries"
 ;;; TODO delve-query.el: Add function which queries for last mtime
 ;;; TODO delve-query.el: Add function which queries for backlinks
 ;;; TODO Add function to insert backlinks below point
@@ -285,7 +283,7 @@ Return the buffer object."
     (or (car (alist-get new-name buffer-alist nil nil #'string=))
         (delve--new-buffer new-name))))
 
-;;; * Keys
+;;; * Keys / Commands
 
 ;;; Generic key related stuff
 
