@@ -32,6 +32,12 @@
 (cl-defstruct (delve--item (:constructor delve--item-create))
   "A generic single delve list item.")
 
+
+(cl-defstruct (delve--storage (:include delve--item)
+                              (:constructor delve--storage-create))
+  file)
+  
+
 ;; TODO Add reader/writer for this type to delve-store
 (cl-defstruct (delve--note (:include delve--item)
                            (:constructor delve--note-create))

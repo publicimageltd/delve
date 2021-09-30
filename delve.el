@@ -28,13 +28,13 @@
 
 ;;; Code:
 
-;;; TODO add fn "delve-dashboard-p (optional buf)"
-;;; TODO disable inserting in dashboard
-;;; TODO f12: if in delve buffer but not in dashboard, go to dashboard
-;;; TODO Add all store files to dashboard (no sublist)
-;;; TODO add r / g to update dashboard, display it in header
+;;; TODO Add buffer local variable to associate list with store
+;;; TODO Add C-x C-s to save buffer in store
 ;;; TODO add db info in header in dashboard
+;;; TODO disable inserting in dashboard
+;;; TODO add r / g to update dashboard, display it in header
 ;;; TODO Use org roam mode's function to toggle information in item
+;;; TODO Store and use description in storage files
 ;;; TODO delve-query.el: Add function which queries for last mtime
 ;;; TODO delve-query.el: Add function which queries for backlinks
 ;;; TODO Add function to insert backlinks below point
@@ -55,6 +55,7 @@
 ;; * Silence Byte Compiler
 
 (declare-function all-the-icons-faicon "all-the-icons" (string) t)
+(declare-function consult-completing-read-multiple "consult")
 
 ;;; * Global Variables
 
@@ -66,6 +67,12 @@
 
 (defvar delve-dashboard-name "DELVE Dashboard"
   "Name of the dashboard buffer.")
+
+(defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
+                                         "delve-store")
+  "Path to a default directory for storing Delve buffers in."
+  :group 'delve
+  :type  'directory)
 
 ;; * Faces
 
@@ -149,10 +156,11 @@ If the global variable `delve--no-icons' is bound, always only
 return strings."
   (pcase-let ((`(,s ,icon-name)
               (pcase (type-of delve-item)
-                (`delve--query  (list "QUERY" "search"))
-                (`delve--pile   (list "PILE"  "list-ul"))
-                (`delve--info   (list "INFO"  "info"))
-                (`delve--note   (list "NOTE"  "pencil"))
+                (`delve--query   (list "QUERY" "search"))
+                (`delve--pile    (list "PILE"  "list-ul"))
+                (`delve--info    (list "INFO"  "info"))
+                (`delve--note    (list "NOTE"  "pencil"))
+                (`delve--storage (list "STORE" "archive"))
                 (`delve--zettel
                  (if (eq 0 (delve--zettel-level delve-item))
                      (list "FILE" "file-text-o")
@@ -162,6 +170,13 @@ return strings."
              (not delve--no-icons))
         (concat (all-the-icons-faicon icon-name) " ")
       (delve-pp--set-width s 6))))
+
+;; Printing Store Files
+
+(defun delve--storage-strings (storage)
+  "Return representation of STORAGE."
+  (list (concat " Stored collection: "
+                (propertize (delve--storage-file storage) 'face 'dired-directory))))
 
 ;; Printing Zettel
 
@@ -248,10 +263,11 @@ Optionally add string PREFIX to each non-nil item."
   "Transform ITEM into a list of printable strings."
   (let* ((typestring  (delve--type-as-string item))
          (datastrings (cl-typecase item
-                        (delve--zettel (delve--zettel-strings item))
-                        (delve--pile   (delve--pile-strings item))
-                        (delve--info   (delve--info-strings item))
-                        (delve--note   (delve--note-strings item))
+                        (delve--zettel  (delve--zettel-strings item))
+                        (delve--pile    (delve--pile-strings item))
+                        (delve--info    (delve--info-strings item))
+                        (delve--note    (delve--note-strings item))
+                        (delve--storage (delve--storage-strings item))
                         (t (list "no printer available for that item type")))))
     ;; hanging indent:
     (let* ((pad        (make-string (length typestring) ? ))
@@ -278,15 +294,13 @@ Return the buffer object."
 (defun delve--new-dashboard ()
   "Create a new Delve dashboard buffer."
   (with-temp-message "Setting up dashboard..."
-    (let* ((allnodes     (delve-query-node-list))
-           (nodes        (seq-take allnodes 10))
-           (zettel       (mapcar #'delve--zettel-create nodes))
-           (pilenodes    (seq-subseq allnodes 10 15))
-           (pilezettel   (mapcar #'delve--zettel-create pilenodes))
-           (initial-list (append (list (delve--pile-create :name "Ein Haufen Zettel!"
-                                                           :zettels pilezettel))
-                                 zettel)))
-  (delve--new-buffer delve-dashboard-name initial-list))))
+    (let* ((stores (mapcar (lambda (f)
+                             (delve--storage-create :file f))
+                           (directory-files delve-store-directory nil
+                                            (rx string-start
+                                                (not "."))))))
+      (delve--new-buffer delve-dashboard-name
+                         (append stores)))))
 
 (defun delve--dashboard-p (&optional buf)
   "Check if BUF is the Delve dashboard."
@@ -556,12 +570,6 @@ sublist, also decrease the indentation of these items."
 
 ;; * Storing and reading buffer lists in a file
 
-(defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
-                                         "delve-store")
-  "Path to a default directory for storing Delve buffers in."
-  :group 'delve
-  :type  'directory)
-
 (defun delve--ask-file-name (&optional existing-only)
   "Ask for a file name for a Delve store.
 Limit selection to only existing files if EXISTING-ONLY is
@@ -588,13 +596,18 @@ non-nil.  Offer completion in the directory `delve-store-directory'."
   (delve-store--write file-name (delve-store--buffer-as-list buf)))
 
 (defun delve-read-buffer (file-name)
-  "Create a new Delve buffer from FILE-NAME."
+  "Create a new Delve buffer from FILE-NAME and switch to it."
   (interactive (list (delve--ask-file-name :existing-only)))
   (let* ((l          (delve-store--read file-name))
          (delve-list (with-temp-message "Creating data objects..."
                        (delve-store--create-object-list l)))
          (buf-name   (format "DELVE import from '%s'" (file-name-nondirectory file-name))))
       (switch-to-buffer (delve--new-buffer buf-name delve-list))))
+
+(defun delve--visit-storage (storage)
+  "Open and switch to the collection in STORAGE."
+  (delve-read-buffer (concat (file-name-as-directory delve-store-directory)
+                             (delve--storage-file storage))))
 
 ;;; Multiple action keys
 
@@ -616,6 +629,7 @@ ask user for multiple nodes for insertion."
   (cl-typecase item
     (delve--zettel  (delve-key-visit-zettel item))
     (delve--pile    (delve-key-visit-pile   item))
+    (delve--storage (delve--visit-storage item))
     (t              (error "No action defined for this item"))))
 
 ;;; * Delve Major Mode
@@ -644,7 +658,7 @@ ask user for multiple nodes for insertion."
   "Select a Delve buffer, create a Dashboard or switch to it."
   (interactive)
   (let ((buf  (if (delve--dashboard-p)
-                  (delve-select-buffer)
+                  (delve--select-buffers)
                 (or (delve--dashboard-buf)
                     (delve--new-dashboard)))))
     (switch-to-buffer buf)))
