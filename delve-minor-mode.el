@@ -21,78 +21,101 @@
 
 ;;; Commentary:
 
-;; Minor mode to access some of delve's feature from within org roam.
-;; Bind this minor mode to org roam, i.e. by using hooks.
+;; Global minor mode to access some of delve's feature from
+;; within org roam.
 
 ;;; Code:
 (require 'delve)
 
-;; TODO Rename "visit-node" to "collect"
-;; TODO Ask user to add to existing Delve buffers, if they exist
 ;; TODO Add special key to collect the file with all of its nodes
 
 ;; * Variables
 
-(defvar delve-minor-mode-prefix-key (kbd "C-c d")
-  "Prefix for delve minor mode keys.")
+(defvar delve--last-selected-buffer) ;; used in delve.el
 
-(defvar delve-minor-mode--old-prefix-key-command nil
-  "Backup value of `delve-minor-mode-prefix-key'.")
+;; * Minor Mode Functions
 
-;; * Functions
+(defun delve-minor-mode--maybe-select (prompt &optional prefer-last-one)
+  "Maybe ask user to select a Delve buffer.
+If PREFER-LAST-ONE is non-nil, choose the last selected buffer
+instead, if there is one.  If selection takes place, use PROMPT."
+  (or (and prefer-last-one delve--last-selected-buffer)
+      (delve--select-buffer prompt)))
 
-(defun delve-minor-mode-maybe-activate ()
-  "Turn on delve minor mode if current buffer is in org roam.
-Add this to `find-file-hook'."
+(defun delve-minor-mode-collect (&optional use-last-buffer)
+  "Add node at point to a Delve buffer.
+If USE-LAST-BUFFER is non-nil, don't ask the user to select a
+buffer and use the one selected the last time.  Recognize the
+node by the ID property of the containing org entry.  If there is
+no node, refer to the whole file.  If the file has no ID either,
+throw an error."
+  (interactive "P")
+  (let* ((id (or (org-roam-id-at-point)
+                 (user-error "No org roam node with ID found")))
+         (target-buf (delve-minor-mode--maybe-select "Add node to buffer or collection: "
+                                                     use-last-buffer)))
+    (save-window-excursion
+      (lister-add (buffer-local-value 'lister-local-ewoc target-buf)
+                  (delve--zettel-create (delve-query-node-by-id id)))
+      (message "Zettel added"))))
+
+(defun delve-minor-mode-switch-buffer (&optional last-selection)
+  "Switch to a user selected Delve buffer, or create a new one.
+If LAST-SELECTION is non-nil, switch to the last buffer selected
+before."
+  (interactive "P")
+  (let ((buf (delve-minor-mode--maybe-select "Choose or create a Delve buffer: "
+                                             last-selection)))
+    (switch-to-buffer buf)))
+
+;; * Minor Mode(s)
+
+(defvar delve-minor-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c d b") #'delve-minor-mode-switch-buffer)
+    (define-key map (kbd "C-c d +") #'delve-minor-mode-collect)
+    map)
+  "Local map for the delve minor mode.")
+
+(define-minor-mode delve-minor-mode
+  "Local minor mode to collect org roam node via Delve."
+  :lighter " DelveMM"
+  :group 'delve
+  :keymap 'delve-minor-mode-map
+  :require 'delve)
+
+(defun delve--maybe-activate-minor-mode ()
+  "Turn on delve minor mode if current buffer is in org roam."
   (interactive)
   (when (and (buffer-file-name)
 	     (org-roam-file-p))
     (delve-minor-mode +1)))
 
-(defun delve-minor-mode-collect ()
-  "Add node at point to a delve buffer.
-Recognize the node by the ID property of the current org entry.
-If there is no node, refer to the whole file.  If the file has no
-ID either, throw an error."
-  (interactive)
-  ;; TODO Use org-roam-id-at-point instead!
-  (let* ((id (or (org-id-get)
-                 (save-excursion
-                   (org-with-wide-buffer
-                    (org-back-to-heading-or-point-min t)
-                    (org-id-get)))
-                 (user-error "No org roam ID found")))
-         (title (when-let ((l (org-collect-keywords '("TITLE"))))
-                  (car (alist-get "TITLE" l nil nil #'string=)))))
-    (switch-to-buffer
-     (delve--new-buffer (or title "Collected node")
-                        (list
-                         (delve--zettel-create
-                          (delve-query-node-by-id id)))))))
+(defun delve-minor-mode--mass-activate (&optional deactivate)
+  "Activate or deactivate Delve minor mode in all org roam buffers.
+Activate the mode unless DEACTIVATE is non-nil."
+  (mapcar (lambda (buf)
+            (with-current-buffer buf
+              (when (and (buffer-file-name)
+                         (org-roam-file-p))
+                (delve-minor-mode (if deactivate -1 +1)))))
+          (buffer-list)))
 
-;; * Map
-
-(defvar delve-local-map
-  (let ((map (make-sparse-keymap)))
-    ;; TODO Replace with working functions
-    ;; (define-key map (kbd "+") #'org-roam-tag-add)
-    ;; (define-key map (kbd "-") #'org-roam-tag-delete)
-    (define-key map (kbd "d") #'delve-minor-mode-collect)
-    map)
-  "Local prefix map for the delve minor mode.
-Bind this map to a prefix key of your choice.")
-
-(define-minor-mode delve-minor-mode
-  "Easier access to some DELVE functionality."
-  :lighter "delveminor"
+(define-minor-mode delve-global-minor-mode
+  "Add some Delve functionality in org roam files."
+  :lighter ""
+  :global t
   :group 'delve
   :require 'delve
-  (if delve-minor-mode
-      (progn
-	(setq delve-minor-mode--old-prefix-key-command
-              (local-key-binding delve-minor-mode-prefix-key))
-	(local-set-key delve-minor-mode-prefix-key delve-local-map))
-    (local-set-key delve-minor-mode-prefix-key delve-minor-mode--old-prefix-key-command)))
+  ;; enable in future org mode buffers:
+  (if delve-global-minor-mode
+      (add-hook 'org-mode-hook #'delve--maybe-activate-minor-mode)
+    (remove-hook 'org-mode-hook #'delve--maybe-activate-minor-mode))
+  ;; enable/disable in current buffers, too:
+  (delve-minor-mode--mass-activate (not delve-global-minor-mode)))
 
 (provide 'delve-minor-mode)
 ;;; delve-minor-mode.el ends here
+;; Local Variables:
+;; eval: (add-to-list 'load-path (file-name-directory (buffer-file-name)))
+;; End:
