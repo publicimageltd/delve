@@ -28,7 +28,6 @@
 
 ;;; Code:
 
-;;; TODO Add buffer local variable to associate list with store
 ;;; TODO Add C-x C-s to save buffer in store
 ;;; TODO add db info in header in dashboard
 ;;; TODO disable inserting in dashboard
@@ -68,11 +67,23 @@
 (defvar delve-dashboard-name "DELVE Dashboard"
   "Name of the dashboard buffer.")
 
+(defvar delve--select-history nil
+  "History for `delve--select-buffer'.")
+
+(defvar delve--last-selected-buffer nil
+  "Last buffer selected with `delve--select-buffer'.")
+
 (defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
                                          "delve-store")
   "Path to a default directory for storing Delve buffers in."
   :group 'delve
   :type  'directory)
+
+;; * Buffer Local Variables
+
+(defvar-local delve-local-storage-file nil
+  "Associated local storage file.")
+
 
 ;; * Faces
 
@@ -276,7 +287,13 @@ Optionally add string PREFIX to each non-nil item."
                                (cdr datastrings))))
       (apply #'list first-line rest-lines))))
 
-;; * Buffer handling
+;; * Buffer and buffer-as-storage handling
+
+;;; TODO Remove option, looks like it is not needed
+(defun delve--storage-files (&optional full-path)
+  "Return all storage file names.
+Optionally return file names with their FULL-PATH."
+  (directory-files delve-store-directory full-path (rx string-start (not "."))))
 
 (defun delve--new-buffer (name &optional initial-list)
   "Create a new delve buffer NAME with INITIAL-LIST.
@@ -294,11 +311,8 @@ Return the buffer object."
 (defun delve--new-dashboard ()
   "Create a new Delve dashboard buffer."
   (with-temp-message "Setting up dashboard..."
-    (let* ((stores (mapcar (lambda (f)
-                             (delve--storage-create :file f))
-                           (directory-files delve-store-directory nil
-                                            (rx string-start
-                                                (not "."))))))
+    ;; TODO Fill dashboard list with queries
+    (let* ((stores nil))
       (delve--new-buffer delve-dashboard-name
                          (append stores)))))
 
@@ -324,14 +338,55 @@ Return the buffer object."
   "Return a list of all Delve buffers."
   (seq-filter #'delve--buffer-p (buffer-list)))
 
-(defun delve--select-buffers ()
-  "Select from existing Delve buffers or create a new one."
-  ;; TODO Add history variable
-  (let* ((buffer-alist (seq-group-by #'buffer-name (delve-buffer-list)))
-         (new-name (completing-read " Select Delve buffer or enter new name: "
-                                    buffer-alist)))
-    (or (car (alist-get new-name buffer-alist nil nil #'string=))
-        (delve--new-buffer new-name))))
+(defun delve-unopened-storages ()
+  "Return all Delve storage files which are not visited yet."
+  (thread-last (delve-buffer-list)
+    (mapcar          (apply-partially #'buffer-local-value 'delve-local-storage-file))
+    (seq-filter      #'identity)
+    (mapcar          #'file-name-nondirectory)
+    (seq-difference  (delve--storage-files))))
+
+(defun delve--prepare-candidates (cand key-fn suffix)
+  "Return list CAND as an alist with a string key.
+Use KEY-FN to create the string key.  It will have SUFFIX added
+to the end, in parentheses."
+  (seq-group-by (lambda (elt)
+                  (format "%s (%s)" (funcall key-fn elt) suffix))
+                cand))
+
+(defun delve--select-buffer (prompt)
+  "Select Delve buffer, collection, or create a new buffer.
+Use PROMPT as a prompt to prompt the user to choose promptly."
+  (let* ((buffer-suffix     "Switch to buffer")
+         (buffer-alist      (delve--prepare-candidates
+                             (seq-remove #'delve--dashboard-p (delve-buffer-list))
+                             #'buffer-name
+                             buffer-suffix))
+         (collection-suffix "Read into new buffer")
+         (collection-alist  (delve--prepare-candidates (delve-unopened-storages)
+                                                      #'identity
+                                                      collection-suffix))
+         (dashboard-suffix  "Create")
+         (dashboard-alist   (delve--prepare-candidates '("Dashboard")
+                                                      #'identity
+                                                      dashboard-suffix))
+         (alist             (append dashboard-alist buffer-alist collection-alist))
+         (new-name          (completing-read prompt alist
+                                             nil nil nil
+                                             'delve--select-history)))
+    (setq delve--last-selected-buffer
+          (if-let ((result (car (alist-get new-name alist nil nil #'string=))))
+              (pcase new-name
+                ;; We could also extract the string and then compare,
+                ;; but I had always wanted to use the rx matcher!
+                ((rx "(" (literal buffer-suffix) ")" string-end)
+                 result)
+                ((rx "(" (literal collection-suffix) ")" string-end)
+                 (delve--read-storage-file result))
+                ((rx "(" (literal dashboard-suffix) ")" string-end)
+                 (delve--new-dashboard))
+                (_                   (error "Something went wrong")))
+            (delve--new-buffer new-name)))))
 
 ;;; * Keys / Commands
 
@@ -373,7 +428,7 @@ any typechecking if TYPE is nil."
       (mapcar (lambda (cand)
                 (alist-get cand node-alist nil nil #'string=))
               (if (listp node-selected) node-selected (list node-selected))))))
-  
+
 (defun delve-key-insert-node (&optional limit-to-tags)
   "Interactively add node(s) to current buffer's Delve list.
 With prefix LIMIT-TO-TAGS, let the user first limit the candidate
@@ -559,7 +614,7 @@ sublist, also decrease the indentation of these items."
                           (delve--info-create :text (format "%s" text))
                           nil t)
       (user-error "No context info available"))))
-    
+
 
 ;; * Open the org roam buffer
 
@@ -586,28 +641,51 @@ non-nil.  Offer completion in the directory `delve-store-directory'."
         (user-error "Canceled")))
      (t file-name))))
 
-(defun delve-store-buffer (buf file-name)
+(defun delve--store-buffer (buf file-name)
   "Store the Delve list of BUF in FILE-NAME."
   (interactive (list (current-buffer) (delve--ask-file-name)))
   (unless (eq 'delve-mode (with-current-buffer buf major-mode))
     (error "Buffer must be in Delve mode"))
   (unless (file-exists-p file-name)
     (make-empty-file file-name t))
-  (delve-store--write file-name (delve-store--buffer-as-list buf)))
+  (delve-store--write file-name (delve-store--buffer-as-list buf))
+  (setq-local delve-local-storage-file file-name))
 
-(defun delve-read-buffer (file-name)
-  "Create a new Delve buffer from FILE-NAME and switch to it."
+(defun delve--read-storage-file (file-name)
+  "Return a new Delve buffer read from FILE-NAME."
   (interactive (list (delve--ask-file-name :existing-only)))
+  ;; locate file
+  (unless (file-exists-p file-name)
+    (let ((new-name (concat (file-name-as-directory delve-store-directory)
+                            file-name)))
+      (if (file-exists-p new-name)
+          (setq file-name new-name)
+        (error "File not found %s" file-name))))
+  ;; read it:
   (let* ((l          (delve-store--read file-name))
          (delve-list (with-temp-message "Creating data objects..."
                        (delve-store--create-object-list l)))
-         (buf-name   (format "DELVE import from '%s'" (file-name-nondirectory file-name))))
-      (switch-to-buffer (delve--new-buffer buf-name delve-list))))
+         (buf-name   (format "DELVE Zettel imported from '%s'" (file-name-nondirectory file-name)))
+         (buf        (delve--new-buffer buf-name delve-list)))
+    (with-current-buffer buf
+      (setq-local delve-local-storage-file file-name))
+    buf))
 
 (defun delve--visit-storage (storage)
   "Open and switch to the collection in STORAGE."
-  (delve-read-buffer (concat (file-name-as-directory delve-store-directory)
-                             (delve--storage-file storage))))
+  (switch-to-buffer
+   (delve--read-storage-file (concat (file-name-as-directory delve-store-directory)
+                                     (delve--storage-file storage)))))
+
+;; TODO HEREAMI
+(defun delve-save-buffer (buf)
+  "Store BUF in its existing storage file or create a new one."
+  (interactive (list (current-buffer)))
+  (let ((name  (or (buffer-local-value 'delve-local-storage-file buf)
+                   (delve--ask-file-name))))
+    (delve--store-buffer buf name))
+  (with-current-buffer buf
+    (message "Collection stored in file %s" delve-local-storage-file)))
 
 ;;; Multiple action keys
 
@@ -655,13 +733,9 @@ ask user for multiple nodes for insertion."
 ;;; * Main Entry Point
 
 (defun delve ()
-  "Select a Delve buffer, create a Dashboard or switch to it."
+  "Select a Delve buffer and switch to it."
   (interactive)
-  (let ((buf  (if (delve--dashboard-p)
-                  (delve--select-buffers)
-                (or (delve--dashboard-buf)
-                    (delve--new-dashboard)))))
-    (switch-to-buffer buf)))
+  (switch-to-buffer (delve--select-buffer "Visit buffer or open a collection: ")))
 
 ;; (bind-key (kbd "<f12>") 'delve)
 
