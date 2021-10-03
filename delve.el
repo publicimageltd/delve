@@ -28,7 +28,6 @@
 
 ;;; Code:
 
-;;; TODO Add C-x C-s to save buffer in store
 ;;; TODO add db info in header in dashboard
 ;;; TODO disable inserting in dashboard
 ;;; TODO add r / g to update dashboard, display it in header
@@ -388,6 +387,11 @@ Use PROMPT as a prompt to prompt the user to choose promptly."
                 (_                   (error "Something went wrong")))
             (delve--new-buffer new-name)))))
 
+(defun delve-kill-all-delve-buffers ()
+  "Kill all Delve buffers."
+  (interactive)
+  (seq-do #'kill-buffer (delve-buffer-list)))
+
 ;;; * Keys / Commands
 
 ;;; Generic key related stuff
@@ -630,10 +634,11 @@ sublist, also decrease the indentation of these items."
 
 ;; * Storing and reading buffer lists in a file
 
-(defun delve--ask-file-name (&optional existing-only)
+(defun delve--ask-storage-file-name (&optional existing-only)
   "Ask for a file name for a Delve store.
 Limit selection to only existing files if EXISTING-ONLY is
-non-nil.  Offer completion in the directory `delve-store-directory'."
+non-nil.  Offer completion of files in the directory
+`delve-store-directory'."
   (let* ((default-dir (concat (file-name-as-directory delve-store-directory)))
          (file-name (read-file-name "File name for a Delve store: " default-dir
                                     nil existing-only)))
@@ -648,7 +653,7 @@ non-nil.  Offer completion in the directory `delve-store-directory'."
 
 (defun delve--store-buffer (buf file-name)
   "Store the Delve list of BUF in FILE-NAME."
-  (interactive (list (current-buffer) (delve--ask-file-name)))
+  (interactive (list (current-buffer) (delve--ask-storage-file-name)))
   (unless (eq 'delve-mode (with-current-buffer buf major-mode))
     (error "Buffer must be in Delve mode"))
   (unless (file-exists-p file-name)
@@ -658,7 +663,7 @@ non-nil.  Offer completion in the directory `delve-store-directory'."
 
 (defun delve--read-storage-file (file-name)
   "Return a new Delve buffer read from FILE-NAME."
-  (interactive (list (delve--ask-file-name :existing-only)))
+  (interactive (list (delve--ask-storage-file-name :existing-only)))
   ;; locate file
   (unless (file-exists-p file-name)
     (let ((new-name (concat (file-name-as-directory delve-store-directory)
@@ -682,12 +687,11 @@ non-nil.  Offer completion in the directory `delve-store-directory'."
    (delve--read-storage-file (concat (file-name-as-directory delve-store-directory)
                                      (delve--storage-file storage)))))
 
-;; TODO HEREAMI
 (defun delve-save-buffer (buf)
   "Store BUF in its existing storage file or create a new one."
   (interactive (list (current-buffer)))
   (let ((name  (or (buffer-local-value 'delve-local-storage-file buf)
-                   (delve--ask-file-name))))
+                   (delve--ask-storage-file-name))))
     (delve--store-buffer buf name))
   (with-current-buffer buf
     (message "Collection stored in file %s" delve-local-storage-file)))
@@ -722,6 +726,7 @@ ask user for multiple nodes for insertion."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "<delete>")   #'delve-key-delete)
     (define-key map (kbd "<RET>")      #'delve-key-ret)
+    (define-key map [remap save-buffer] #'delve-save-buffer)
     (define-key map (kbd "s")          #'delve-key-spread-pile-below)
     (define-key map (kbd "v")          #'delve-key-visit)
     (define-key map (kbd "r")          #'delve-key-roam)
