@@ -457,7 +457,7 @@ First update the db, then reload the ZETTELS."
       (setf (delve--zettel-node z)
             (delve-query-node-by-id (delve--zettel-id z))))))
 
-;; TODO Test!
+;; TODO Test sync delve--zettel <-> DB
 (defun delve--sync-marked (ewoc)
   "Force sync all marked list items of EWOC."
   (let ((nodes (lister-collect-nodes ewoc nil nil
@@ -512,9 +512,9 @@ First update the db, then reload the ZETTELS."
 
 ;;; Pile Zettels
 
-(defun delve--stuff-into-pile (ewoc pile)
+(defun delve--move-into-pile (ewoc pile)
   "In EWOC, stuff all marked nodes in PILE.
-Return the PILE object."
+Delete all moved nodes.  Return the PILE object."
   (cl-labels ((push-on-pile (ewoc node)
                             (let ((item (lister-node-get-data node)))
                               (when (eq (type-of item) 'delve--zettel)
@@ -528,13 +528,14 @@ Return the PILE object."
 
 (defun delve--move-into-pile-at (ewoc pos)
   "In EWOC, move all marked nodes into the pile at POS.
-Throw an error if there is no pile at POS, or if PILE is marked."
+Delete all moved nodes.  Throw an error if there is no pile at
+POS, or if PILE is marked."
   (let ((pile (lister-get-data-at ewoc pos)))
     (unless (eq 'delve--pile (type-of pile))
       (error "Item is not a pile"))
     (when (lister-marked-at-p ewoc pos)
       (error "Cannot move pile in itself"))
-    (delve--stuff-into-pile ewoc pile)
+    (delve--move-into-pile ewoc pile)
     (lister-refresh-at ewoc pos)))
 
 (defun delve-key-pile ()
@@ -558,12 +559,16 @@ collecting."
     ;; feedback how many items have been moved
     (lister-refresh-at ewoc :point)))
 
-(defun delve-key-insert-pile-below (pile)
-  "Insert PILE as a sublist below point."
-  (interactive (list (delve--current-item 'delve--pile)))
-  (let ((zettels (delve--pile-zettels pile)))
-    (unless zettels (error "Pile is empty"))
-    (lister-insert-sublist-below lister-local-ewoc :point zettels)))
+(defun delve-key-spread-pile-below (ewoc pos)
+  "Replace the pile at POS in EWOC through its content Zettels."
+  (interactive (list lister-local-ewoc :point))
+  (let* ((node (lister-get-node-at ewoc pos))
+         (pile (lister-get-data-at ewoc node))
+         (z    (delve--pile-zettels pile)))
+    (unless z
+      (error "Pile is empty"))
+    (lister-insert-list-at ewoc node z nil t)
+    (lister-delete-at ewoc node)))
 
 ;;; Delete Items
 
@@ -712,11 +717,12 @@ ask user for multiple nodes for insertion."
 
 ;;; * Delve Major Mode
 
+;; * Delve Keymap
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "<delete>")   #'delve-key-delete)
     (define-key map (kbd "<RET>")      #'delve-key-ret)
-    (define-key map (kbd "i")          #'delve-key-insert-pile-below)
+    (define-key map (kbd "s")          #'delve-key-spread-pile-below)
     (define-key map (kbd "v")          #'delve-key-visit)
     (define-key map (kbd "r")          #'delve-key-roam)
     (define-key map (kbd "+")          #'delve-key-plus)
