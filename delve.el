@@ -83,6 +83,8 @@
 (defvar-local delve-local-storage-file nil
   "Associated local storage file.")
 
+(defvar-local delve-local-header-info "DELVE"
+  "First line of the local Lister header.")
 
 ;; * Faces
 
@@ -294,14 +296,18 @@ Optionally add string PREFIX to each non-nil item."
 Optionally return file names with their FULL-PATH."
   (directory-files delve-store-directory full-path (rx string-start (not "."))))
 
+(defun delve--header-function ()
+  "Generate a Lister header item from local buffer vars."
+  (list (propertize delve-local-header-info 'face 'delve-header-face)
+        delve-local-storage-file))
+
 (defun delve--new-buffer (name &optional initial-list)
   "Create a new delve buffer NAME with INITIAL-LIST.
 Return the buffer object."
   (let ((buf (generate-new-buffer name)))
     (with-current-buffer buf
       (delve-mode)
-      (lister-setup buf #'delve-mapper
-                    (propertize name 'face 'delve-header-face))
+      (lister-setup buf #'delve-mapper #'delve--header-function)
       (lister-mode)
       (when initial-list
         (lister-set-list lister-local-ewoc initial-list)))
@@ -353,6 +359,7 @@ to the end, in parentheses."
                   (format "%s (%s)" (funcall key-fn elt) suffix))
                 cand))
 
+;;; TODO Add custom category and annotation function showing storage file
 (defun delve--select-buffer (prompt)
   "Select Delve buffer, collection, or create a new buffer.
 Use PROMPT as a prompt to prompt the user to choose promptly."
@@ -659,7 +666,9 @@ non-nil.  Offer completion of files in the directory
   (unless (file-exists-p file-name)
     (make-empty-file file-name t))
   (delve-store--write file-name (delve-store--buffer-as-list buf))
-  (setq-local delve-local-storage-file file-name))
+  (with-current-buffer buf
+    (setq-local delve-local-storage-file file-name)
+    (lister-refresh-header-footer lister-local-ewoc)))
 
 (defun delve--read-storage-file (file-name)
   "Return a new Delve buffer read from FILE-NAME."
@@ -678,7 +687,8 @@ non-nil.  Offer completion of files in the directory
          (buf-name   (format "DELVE Zettel imported from '%s'" (file-name-nondirectory file-name)))
          (buf        (delve--new-buffer buf-name delve-list)))
     (with-current-buffer buf
-      (setq-local delve-local-storage-file file-name))
+      (setq-local delve-local-storage-file file-name)
+      (lister-refresh-header-footer lister-local-ewoc))
     buf))
 
 (defun delve--visit-storage (storage)
