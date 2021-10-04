@@ -68,10 +68,10 @@
   "Name of the dashboard buffer.")
 
 (defvar delve--select-history nil
-  "History for `delve--select-buffer'.")
+  "History for `delve--select-collection-buffer'.")
 
 (defvar delve--last-selected-buffer nil
-  "Last buffer selected with `delve--select-buffer'.")
+  "Last buffer selected with `delve--select-collection-buffer'.")
 
 (defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
                                          "delve-store")
@@ -367,7 +367,7 @@ to the end, in parentheses."
                 cand))
 
 ;;; TODO Add custom category and annotation function showing storage file
-(defun delve--select-buffer (prompt)
+(defun delve--select-collection-buffer (prompt)
   "Select Delve buffer, collection, or create a new buffer.
 Use PROMPT as a prompt to prompt the user to choose promptly."
   (let* ((buffer-suffix     "Switch to buffer")
@@ -770,7 +770,7 @@ last selected buffer."
                (buffer-live-p delve--last-selected-buffer))
       (setq buf delve--last-selected-buffer))
     (switch-to-buffer
-     (or buf (delve--select-buffer "Visit buffer or open a collection: ")))))
+     (or buf (delve--select-collection-buffer "Visit collection: ")))))
 
 ;; (bind-key (kbd "<f12>") 'delve)
 

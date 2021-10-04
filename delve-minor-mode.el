@@ -36,11 +36,11 @@
 ;; * Minor Mode Functions
 
 (defun delve-minor-mode--maybe-select (prompt &optional prefer-last-one)
-  "Maybe ask user to select a Delve buffer.
+  "Maybe ask user to select a Delve collection.
 If PREFER-LAST-ONE is non-nil, choose the last selected buffer
 instead, if there is one.  If selection takes place, use PROMPT."
   (or (and prefer-last-one delve--last-selected-buffer)
-      (delve--select-buffer prompt)))
+      (delve--select-collection-buffer prompt)))
 
 (defun delve-minor-mode-collect (&optional use-last-buffer)
   "Add node at point to a Delve buffer.
@@ -59,12 +59,12 @@ throw an error."
                   (delve--zettel-create (delve-query-node-by-id id)))
       (message "Zettel added"))))
 
-(defun delve-minor-mode-switch-buffer (&optional last-selection)
-  "Switch to a user selected Delve buffer, or create a new one.
+(defun delve-minor-mode-open-collection (&optional last-selection)
+  "Open a Delve collection or create a new one.
 If LAST-SELECTION is non-nil, switch to the last buffer selected
 before."
   (interactive "P")
-  (let ((buf (delve-minor-mode--maybe-select "Choose or create a Delve buffer: "
+  (let ((buf (delve-minor-mode--maybe-select "Choose or create a Delve collection: "
                                              last-selection)))
     (switch-to-buffer buf)))
 
@@ -72,7 +72,7 @@ before."
 
 (defvar delve-minor-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c d b") #'delve-minor-mode-switch-buffer)
+    (define-key map (kbd "C-c d b") #'delve-minor-mode-open-collection)
     (define-key map (kbd "C-c d +") #'delve-minor-mode-collect)
     map)
   "Local map for the delve minor mode.")
