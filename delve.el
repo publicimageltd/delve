@@ -759,10 +759,18 @@ ask user for multiple nodes for insertion."
 
 ;;; * Main Entry Point
 
-(defun delve ()
-  "Select a Delve buffer and switch to it."
-  (interactive)
-  (switch-to-buffer (delve--select-buffer "Visit buffer or open a collection: ")))
+(defun delve (&optional jump-to-last-buffer)
+  "Select a Delve buffer and switch to it.
+With prefix argument JUMP-TO-LAST-BUFFER, directly switch to the
+last selected buffer."
+  (interactive "P")
+  (let (buf)
+    (when (and jump-to-last-buffer
+               delve--last-selected-buffer
+               (buffer-live-p delve--last-selected-buffer))
+      (setq buf delve--last-selected-buffer))
+    (switch-to-buffer
+     (or buf (delve--select-buffer "Visit buffer or open a collection: ")))))
 
 ;; (bind-key (kbd "<f12>") 'delve)
 
