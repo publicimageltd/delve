@@ -26,6 +26,12 @@
 
 ;; Delve into the depths of your zettelkasten.
 
+;; Terminology:
+;;
+;; - A "collection" is a list of Zettels, which can be
+;; stored in a file.  A buffer thus 'visits' a collection (or creates
+;; one without associated file.)
+
 ;;; Code:
 
 ;; TODO Add reader/writer for notes to delve-store
@@ -229,6 +235,54 @@ Optionally add string PREFIX to each non-nil item."
       (delve--string-join tags ", " "#")
     "No tags."))
 
+(defun delve--insert-by-id (id)
+  "In current Delve buffer, insert Zettel by ID after point."
+  (if-let ((node (delve-query-node-by-id id)))
+      (lister-insert-at lister-local-ewoc :point
+                        (delve--zettel-create node)
+                        nil t)
+    (user-error "No node with this ID found")))
+
+(defun delve--buttonize-link (link)
+  "In an org mode buffer, replace element LINK with a button.
+LINK has to be a LINK element as returned by
+`org-element-parse-buffer'."
+  (when (equal (org-element-property :type link) "id")
+    (let* ((beg (org-element-property :begin link))
+           (end (org-element-property :end link))
+           (id  (org-element-property :path link))
+           (blanks (org-element-property :post-blank link))
+           (label (buffer-substring-no-properties
+                   (org-element-property :contents-begin link)
+                   (org-element-property :contents-end link))))
+      (delete-region beg (- end blanks))
+      (goto-char beg)
+      (insert-text-button
+       label
+       'follow-link t
+       'action (lambda (_)
+                 (org-link-open link))
+       'keymap (let ((map (make-sparse-keymap)))
+                 (set-keymap-parent map button-map)
+                 (define-key map "+"
+                   (lambda ()
+                     (interactive)
+                     (delve--insert-by-id id)))
+                 map)))))
+
+(defun delve--prepare-preview (s)
+  "Prepare preview string S for insertion.
+Return the prepared string."
+  (with-temp-buffer
+    (insert s)
+    (let ((org-inhibit-startup nil))
+      (org-mode)
+      (org-font-lock-ensure)
+      (let ((tree (org-element-parse-buffer)))
+        (org-element-map tree 'link
+          #'delve--buttonize-link))
+      (buffer-string))))
+
 (defun delve--zettel-strings (zettel)
   "Return a list of strings representing ZETTEL."
   (let ((node (delve--zettel-node zettel)))
@@ -236,10 +290,9 @@ Optionally add string PREFIX to each non-nil item."
      ;; Display node:
      (delve-pp-fields node '((org-roam-node-title   (:add-face delve-title-face))))
      (delve-pp-fields node '((delve--tags-as-string (:add-face delve-tags-face))))
-     ;; Additional Zettel slots:
+     ;; additional Zettel slots:
      (when-let ((preview (delve--zettel-preview zettel)))
-       (delve--note-s-to-list
-        (propertize preview 'face 'org-roam-shielded))))))
+       (split-string (delve--prepare-preview preview) "\n")))))
 
 ;; Printing a pile item
 
@@ -628,12 +681,27 @@ sublist, also decrease the indentation of these items."
 
 ;; * Show some information
 
-;;; TODO Change to "toggle preview" / TEST / HEREAMI
-(defun delve-key-context (zettel)
-  "Show some context for ZETTEL."
+(defun delve--get-preview-contents (zettel)
+  "Get the raw preview contents for ZETTEL."
+  (org-roam-with-temp-buffer (delve--zettel-file zettel)
+    (org-roam-preview-get-contents
+     (delve--zettel-file zettel)
+     (if (eq (delve--zettel-level zettel) 0)
+         ;; FIXME We could here add a function which uses a special
+         ;; heading as the "summary" and displays it.
+         (if (org-goto-first-child)
+             (1- (point))
+           (point-max))
+       (delve--zettel-point zettel)))))
+
+;; FIXME If called on a file node (level 0), preview always
+;;       shows the property keywords; we should fix that.
+(defun delve-key-toggle-preview (zettel)
+  "Toggle the display of the preview of ZETTEL."
   (interactive (list (delve--current-item 'delve--zettel)))
-  (let ((preview (org-roam-preview-get-contents (delve--zettel-file zettel)
-                                                (delve--zettel-point zettel))))
+  (let ((preview (and (not (delve--zettel-preview zettel))
+                      (or (delve--get-preview-contents zettel)
+                          "No preview available"))))
     (setf (delve--zettel-preview zettel) preview)
     (lister-refresh-at lister-local-ewoc :point)))
 
@@ -747,6 +815,7 @@ ask user for multiple nodes for insertion."
     (define-key map (kbd "v")          #'delve-key-visit)
     (define-key map (kbd "r")          #'delve-key-roam)
     (define-key map (kbd "+")          #'delve-key-plus)
+    (define-key map (kbd "p")          #'delve-key-toggle-preview)
     map)
   "Key map for `delve-mode'.")
 
@@ -754,13 +823,14 @@ ask user for multiple nodes for insertion."
   fundamental-mode "Delve"
   "Major mode for browsing your org roam zettelkasten."
   (lister-setup	(current-buffer) #'delve-mapper
-               (concat "DELVE Version " delve-version))
+                (concat "DELVE Version " delve-version))
+  (add-to-invisibility-spec '(org-link ))
   (lister-mode))
 
 ;;; * Main Entry Point
 
 (defun delve (&optional jump-to-last-buffer)
-  "Select a Delve buffer and switch to it.
+  "Visit a Delve collection.
 With prefix argument JUMP-TO-LAST-BUFFER, directly switch to the
 last selected buffer."
   (interactive "P")
