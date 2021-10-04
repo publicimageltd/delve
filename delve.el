@@ -28,10 +28,11 @@
 
 ;;; Code:
 
+;; TODO Add reader/writer for notes to delve-store
 ;;; TODO add db info in header in dashboard
 ;;; TODO disable inserting in dashboard
 ;;; TODO add r / g to update dashboard, display it in header
-;;; TODO Use org roam mode's function to toggle information in item
+;;; TODO Use org roam mode's 'org-roam-preview-get-contents' to toggle information in item
 ;;; TODO Store and use description in storage files
 ;;; TODO delve-query.el: Add function which queries for last mtime
 ;;; TODO delve-query.el: Add function which queries for backlinks
@@ -232,8 +233,13 @@ Optionally add string PREFIX to each non-nil item."
   "Return a list of strings representing ZETTEL."
   (let ((node (delve--zettel-node zettel)))
     (list
+     ;; Display node:
      (delve-pp-fields node '((org-roam-node-title   (:add-face delve-title-face))))
-     (delve-pp-fields node '((delve--tags-as-string (:add-face delve-tags-face)))))))
+     (delve-pp-fields node '((delve--tags-as-string (:add-face delve-tags-face))))
+     ;; Additional Zettel slots:
+     (when-let ((preview (delve--zettel-preview zettel)))
+       (delve--note-s-to-list
+        (propertize preview 'face 'org-roam-shielded))))))
 
 ;; Printing a pile item
 
@@ -282,10 +288,11 @@ Optionally add string PREFIX to each non-nil item."
                         (delve--storage (delve--storage-strings item))
                         (t (list "no printer available for that item type")))))
     ;; hanging indent:
-    (let* ((pad        (make-string (length typestring) ? ))
-           (first-line (concat typestring (car datastrings)))
-           (rest-lines (mapcar (apply-partially #'concat pad)
-                               (cdr datastrings))))
+    (let* ((datastrings (lister--flatten datastrings))
+           (pad         (make-string (length typestring) ? ))
+           (first-line  (concat typestring (car datastrings)))
+           (rest-lines  (mapcar (apply-partially #'concat pad)
+                                (cdr datastrings))))
       (apply #'list first-line rest-lines))))
 
 ;; * Buffer and buffer-as-storage handling
@@ -495,7 +502,7 @@ First update the db, then reload the ZETTELS."
       (error "Pile is empty"))
     (let ((buf (get-buffer name)))
       (if buf
-          ;; TODO add "new" items to existing buffer
+          ;; TODO add only "new" items (diff) to existing buffer
           (message "Leaving existing buffer unchanged; no items added")
         (setq buf (delve--new-buffer name zettels)))
       (switch-to-buffer buf))))
@@ -621,15 +628,14 @@ sublist, also decrease the indentation of these items."
 
 ;; * Show some information
 
+;;; TODO Change to "toggle preview" / TEST / HEREAMI
 (defun delve-key-context (zettel)
   "Show some context for ZETTEL."
   (interactive (list (delve--current-item 'delve--zettel)))
-  (let ((text (delve--zettel-olp zettel)))
-    (if text
-        (lister-insert-at lister-local-ewoc :point
-                          (delve--info-create :text (format "%s" text))
-                          nil t)
-      (user-error "No context info available"))))
+  (let ((preview (org-roam-preview-get-contents (delve--zettel-file zettel)
+                                                (delve--zettel-point zettel))))
+    (setf (delve--zettel-preview zettel) preview)
+    (lister-refresh-at lister-local-ewoc :point)))
 
 
 ;; * Open the org roam buffer

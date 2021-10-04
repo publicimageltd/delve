@@ -53,7 +53,7 @@
             (:include delve--item)
             (:constructor delve--zettel-create (node)))
   "A Zettel item storing an org roam node."
-  node)
+  node preview)
 
 ;; Some shortcuts to the node element of a zettel:
 (defmacro zettel--accessor-fn (name slot-name)
