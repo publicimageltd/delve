@@ -60,6 +60,8 @@ Return LISP-OBJECT."
           (error (error "Error reading data base: %s" (error-message-string err)))))
     (error "File not found: %s" file-name)))
 
+;;; * Store a Delve list
+
 (defun delve-store--object-as-list (delve-object)
   "Represent DELVE-OBJECT as a special list item.
 The return value is a list with the object type as its CAR and
@@ -72,34 +74,10 @@ suffice to fully reconstruct the complete item."
      (delve--pile   (list :name    (delve--pile-name delve-object)
                           :zettels (mapcar #'delve-store--object-as-list
                                            (delve--pile-zettels delve-object))))
+     ;; TODO Add Notes
      (t             nil))))
 
-(defun delve-store--create-object (l)
-  "Create a Delve object using L.
-Determine the type of the object with the CAR of L. Use the CDR
-as arguments to actually create the object.  Return the object."
-  (pcase l
-    (`(delve--zettel :id ,id)
-     (let ((node (delve-query-node-by-id id)))
-       (if node
-           (delve--zettel-create node)
-         (delve--info-create :text (format "Could not create zettel with ID %s" id)))))
-    (`(delve--pile   :name ,name
-                     :zettels ,zettels)
-     (delve--pile-create :name name
-                         :zettels (mapcar #'delve-store--create-object zettels)))
-      ;; TODO add a text object to inform the user of the malformed expression
-    (_  nil)))
-
-(defun delve-store--create-object-list (l)
-  "Recursively create a list of delve-objects out of L."
-  (cl-labels ((create (elt)
-                      ;; TODO return informative text object if elt==nil
-                      (if (listp (car elt))
-                          (delve-store--create-object-list elt)
-                        (delve-store--create-object elt))))
-    (mapcar #'create l)))
-
+;; FIXME Maybe move this to delve.el?
 (defun delve-store--buffer-as-list (buf)
   "Return contents of Delve buffer BUF as a writeable list."
   (let ((ewoc (with-current-buffer buf lister-local-ewoc)))
@@ -107,6 +85,68 @@ as arguments to actually create the object.  Return the object."
                         (lambda (ewoc-data)
                           (delve-store--object-as-list
                            (lister--item-data ewoc-data))))))
+
+;;; * Read a stored list
+
+(defun delve-store--map-tree (fn l)
+  "Apply FN to each list element of tree L."
+  (cond
+   ((and (listp l) (listp (car l)))
+    (mapcar (lambda (x) (delve-store--map-tree fn x)) l))
+   (t (funcall fn l))))
+
+;; Parser:
+
+(defun delve-store--parse-get-id (elt)
+  "Return all IDs for ELT."
+  (pcase elt
+    (`(delve--zettel :id ,id)     id)
+    (`(delve--pile :name ,_ :zettels ,zettels)
+     (mapcar #'delve-store--parse-get-id zettels))
+    (_ nil)))
+
+(defun delve-store--parse-create-object (id-hash elt)
+  "Create a Delve object parsing ELT.
+Use ID-HASH to get the nodes by their ID."
+  (pcase elt
+    (`(delve--zettel :id ,id)
+     (if-let ((node (gethash id id-hash)))
+         (delve--zettel-create node)
+       (delve--info-create :text (format "Could not create zettel with ID %s" id))))
+    ;;
+    (`(delve--pile name ,name :zettels ,zettels)
+     (delve--pile-create :name name
+                         :zettels (mapcar #'delve-store--parse-create-object zettels)))
+    ;;
+    (_  (delve--info-create :text (format "Could not parse expression %s" elt)))))
+
+;; Prefetch all IDs:
+
+(defun delve-store--get-all-ids (l)
+  "Get all ids in the Delve storage list L."
+  (lister--flatten (delve-store--map-tree #'delve-store--parse-get-id l)))
+
+(defun delve-store--prefetch-ids (l)
+  "Return all nodes referred to in L as a hash table."
+  (let* ((ids    (delve-store--get-all-ids l))
+         (nodes  (delve-query-nodes-by-id ids))
+         (table (make-hash-table :test 'equal)))
+    (while ids
+      (puthash (car ids) (car nodes) table)
+      (setq ids (cdr ids)
+            nodes (cdr nodes)))
+    table))
+
+;; Parse and create Delve objects:
+
+(defun delve-store--create-object-list (l)
+  "Create Delve objects for stored list L."
+  (let ((id-hash (delve-store--prefetch-ids l)))
+    (delve-store--map-tree (apply-partially #'delve-store--parse-create-object
+                                            id-hash)
+                           l)))
+
+;;; Test-DB: (delve-store--read "~/.emacs.d/delve-store/stufen.el")
 
 (provide 'delve-store)
 ;;; delve-store.el ends here
