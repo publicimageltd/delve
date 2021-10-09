@@ -35,7 +35,7 @@ Return LISP-OBJECT."
          (print-level nil)
          (print-length nil)
          (content (concat
-                   (format ";;; file created: %s at %s h"
+                   (format ";;; file created: %s at %s h -*- emacs-lisp -*-"
                            (format-time-string "%x")
                            (format-time-string "%H:%M"))
                    "\n\n"
@@ -62,7 +62,7 @@ Return LISP-OBJECT."
 
 ;;; * Store a Delve list
 
-(defun delve-store--object-as-list (delve-object)
+(defun delve-store--tokenize-object (delve-object)
   "Represent DELVE-OBJECT as a special list item.
 The return value is a list with the object type as its CAR and
 additional information as its CDR.  The data in the CDR must
@@ -72,33 +72,24 @@ suffice to fully reconstruct the complete item."
    (cl-typecase delve-object
      (delve--zettel (list :id (delve--zettel-id delve-object)))
      (delve--pile   (list :name    (delve--pile-name delve-object)
-                          :zettels (mapcar #'delve-store--object-as-list
+                          :zettels (mapcar #'delve-store--tokenize-object
                                            (delve--pile-zettels delve-object))))
      ;; TODO Add Notes
      (t             nil))))
 
-;; FIXME Maybe move this to delve.el?
-(defun delve-store--buffer-as-list (buf)
-  "Return contents of Delve buffer BUF as a writeable list."
-  (let ((ewoc (with-current-buffer buf lister-local-ewoc)))
-    (lister--get-nested ewoc nil nil 0 #'identity
-                        (lambda (ewoc-data)
-                          (delve-store--object-as-list
-                           (lister--item-data ewoc-data))))))
-
 ;;; * Read a stored list
 
-(defun delve-store--map-tree (fn l)
+(defun delve-store--map-tokenized-tree (fn l)
   "Apply FN to each list element of tree L."
   (cond
    ((and (listp l) (listp (car l)))
-    (mapcar (lambda (x) (delve-store--map-tree fn x)) l))
+    (mapcar (lambda (x) (delve-store--map-tokenized-tree fn x)) l))
    (t (funcall fn l))))
 
 ;; Parser:
 
 (defun delve-store--parse-get-id (elt)
-  "Return all IDs for ELT."
+  "Return all IDs for tokenized ELT."
   (pcase elt
     (`(delve--zettel :id ,id)     id)
     (`(delve--pile :name ,_ :zettels ,zettels)
@@ -106,7 +97,7 @@ suffice to fully reconstruct the complete item."
     (_ nil)))
 
 (defun delve-store--parse-create-object (id-hash elt)
-  "Create a Delve object parsing ELT.
+  "Create a Delve object parsing tokenized ELT.
 Use ID-HASH to get the nodes by their ID."
   (pcase elt
     (`(delve--zettel :id ,id)
@@ -124,7 +115,7 @@ Use ID-HASH to get the nodes by their ID."
 
 (defun delve-store--get-all-ids (l)
   "Get all ids in the Delve storage list L."
-  (lister--flatten (delve-store--map-tree #'delve-store--parse-get-id l)))
+  (lister--flatten (delve-store--map-tokenized-tree #'delve-store--parse-get-id l)))
 
 (defun delve-store--prefetch-ids (l)
   "Return all nodes referred to in L as a hash table."
@@ -142,7 +133,7 @@ Use ID-HASH to get the nodes by their ID."
 (defun delve-store--create-object-list (l)
   "Create Delve objects for stored list L."
   (let ((id-hash (delve-store--prefetch-ids l)))
-    (delve-store--map-tree (apply-partially #'delve-store--parse-create-object
+    (delve-store--map-tokenized-tree (apply-partially #'delve-store--parse-create-object
                                             id-hash)
                            l)))
 
