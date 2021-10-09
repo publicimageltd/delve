@@ -786,9 +786,11 @@ non-nil.  Offer completion of files in the directory
 (defun delve-save-buffer (buf)
   "Store BUF in its existing storage file or create a new one."
   (interactive (list (current-buffer)))
+  (unless (eq 'delve-mode (with-current-buffer buf major-mode))
+    (error "Buffer must be in Delve mode"))
   (let ((name  (or (buffer-local-value 'delve-local-storage-file buf)
                    (delve--ask-storage-file-name))))
-    (delve--store-buffer buf name))
+    (delve--do-save-buffer buf name))
   (with-current-buffer buf
     (message "Collection stored in file %s" delve-local-storage-file)))
 
