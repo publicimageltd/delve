@@ -732,17 +732,29 @@ non-nil.  Offer completion of files in the directory
         (user-error "Canceled")))
      (t file-name))))
 
-(defun delve--store-buffer (buf file-name)
+;; TODO Use lister-map instead
+(defun delve--tokenize-buffer-list (buf)
+  "Return the Delve list in BUF tokenized."
+  (lister--get-nested (buffer-local-value 'lister-local-ewoc buf)
+                      nil nil
+                      0 #'identity
+                      ;; we use the key-fn as a mapping function:
+                      (lambda (ewoc-data)
+                        (delve-store--tokenize-object
+                         (lister--item-data ewoc-data)))))
+
+(defun delve--do-save-buffer (buf file-name)
   "Store the Delve list of BUF in FILE-NAME."
-  (interactive (list (current-buffer) (delve--ask-storage-file-name)))
-  (unless (eq 'delve-mode (with-current-buffer buf major-mode))
-    (error "Buffer must be in Delve mode"))
-  (unless (file-exists-p file-name)
-    (make-empty-file file-name t))
-  (delve-store--write file-name (delve-store--buffer-as-list buf))
-  (with-current-buffer buf
-    (setq-local delve-local-storage-file file-name)
-    (lister-refresh-header-footer lister-local-ewoc)))
+  ;; store list:
+  (let ((l (lister-map (buffer-local-value 'lister-local-ewoc buf)
+                       #'delve-store--tokenize-object)))
+    (unless (file-exists-p file-name)
+      (make-empty-file file-name t))
+    (delve-store--write file-name l)
+    ;; refresh header:
+    (with-current-buffer buf
+      (setq-local delve-local-storage-file file-name)
+      (lister-refresh-header-footer lister-local-ewoc))))
 
 (defun delve--read-storage-file (file-name)
   "Return a new Delve buffer read from FILE-NAME."
