@@ -1,0 +1,15 @@
+:PROPERTIES:
+:ID:       d6e064ec-8de9-4956-bcd0-a42d468aede9
+:END:
+#+title: Tagged File 2
+#+filetags: tag1 tag2
+
+This is just a blind text. 
+
+The purpose of this note file is to provide another file with the tags
+"tag1" and "tag2", allowing to test if duplicate tags are eliminated.
+
+Another purpose is to test links.
+
+So we have a [[id:7f2742e6-99f3-4d32-b169-88c4d56f7403][ID-LINK]] to 'tagged-file-1'.
+

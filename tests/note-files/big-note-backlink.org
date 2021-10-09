@@ -1,0 +1,11 @@
+:PROPERTIES:
+:ID:                     5093fc4e-8c63-4e60-a1da-83fc7ecd5db7
+:END:
+#+title: Big Note Backlink
+#+roam_tags: tag1 tag2
+
+This file links to Big Note with an ID link.
+
+Here's the link: [[id:eeec8f05-927f-4c61-b39e-2fb8228cf484][Link to Big Note]].
+
+
