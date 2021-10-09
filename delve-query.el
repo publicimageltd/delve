@@ -198,24 +198,19 @@ query `delve-query--super-query' for allowed fields."
 
 ;; (delve-query-nodes-by-tags '("Referenz" "gedanke"))
 
-;;; TODO Write test
 (defun delve-query-tags ()
   "Return all tags as a sorted list of strings."
   (seq-sort #'string< (seq-uniq (mapcar #'car (delve-query [:select :distinct [tag] :from tags])))))
 
-;;; TODO Write test
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST."
   (delve-query-do-super-query
    (concat delve-query--super-query
            (format "HAVING id IN (%s)" (delve-query--scalar-strings id-list)))))
 
-;;; TODO Write test
 (defun delve-query-node-by-id (id)
   "Return node with ID."
   (car (delve-query-nodes-by-id (list id))))
-
-;; (delve-query-nodes-by-id '("343cf09a-c197-4878-a16b-54215b525b17" "996632c7-5480-47ae-b885-485296267220"))
 
 
 (provide 'delve-query)

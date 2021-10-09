@@ -92,7 +92,7 @@ This requires `delve-test-setup-db' to have been called."
       (kill-buffer ,buf-var))
     ,res-var)))
 
-(defun delve-test--collect-from-file (file)
+(defun delve-test--collect-ids-from-file (file)
   "Collect all IDs in FILE without using org roam."
   (delve-test-with-temp-org-file file
       (let ((info (org-element-parse-buffer)))
@@ -104,7 +104,20 @@ This requires `delve-test-setup-db' to have been called."
 (defun delve-test-collect-ids (&optional files)
   "Collect all IDs from FILES without using org roam."
   (cl-loop for file in (or files (delve-test-all-org-files))
-           append (delve-test--collect-from-file file)))
+           append (delve-test--collect-ids-from-file file)))
+
+(defun delve-test--collect-tags-from-file (file)
+  "Collect all tags in FILE without using org roam."
+  (delve-test-with-temp-org-file file
+    (mapcar #'substring-no-properties
+            (flatten-tree (org-get-buffer-tags)))))
+
+(defun delve-test-collect-tags (&optional files)
+  "Collect all tags from FILES without using org roam."
+  (seq-uniq
+   (cl-loop for file in (or files (delve-test-all-org-files))
+            append (flatten-tree (delve-test--collect-tags-from-file file)))
+   #'equal))
 
 (defun delve-test-setup-db ()
   "Provide a temporary org roam db to work with."

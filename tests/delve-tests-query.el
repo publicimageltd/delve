@@ -68,14 +68,34 @@
                 '("e9d02eb6-22e1-4549-890d-6f1d8d4ec744"))))
     (it "returns nil if called with empty list"
       (let ((nodes (delve-query-nodes-by-tags nil)))
-        (expect nodes :to-be nil)))))
+        (expect nodes :to-be nil))))
 
-  ;; (describe "delve-query-tags"
-  ;;   (it "returns all tags in a sorted list"
-  ;;     (let ((tags (delve-query-tags)))
-  ;;       (expect tags
-  ;;               :to-equal
-  ;;               )))))
+  (describe "delve-query-tags"
+    (it "returns all tags"
+      (let ((tags (delve-query-tags)))
+        (expect tags :to-have-same-items-as
+                (delve-test-collect-tags))))
+    (it "returns all tags sorted"
+      (let ((tags (delve-query-tags)))
+        (expect tags :to-equal
+                (sort (delve-test-collect-tags) #'string<)))))
+
+  (describe "delve-query-nodes-by-id"
+    (it "returns nodes"
+      (let ((ids '("b77a4837-71d6-495e-98f1-b576464aacc1"
+                   "92a06447-2400-4c33-948c-c76fecda5ad2")))
+        (expect (mapcar #'org-roam-node-title
+                 (delve-query-nodes-by-id ids))
+                :to-have-same-items-as
+                '("Big note sub-heading"
+                  "Spinach")))))
+  (describe "delve-query-node-by-id"
+    (it "returns the node"
+      (let ((id "b77a4837-71d6-495e-98f1-b576464aacc1"))
+        (expect (org-roam-node-title
+                 (delve-query-node-by-id id)))
+                :to-equal
+                "Big note sub-heading"))))
 
 
     
