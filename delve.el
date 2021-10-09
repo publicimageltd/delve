@@ -34,11 +34,12 @@
 
 ;;; Code:
 
+;; TODO Remove storage object and associated functions; bad idea.
 ;; TODO Add reader/writer for notes to delve-store
+;; TODO Turn Tags into Buttons which query
 ;;; TODO add db info in header in dashboard
 ;;; TODO disable inserting in dashboard
 ;;; TODO add r / g to update dashboard, display it in header
-;;; TODO Use org roam mode's 'org-roam-preview-get-contents' to toggle information in item
 ;;; TODO Store and use description in storage files
 ;;; TODO delve-query.el: Add function which queries for last mtime
 ;;; TODO delve-query.el: Add function which queries for backlinks

@@ -2,7 +2,7 @@
 :ID:                     eeec8f05-927f-4c61-b39e-2fb8228cf484
 :END:
 #+TITLE: Big note
-#+filetags: Bignote
+#+filetags: :Bignote:
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ultricies at arcu
 sed elementum. Mauris in neque vitae diam sollicitudin hendrerit at ac tortor.

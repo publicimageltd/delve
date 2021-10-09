@@ -53,16 +53,16 @@ is called or required, or the `load-path'.")
     (or
      ;; first check from the calling directory:
      (locate-file delve-note-files-directory
-		  (list default-directory) nil  #'is-dir)
+                  (list default-directory) nil  #'is-dir)
      ;; now check the load path:
      (locate-file delve-note-files-directory
-		  load-path nil #'is-dir)
+                  load-path nil #'is-dir)
      (user-error "Could not create data base; canceled"))))
 
 (defun delve-test-temp-notes-dir ()
   "Create a new directory name for a collection of org roam notes."
   (expand-file-name (make-temp-name "note-files-")
-		    temporary-file-directory))
+                    temporary-file-directory))
 
 (defun delve-test-get-file (file-name)
   "Get file FILE-NAME from the test data base.
@@ -78,37 +78,39 @@ This requires `delve-test-setup-db' to have been called."
       (directory-files org-roam-directory t "\\.org$")
     (user-error "Function delve-test-all-org-files has to be called within a test environment")))
 
+(defmacro delve-test-with-temp-org-file (file &rest body)
+  "Execute BODY in FILE as current buffer."
+  (declare (indent 1))
+  (let ((kill-it-var (make-symbol "--kill-it"))
+        (buf-var     (make-symbol "--buf"))
+        (res-var     (make-symbol "--res")))
+  `(let* ((,kill-it-var (not (find-buffer-visiting ,file)))
+          (,buf-var (find-file-noselect ,file))
+          (,res-var (with-current-buffer ,buf-var
+                      ,@body)))
+    (when ,kill-it-var
+      (kill-buffer ,buf-var))
+    ,res-var)))
+
 (defun delve-test--collect-from-file (file)
   "Collect all IDs in FILE without using org roam."
-  (let* ((kill-it (not (find-buffer-visiting file)))
-         (buf (find-file-noselect file))
-         (ids (with-current-buffer buf
-                (let ((info (org-element-parse-buffer)))
-                  (org-element-map info 'node-property
-                    (lambda (elt)
-                      (when (equal "ID" (org-element-property :key elt))
-                        (org-element-property :value elt))))))))
-    (when kill-it
-      (kill-buffer buf))
-    ids))
-    
+  (delve-test-with-temp-org-file file
+      (let ((info (org-element-parse-buffer)))
+        (org-element-map info 'node-property
+          (lambda (elt)
+            (when (equal "ID" (org-element-property :key elt))
+              (org-element-property :value elt)))))))
 
-(defun delve-test-collect-ids (files)
+(defun delve-test-collect-ids (&optional files)
   "Collect all IDs from FILES without using org roam."
-  (cl-loop for file in files
+  (cl-loop for file in (or files (delve-test-all-org-files))
            append (delve-test--collect-from-file file)))
-
-;; Evaluate the inner sexp to test if IDs are gathered correctly:
-;;(defun delve-test--collect-by-hand ()
-  ;; (setq delve-test-ids
-  ;;       (delve-test-collect-ids
-  ;;        (directory-files (concat default-directory "../note-files/") t "\\.org$"))))
 
 (defun delve-test-setup-db ()
   "Provide a temporary org roam db to work with."
   (let* ((original-dir (delve-test-orig-notes-dir))
-	 (new-dir      (delve-test-temp-notes-dir))
-	 (inhibit-message t)
+         (new-dir      (delve-test-temp-notes-dir))
+         (inhibit-message t)
          (org-id-extra-files nil)
          (org-id-files nil))
     ;;
@@ -116,9 +118,9 @@ This requires `delve-test-setup-db' to have been called."
     (setq delve-test-environment t)
     (setq org-roam-directory new-dir)
     (setq org-roam-db-location (concat
-				(file-name-as-directory new-dir)
-				"org-roam.db"))
-    ;; 
+                                (file-name-as-directory new-dir)
+                                "org-roam.db"))
+    ;;
     (org-roam-db-sync)))
 
 (defun delve-test-move-temp-db (target)
@@ -138,7 +140,7 @@ Do not make a backup of the database if DONT-BACKUP is non-nil."
   (unless dont-backup
     (let ((new-dir (expand-file-name
                     (format-time-string "note-files-db-at-%H_%M_%S")
-		    temporary-file-directory)))
+                    temporary-file-directory)))
       (delve-test-move-temp-db new-dir)))
   (setq delve-test-environment nil))
 

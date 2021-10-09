@@ -1,0 +1,41 @@
+:PROPERTIES:
+:ID:       6edc350f-da9e-4cd3-b4d4-0cc6e42031a7
+:END:
+#+TITLE: Node with tags
+#+FILETAGS: :all:
+
+* Pig :meat:
+:PROPERTIES:
+:ID:       41ce628a-9631-4f51-92a3-1476ac9d4a61
+:END:
+Pig. Tasty.
+* Salad :vegetarian:
+:PROPERTIES:
+:ID:       c01f2bf9-5717-4e31-87b0-7e1bfc0126d4
+:END:
+Very tasty.
+* Onions :vegetarian:
+:PROPERTIES:
+:ID:       30cabc7c-02b5-4eee-9ca5-1c9eb0400780
+:END:
+Useful.
+* Beef :meat:
+:PROPERTIES:
+:ID:       54713c90-13da-4ea9-ab97-b056e4f47535
+:END:
+Cows.
+* Chicken :meat:
+:PROPERTIES:
+:ID:       5fa37556-7c0f-4e7f-ba94-00dfb3388731
+:END:
+White.
+* Spinach :vegetarian:
+:PROPERTIES:
+:ID:       92a06447-2400-4c33-948c-c76fecda5ad2
+:END:
+there's a band called that.
+* Pork with spinach :vegetarian:meat:
+:PROPERTIES:
+:ID:       e9d02eb6-22e1-4549-890d-6f1d8d4ec744
+:END:
+Now here the tags won't work anymore.

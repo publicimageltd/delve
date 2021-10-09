@@ -181,32 +181,36 @@ query `delve-query--super-query' for allowed fields."
 
 (defun delve-query-nodes-by-tags (tag-list)
   "Return all nodes with tags TAG-LIST."
-  (delve-query-do-super-query
-   (concat "SELECT * FROM ( " delve-query--super-query " ) "
-           (format "WHERE tags LIKE %s"
-                   (string-join (mapcar (lambda (s)
-                                          (thread-last s
-                                            (emacsql-quote-identifier)
-                                            ;; emacsql-parse passes SQL to
-                                            ;; #'format, so double % to avoid
-                                            ;; interpretation as format char
-                                            (format "%%%%%s%%%%")
-                                            (emacsql-quote-scalar)))
-                                        tag-list)
-                                " AND tags LIKE ")))))
+  (when tag-list
+    (delve-query-do-super-query
+     (concat "SELECT * FROM ( " delve-query--super-query " ) "
+             (format "WHERE tags LIKE %s"
+                     (string-join (mapcar (lambda (s)
+                                            (thread-last s
+                                              (emacsql-quote-identifier)
+                                              ;; emacsql-parse passes SQL to
+                                              ;; #'format, so double % to avoid
+                                              ;; interpretation as format char
+                                              (format "%%%%%s%%%%")
+                                              (emacsql-quote-scalar)))
+                                          tag-list)
+                                  " AND tags LIKE "))))))
 
 ;; (delve-query-nodes-by-tags '("Referenz" "gedanke"))
 
+;;; TODO Write test
 (defun delve-query-tags ()
   "Return all tags as a sorted list of strings."
   (seq-sort #'string< (seq-uniq (mapcar #'car (delve-query [:select :distinct [tag] :from tags])))))
 
+;;; TODO Write test
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST."
   (delve-query-do-super-query
    (concat delve-query--super-query
            (format "HAVING id IN (%s)" (delve-query--scalar-strings id-list)))))
 
+;;; TODO Write test
 (defun delve-query-node-by-id (id)
   "Return node with ID."
   (car (delve-query-nodes-by-id (list id))))

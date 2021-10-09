@@ -2,7 +2,7 @@
 :ID:       7f2742e6-99f3-4d32-b169-88c4d56f7403
 :END:
 #+title: Tagged File 1
-#+filetags: tag1 tag2
+#+filetags: :tag1:tag2:
 
 Another blind text.
 

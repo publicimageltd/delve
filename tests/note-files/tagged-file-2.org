@@ -2,7 +2,7 @@
 :ID:       d6e064ec-8de9-4956-bcd0-a42d468aede9
 :END:
 #+title: Tagged File 2
-#+filetags: tag1 tag2
+#+filetags: :tag1:tag2:
 
 This is just a blind text. 
 
