@@ -32,7 +32,7 @@
 (cl-defstruct (delve--item (:constructor delve--item-create))
   "A generic single delve list item.")
 
-
+;; TODO Remove
 (cl-defstruct (delve--storage (:include delve--item)
                               (:constructor delve--storage-create))
   file)
@@ -82,8 +82,6 @@ SLOT-NAME must be the name of a slot of an org-roam-node.  Give
   "A pile (list) of Zettels."
   name zettels)
 
-;; TODO Somehow differentiate zettel queries and queries yielding
-;; other results, e.g. browsable tag lists.
 (cl-defstruct (delve--query
             (:include delve--item)
             (:constructor delve--query-create))

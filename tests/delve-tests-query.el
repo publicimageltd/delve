@@ -29,9 +29,8 @@
 (require 'delve-store)
 
 (describe "Test reading and writing"
-  :var (file-name)
+  :var ((file-name (concat temporary-file-directory "test.el")))
   (before-each
-    (setq file-name (concat temporary-file-directory "test.el"))
     (when (file-exists-p file-name)
       (delete-file file-name)))
 
@@ -56,7 +55,7 @@
       (let ((l '("A" "B" "C")))
         (expect (delve-store--write file-name l)
                 :to-equal l))))
-  
+
   (describe "delve-store--write/delve--store-read"
     (it "read and write simple lists"
       (let ((l '("A" "B" "C" ("D" "E") 1 2 3 4)))
@@ -83,7 +82,110 @@
     (it "throws an error if file not found"
       (expect (delve-store--read (concat file-name "_XX"))
               :to-throw))))
-    
+
+(describe "Parsing / Tokenizing Objects"
+  :var ((file-name (concat temporary-file-directory "test.el")))
+  (before-all
+    (delve-test-setup-db))
+  (after-all
+    (delve-test-teardown-db))
+  (before-each
+    (when (file-exists-p file-name)
+      (delete-file file-name)))
+
+  (describe "delve-store--map-tokenized-tree"
+    (it "maps over list elements"
+      (let ((l '(("A") ("B") (("C") ("D")))))
+        (expect (delve-store--map-tokenized-tree #'listp l)
+                :to-equal '(t t (t t)))
+        (expect (delve-store--map-tokenized-tree #'car l)
+                :to-equal '("A" "B" ("C" "D"))))))
+
+  (describe "delve-store--parse-tokenized-object"
+    (it "returns info object if it could not parse its argument"
+      (let ((res (delve-store--parse-tokenized-object nil '(delve--unknown-object :arg "dummy"))))
+        (expect (type-of res) :to-be 'delve--info))))
+  (describe "delve-store--tokenize-object"
+    (it "throws an error if passed an unknown object"
+      (cl-defstruct (delve--unknown-object (:include delve--item)) slot)
+      (expect (delve-store--tokenize-object (make-delve--unknown-object :slot "value"))
+              :to-throw)))
+
+  (describe "delve-store--get-all-ids"
+    (it "gets all ids from a tokenized zettel list"
+      ;; We skip creating real nodes, since we only need to pass the
+      ;; ids around:
+      (cl-labels ((get-node (id)
+                            (org-roam-node-create :id id)))
+        (let* ((ids '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J"))
+               (tokenized (thread-last ids
+                            (mapcar #'get-node)
+                            (mapcar #'delve--zettel-create)
+                            (mapcar #'delve-store--tokenize-object))))
+        (expect (delve-store--get-all-ids tokenized)
+                :to-have-same-items-as ids))))
+    (it "skips token without ids:"
+      (let* ((ids '("A" "B"))
+             (zs  (thread-last ids
+                    (mapcar (apply-partially #'org-roam-node-create
+                                             :id))
+                    (mapcar #'delve--zettel-create)))
+             (i    (delve--info-create :text "No ID my dear"))
+             (n    (delve--note-create :text "No no"))
+             (ts   (mapcar #'delve-store--tokenize-object
+                           `(,@zs ,i ,n))))
+        (expect (delve-store--get-all-ids ts)
+                :to-equal (delve-store--get-all-ids
+                           (mapcar #'delve-store--tokenize-object zs))))))
+
+  (describe "delve-store--prefetch-ids"
+    (it "creates a hash for all ids"
+      (let ((ids (delve-test-collect-ids)))
+        (spy-on 'delve-store--get-all-ids
+                :and-return-value ids)
+        (let ((hash (delve-store--prefetch-ids nil)))
+          (expect (mapcar #'org-roam-node-id (hash-table-values hash))
+                  :to-have-same-items-as ids)))))
+
+  (it "'delve--zettel'"
+    (let* ((id     "AA")
+           (node   (org-roam-node-create :id id))
+           (zettel (delve--zettel-create node))
+           (token  (delve-store--tokenize-object zettel))
+           (hash   (let ((h (make-hash-table :test #'equal)))
+                     (puthash id node h)
+                     h)))
+      (expect (delve-store--parse-tokenized-object hash token)
+              :to-equal zettel)))
+  (it "'delve--pile'"
+    (let* ((ids     '("AA" "BB"))
+           (nodes   (mapcar (apply-partially #'org-roam-node-create :id) ids))
+           (zettels (mapcar #'delve--zettel-create nodes))
+           (pile    (delve--pile-create :name "A Pile"
+                                        :zettels zettels))
+           (token   (delve-store--tokenize-object pile))
+           (hash    (let ((h (make-hash-table :test #'equal)))
+                      (cl-dolist (node nodes)
+                        (puthash (org-roam-node-id node) node h))
+                      h)))
+      (expect (delve-store--parse-tokenized-object hash token)
+              :to-equal pile)))
+  (it "'delve--note'"
+    (let* ((note   (delve--note-create :text "Hallo!"))
+           (token  (delve-store--tokenize-object note)))
+      (expect (delve-store--parse-tokenized-object nil token)
+              :to-equal note)))
+  ;; TODO un-x and edit when object is defined
+  (xit "'delve--query'"
+    (let* ((query   (delve--query-create))
+           (token  (delve-store--tokenize-object query)))
+      (expect (delve-store--parse-tokenized-object nil token)
+              :to-equal query)))
+  (it "'delve--info'"
+    (let* ((info   (delve--info-create :text "Hallo!"))
+           (token  (delve-store--tokenize-object info)))
+      (expect (delve-store--parse-tokenized-object nil token)
+              :to-equal info))))
 
 (xdescribe "Test if DB is in sync"
   (before-all
@@ -156,7 +258,7 @@
                 "Big note sub-heading"))))
 
 
-    
+
 
 
 (provide 'delve-tests-query)
