@@ -28,8 +28,8 @@
 (require 'delve-data-types)
 (require 'delve-query)
 
-(defun delve-store--write (filename lisp-object)
-  "Write LISP-OBJECT to FILENAME.
+(defun delve-store--write (file-name lisp-object)
+  "Write LISP-OBJECT to FILE-NAME.
 Return LISP-OBJECT."
   (let* ((coding-system-for-write 'binary)
          (print-level nil)
@@ -41,13 +41,15 @@ Return LISP-OBJECT."
                    "\n\n"
                    (pp-to-string lisp-object)
                    "\n;; Local Variables:\n;; eval: (when (featurep 'flycheck) (flycheck-mode -1))\n;; End:\n")))
-    (with-temp-file filename
+    (with-temp-file file-name
       (set-buffer-multibyte nil)
       (encode-coding-string content 'utf-8 nil (current-buffer)))
   lisp-object))
 
 (defun delve-store--read (file-name)
   "Read FILE-NAME as Lisp expression and return it."
+  ;; FIXME See the info entry on "file-exists-p" on why this check
+  ;;       is actually not enough
   (if (file-exists-p file-name)
       (with-temp-buffer
         (insert-file-contents-literally file-name)
@@ -62,6 +64,7 @@ Return LISP-OBJECT."
 
 ;;; * Store a Delve list
 
+;;; TODO Write tests
 (defun delve-store--tokenize-object (delve-object)
   "Represent DELVE-OBJECT as a special list item.
 The return value is a list with the object type as its CAR and
@@ -96,6 +99,7 @@ suffice to fully reconstruct the complete item."
      (mapcar #'delve-store--parse-get-id zettels))
     (_ nil)))
 
+;;; TODO Write tests
 (defun delve-store--parse-create-object (id-hash elt)
   "Create a Delve object parsing tokenized ELT.
 Use ID-HASH to get the nodes by their ID."
@@ -113,6 +117,7 @@ Use ID-HASH to get the nodes by their ID."
 
 ;; Prefetch all IDs:
 
+;;; TODO Write tests
 (defun delve-store--get-all-ids (l)
   "Get all ids in the Delve storage list L."
   (lister--flatten (delve-store--map-tokenized-tree #'delve-store--parse-get-id l)))
@@ -130,6 +135,7 @@ Use ID-HASH to get the nodes by their ID."
 
 ;; Parse and create Delve objects:
 
+;;; TODO Write tests
 (defun delve-store--create-object-list (l)
   "Create Delve objects for stored list L."
   (let ((id-hash (delve-store--prefetch-ids l)))
