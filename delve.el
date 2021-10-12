@@ -34,7 +34,6 @@
 
 ;;; Code:
 
-;; TODO Add reader/writer for notes to delve-store
 ;; TODO Turn Tags into Buttons which query
 ;;; TODO add db info in header in dashboard
 ;;; TODO disable inserting in dashboard
@@ -400,6 +399,8 @@ Return the buffer object."
 (defun delve-unopened-storages ()
   "Return all Delve storage files which are not visited yet.
 Only return the file names relative to `delve-store-directory'"
+  ;; FIXME This won't work currently as desired if the local file path
+  ;; is outside of the delve store directory.
   (thread-last (delve-buffer-list)
     (mapcar          #'delve-get-storage-file)
     (seq-filter      #'identity)
@@ -475,7 +476,7 @@ any typechecking if TYPE is nil."
       (unless no-error
         (error "The item at point is not of the right type for that command")))))
 
-;;; Insert node(s)
+;;; * Insert node(s)
 
 (defun delve--select-multiple-nodes (node-fn)
   "Let the user select multiple nodes from NODE-FN."
@@ -510,7 +511,7 @@ list to nodes matching specific tags."
                            (mapcar #'delve--zettel-create nodes)
                            nil (lister-eolp))))
 
-;;; Remote Editing
+;;; * Remote Editing
 
 (defun delve--sync-zettel (zettels)
   "Force sync of all ZETTELS with the org roam db.
@@ -532,7 +533,7 @@ First update the db, then reload the ZETTELS."
       (setf (lister--item-marked (ewoc-data n)) nil))
     (ewoc-invalidate ewoc nodes)))
 
-;;; Visit thing
+;;; * Visit thing
 
 (defun delve-key-visit-zettel (z)
   "Find the zettel Z in a (new) buffer."
@@ -575,7 +576,7 @@ First update the db, then reload the ZETTELS."
       (delve--pile    (delve-key-visit-pile   item))
       (t              (error "No visit action defined for this item")))))
 
-;;; Pile Zettels
+;;; * Pile Zettels
 
 (defun delve--move-into-pile (ewoc pile)
   "In EWOC, stuff all marked nodes in PILE.
@@ -635,7 +636,7 @@ collecting."
     (lister-insert-list-at ewoc node z nil t)
     (lister-delete-at ewoc node)))
 
-;;; Delete Items
+;;; * Delete Items
 
 (defun delve-key-delete ()
   "Delete all marked items or the single ITEM at point.
@@ -673,7 +674,7 @@ sublist, also decrease the indentation of these items."
             (lister-walk-marked-nodes ewoc #'lister-move-item-left))
           (lister-mark-unmark-sublist-at ewoc sublist-beg nil))))))
 
-;; * Show some information
+;; * Preview
 
 (defun delve--get-preview-contents (zettel)
   "Get the raw preview contents for ZETTEL."
@@ -698,7 +699,6 @@ sublist, also decrease the indentation of these items."
                           "No preview available"))))
     (setf (delve--zettel-preview zettel) preview)
     (lister-refresh-at lister-local-ewoc :point)))
-
 
 ;; * Open the org roam buffer
 
@@ -773,7 +773,7 @@ non-nil.  Offer completion of files in the directory
   (with-current-buffer buf
     (message "Collection stored in file %s" delve-local-storage-file)))
 
-;;; Multiple action keys
+;;; * Multiple action keys
 
 (defun delve-key-plus (&optional prefix)
   "Pile marked items or insert a new one.
