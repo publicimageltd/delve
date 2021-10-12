@@ -34,13 +34,11 @@
 
 ;;; Code:
 
-;; TODO Remove storage object and associated functions; bad idea.
 ;; TODO Add reader/writer for notes to delve-store
 ;; TODO Turn Tags into Buttons which query
 ;;; TODO add db info in header in dashboard
 ;;; TODO disable inserting in dashboard
 ;;; TODO add r / g to update dashboard, display it in header
-;;; TODO Store and use description in storage files
 ;;; TODO delve-query.el: Add function which queries for last mtime
 ;;; TODO delve-query.el: Add function which queries for backlinks
 ;;; TODO Add function to insert backlinks below point
@@ -90,6 +88,10 @@
 
 (defvar-local delve-local-storage-file nil
   "Associated local storage file.")
+
+(defun delve-get-storage-file (buf)
+  "Get the buffer local storage file for BUF."
+  (buffer-local-value 'delve-local-storage-file buf))
 
 (defvar-local delve-local-header-info "DELVE"
   "First line of the local Lister header.")
@@ -180,7 +182,6 @@ return strings."
                 (`delve--pile    (list "PILE"  "list-ul"))
                 (`delve--info    (list "INFO"  "info"))
                 (`delve--note    (list "NOTE"  "pencil"))
-                (`delve--storage (list "STORE" "archive"))
                 (`delve--zettel
                  (if (eq 0 (delve--zettel-level delve-item))
                      (list "FILE" "file-text-o")
@@ -190,13 +191,6 @@ return strings."
              (not delve--no-icons))
         (concat (all-the-icons-faicon icon-name) " ")
       (delve-pp--set-width s 6))))
-
-;; Printing Store Files
-
-(defun delve--storage-strings (storage)
-  "Return representation of STORAGE."
-  (list (concat " Stored collection: "
-                (propertize (delve--storage-file storage) 'face 'dired-directory))))
 
 ;; Printing Zettel
 
@@ -339,7 +333,6 @@ Return the prepared string."
                         (delve--pile    (delve--pile-strings item))
                         (delve--info    (delve--info-strings item))
                         (delve--note    (delve--note-strings item))
-                        (delve--storage (delve--storage-strings item))
                         (t (list "no printer available for that item type")))))
     ;; hanging indent:
     (let* ((datastrings (lister--flatten datastrings))
@@ -351,11 +344,10 @@ Return the prepared string."
 
 ;; * Buffer and buffer-as-storage handling
 
-;;; TODO Remove option, looks like it is not needed
-(defun delve--storage-files (&optional full-path)
+(defun delve--storage-files ()
   "Return all storage file names.
-Optionally return file names with their FULL-PATH."
-  (directory-files delve-store-directory full-path (rx string-start (not "."))))
+Only return the file name relative to `delve-store-directory'."
+  (directory-files delve-store-directory nil (rx string-start (not "."))))
 
 (defun delve--header-function ()
   "Generate a Lister header item from local buffer vars."
@@ -395,6 +387,7 @@ Return the buffer object."
   (and (eq (buffer-local-value 'major-mode (or buf (current-buffer)))
            'delve-mode)))
 
+;; TODO Seems not to be needed, remove it
 (defun delve--buffer-and-not-dashboard-p (&optional buf)
   "Check if BUF is Delve buffer and not the dashboard."
   (and (delve--buffer-p buf)
@@ -405,9 +398,10 @@ Return the buffer object."
   (seq-filter #'delve--buffer-p (buffer-list)))
 
 (defun delve-unopened-storages ()
-  "Return all Delve storage files which are not visited yet."
+  "Return all Delve storage files which are not visited yet.
+Only return the file names relative to `delve-store-directory'"
   (thread-last (delve-buffer-list)
-    (mapcar          (apply-partially #'buffer-local-value 'delve-local-storage-file))
+    (mapcar          #'delve-get-storage-file)
     (seq-filter      #'identity)
     (mapcar          #'file-name-nondirectory)
     (seq-difference  (delve--storage-files))))
@@ -420,7 +414,6 @@ to the end, in parentheses."
                   (format "%s (%s)" (funcall key-fn elt) suffix))
                 cand))
 
-;;; TODO Add custom category and annotation function showing storage file
 (defun delve--select-collection-buffer (prompt)
   "Select Delve buffer, collection, or create a new buffer.
 Use PROMPT as a prompt to prompt the user to choose promptly."
@@ -769,13 +762,6 @@ non-nil.  Offer completion of files in the directory
       (lister-refresh-header-footer lister-local-ewoc))
     buf))
 
-;;; TODO Delete 
-(defun delve--visit-storage (storage)
-  "Open and switch to the collection in STORAGE."
-  (switch-to-buffer
-   (delve--read-storage-file (concat (file-name-as-directory delve-store-directory)
-                                     (delve--storage-file storage)))))
-
 (defun delve-save-buffer (buf)
   "Store BUF in its existing storage file or create a new one."
   (interactive (list (current-buffer)))
@@ -807,7 +793,6 @@ ask user for multiple nodes for insertion."
   (cl-typecase item
     (delve--zettel  (delve-key-visit-zettel item))
     (delve--pile    (delve-key-visit-pile   item))
-    (delve--storage (delve--visit-storage item))
     (t              (error "No action defined for this item"))))
 
 ;;; * Delve Major Mode

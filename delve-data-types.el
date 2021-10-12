@@ -32,19 +32,11 @@
 (cl-defstruct (delve--item (:constructor delve--item-create))
   "A generic single delve list item.")
 
-;; TODO Remove
-(cl-defstruct (delve--storage (:include delve--item)
-                              (:constructor delve--storage-create))
-  file)
-  
-
-;; TODO Add reader/writer for this type to delve-store
 (cl-defstruct (delve--note (:include delve--item)
                            (:constructor delve--note-create))
   "A note item for free text."
   text)
 
-;; TODO Add reader/writer for this type to delve-store
 (cl-defstruct (delve--info (:include delve--note)
                            (:constructor delve--info-create))
   "A text item for information to the user.")
@@ -85,8 +77,8 @@ SLOT-NAME must be the name of a slot of an org-roam-node.  Give
 (cl-defstruct (delve--query
             (:include delve--item)
             (:constructor delve--query-create))
-  "An SQL query returning zettel objects."
-  name query)
+  "A query function returning Delve objects."
+  name query-fn)
 
 
 (provide 'delve-data-types)
