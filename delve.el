@@ -169,7 +169,7 @@
 
 ;;; * The Lister Mapper
 
-;; Printing anything
+;; Type icon
 
 (defun delve--type-as-string (delve-item)
   "Return a string or icon representing the type of DELVE-ITEM.
@@ -177,11 +177,11 @@ If the global variable `delve--no-icons' is bound, always only
 return strings."
   (pcase-let ((`(,s ,icon-name)
               (pcase (type-of delve-item)
-                (`delve--query   (list "QUERY" "search"))
-                (`delve--pile    (list "PILE"  "list-ul"))
-                (`delve--info    (list "INFO"  "info"))
-                (`delve--note    (list "NOTE"  "pencil"))
-                (`delve--zettel
+                ('delve--query   (list "QUERY" "search"))
+                ('delve--pile    (list "PILE"  "list-ul"))
+                ('delve--info    (list "INFO"  "info"))
+                ('delve--note    (list "NOTE"  "pencil"))
+                ('delve--zettel
                  (if (eq 0 (delve--zettel-level delve-item))
                      (list "FILE" "file-text-o")
                    (list "NODE" "dot-circle-o")))
@@ -300,6 +300,12 @@ Return the prepared string."
    (delve-pp-fields pile '((delve--pile-size     (:set-face delve-pile-face))
                            (delve--pile-name     (:set-face delve-pile-face))))))
 
+;; Printing Queries
+
+(defun delve--query-strings (query)
+  "Return a list of strings representing QUERY."
+  (list (delve--query-info query)))
+
 ;; Printing Notes
 
 (defun delve--note-s-to-list (string)
@@ -332,6 +338,7 @@ Return the prepared string."
                         (delve--pile    (delve--pile-strings item))
                         (delve--info    (delve--info-strings item))
                         (delve--note    (delve--note-strings item))
+                        (delve--query   (delve--query-strings item))
                         (t (list "no printer available for that item type")))))
     ;; hanging indent:
     (let* ((datastrings (lister--flatten datastrings))
@@ -341,17 +348,32 @@ Return the prepared string."
                                 (cdr datastrings))))
       (apply #'list first-line rest-lines))))
 
+;; * Dynamic Header
+
+(defun delve--db-info ()
+  "Return strings with some basic infos."
+  (let* ((nnodes  (caar (delve-query [:select (funcall count *) :from nodes])))
+         (n0nodes (caar (delve-query [:select (funcall count *) :from nodes :where (= level 0)])))
+         (tags    (caar (delve-query [:select :distinct tag :from tags :order :by asc]))))
+    (list
+     (propertize (format "Current db has %d nodes in %d files. %d tags are in use."
+                         nnodes n0nodes (length tags))
+                 'face 'font-lock-comment-face))))
+
+(defun delve--header-function ()
+  "Generate a Lister header item from local buffer vars."
+  (lister--flatten
+   (list (propertize delve-local-header-info 'face 'delve-header-face)
+         (delve--db-info)
+         (when delve-local-storage-file
+           (propertize delve-local-storage-file 'face 'font-lock-string-face)))))
+
 ;; * Buffer and buffer-as-storage handling
 
 (defun delve--storage-files ()
   "Return all storage file names.
 Only return the file name relative to `delve-store-directory'."
   (directory-files delve-store-directory nil (rx string-start (not "."))))
-
-(defun delve--header-function ()
-  "Generate a Lister header item from local buffer vars."
-  (list (propertize delve-local-header-info 'face 'delve-header-face)
-        delve-local-storage-file))
 
 (defun delve--new-buffer (name &optional initial-list)
   "Create a new delve buffer NAME with INITIAL-LIST.
@@ -368,8 +390,10 @@ Return the buffer object."
 (defun delve--new-dashboard ()
   "Create a new Delve dashboard buffer."
   (with-temp-message "Setting up dashboard..."
-    ;; TODO Fill dashboard list with queries
-    (let* ((stores nil))
+    (let* ((tags (delve-query-tags))
+           (stores nil))
+      (cl-dolist (tag (nreverse tags))
+        (push (delve--create-tag-query tag) stores))
       (delve--new-buffer delve-dashboard-name
                          (append stores)))))
 
@@ -462,18 +486,18 @@ Use PROMPT as a prompt to prompt the user to choose promptly."
   "Push current point on the global mark ring."
   (add-to-history 'global-mark-ring (copy-marker (point-marker)) global-mark-ring-max t))
 
-(defun delve--current-item (&optional type no-error)
+(defun delve--current-item (&optional type ewoc pos)
   "Get the item bound to the current Lister node.
-If the item is not of type TYPE, throw an error.  If NO-ERROR is
-non-nil, no not throw an error and return nil instead.  Skip
-any typechecking if TYPE is nil."
-  (unless lister-local-ewoc
-    (error "Command must be called in a lister buffer"))
-  (let ((item (lister-get-data-at lister-local-ewoc :point)))
-    (if (or (not type)
-            (eq (type-of item) type))
-        item
-      (unless no-error
+If the item is not of type TYPE, throw an error.  Use the
+position at point in EWOC or POS, if supplied.  Skip any
+typechecking if TYPE is nil."
+  (let ((ewoc (or ewoc lister-local-ewoc)))
+    (unless ewoc
+      (error "Command must be called in a Delve buffer"))
+    (let ((item (lister-get-data-at ewoc (or pos :point))))
+      (if (or (not type)
+              (eq (type-of item) type))
+          item
         (error "The item at point is not of the right type for that command")))))
 
 ;;; * Insert node(s)
@@ -511,6 +535,48 @@ list to nodes matching specific tags."
                            (mapcar #'delve--zettel-create nodes)
                            nil (lister-eolp))))
 
+;;; * Queries
+
+(defun delve--create-tag-query (tags)
+  "Create a query object searching for nodes matching TAGS."
+  (let ((tags (if (listp tags) tags (list tags))))
+    (delve--query-create :info (format "Query for nodes matching %s"
+                                       (delve--string-join tags " and " "#"))
+                         :fn (lambda ()
+                               (delve-query-nodes-by-tags tags)))))
+
+
+(defun delve--insert-or-visit-nodes (nodes info &optional prefix as-sublist)
+  "Insert NODES as Zettels in the current Delve buffer, at point.
+Insert NODES as a sublist below point, if AS-SUBLIST is non-nil.
+If called with PREFIX, open NODES in a new Delve buffer
+instead.  Use INFO as the title for the new Delve buffer."
+  (let ((zettels (mapcar #'delve--zettel-create nodes)))
+    (if prefix
+        (delve--new-buffer (concat "DELVE " info) zettels)
+      ;; TODO Warn when list is too big
+      (if as-sublist
+          (lister-insert-sublist-below lister-local-ewoc :point zettels)
+        (lister-insert-list-at lister-local-ewoc :point
+                               zettels
+                               nil (lister-eolp)))
+      (message "Inserted %d Zettels" (length nodes)))))
+
+(defun delve-key-insert-nodes-tagged-as (&optional prefix)
+  "In current Delve buffer, insert nodes with tags.
+With PREFIX, open search results in a new buffer."
+  (interactive "P")
+  (let* ((tags (completing-read-multiple " Insert nodes matching tag(s): "
+                                         (delve-query-tags)))
+         (matching-string (delve--string-join tags " and " "#"))
+         (nodes  (delve-query-nodes-by-tags tags)))
+    (if nodes
+        (delve--insert-or-visit-nodes nodes
+                                      (format "Nodes matching %s" matching-string)
+                                      prefix)
+      (message "No nodes found matching %s" matching-string))))
+    
+
 ;;; * Remote Editing
 
 (defun delve--sync-zettel (zettels)
@@ -533,18 +599,30 @@ First update the db, then reload the ZETTELS."
       (setf (lister--item-marked (ewoc-data n)) nil))
     (ewoc-invalidate ewoc nodes)))
 
-;;; * Visit thing
+;;; * Default visit functions for various objects
 
-(defun delve-key-visit-zettel (z)
-  "Find the zettel Z in a (new) buffer."
-  (interactive (list (delve--current-item 'delve--zettel)))
-  (delve--push-to-global-mark-ring)
-  (with-current-buffer (org-roam-node-visit (delve--zettel-node z))
-    (org-show-entry)))
+(defun delve--collect-marked-in-new-buffer ()
+  "Collect all marked items in a new buffer.
+Return the new buffer."
+  (let (acc)
+    (lister-walk-marked-nodes lister-local-ewoc
+                              (lambda (_ewoc node)
+                                (push (lister-node-get-data node) acc)))
+    (delve--new-buffer
+     (format-time-string "DELVE Items collected at %X")
+     (nreverse acc))))
 
-(defun delve-key-visit-pile (pile)
-  "Open PILE at point in a new Delve buffer."
-  (let* ((name (format "DELVE Pile: %s" (delve--pile-name pile)))
+(defun delve-key-visit-zettel ()
+  "Find the Zettel at point in a (new) buffer."
+  (let ((z (delve--current-item 'delve--zettel)))
+    (delve--push-to-global-mark-ring)
+    (with-current-buffer (org-roam-node-visit (delve--zettel-node z))
+      (org-show-entry))))
+
+(defun delve-key-visit-pile ()
+  "Open pile at point in a new Delve buffer."
+  (let* ((pile (delve--current-item 'delve--pile))
+         (name (format "DELVE Pile: %s" (delve--pile-name pile)))
          (zettels (delve--pile-zettels pile)))
     (unless zettels
       (error "Pile is empty"))
@@ -555,26 +633,33 @@ First update the db, then reload the ZETTELS."
         (setq buf (delve--new-buffer name zettels)))
       (switch-to-buffer buf))))
 
-(defun delve-visit-marked ()
-  "Visit all marked items in a new buffer."
-  (let (acc)
-    (lister-walk-marked-nodes lister-local-ewoc
-                              (lambda (_ewoc node)
-                                (push (lister-node-get-data node) acc)))
-    (let ((buf (delve--new-buffer
-                (format-time-string "DELVE Items collected at %X")
-                (nreverse acc))))
-      (switch-to-buffer buf))))
+(defun delve-key-visit-query (&optional prefix)
+  "Insert the results from the query at point.
+With PREFIX, open results in a new buffer."
+  (let* ((query  (delve--current-item 'delve--query))
+         (nodes  (funcall (delve--query-fn query))))
+    (if nodes
+        (delve--insert-or-visit-nodes nodes
+                                      (delve--query-info query)
+                                      prefix
+                                      :as-sublist)
+      (message "No matching nodes found"))))
 
-(defun delve-key-visit (item)
-  "Visit the ITEM at point."
-  (interactive (list (delve--current-item)))
+(defun delve-key-visit-item-at-point (&optional prefix)
+  "Visit the item at point.
+
+Call a function which visits the thing at point according to the
+type of the object (zettel, pile, query).  Also pass PREFIX arg
+to that type specific visit function."
+  (interactive)
   (if (lister-items-marked-p lister-local-ewoc)
-      (delve-visit-marked)
-    (cl-typecase item
-      (delve--zettel  (delve-key-visit-zettel item))
-      (delve--pile    (delve-key-visit-pile   item))
-      (t              (error "No visit action defined for this item")))))
+      (switch-to-buffer (delve--collect-marked-in-new-buffer))
+    (let ((item (delve--current-item)))
+      (cl-typecase item
+        (delve--zettel  (delve-key-visit-zettel))
+        (delve--pile    (delve-key-visit-pile))
+        (delve--query   (delve-key-visit-query prefix))
+        (t              (error "No visit action defined for this item"))))))
 
 ;;; * Pile Zettels
 
@@ -610,6 +695,7 @@ If point is on a pile item, add to this pile instead.  Remove any
 duplicates in the final pile.  Skip non-zettel items when
 collecting."
   (interactive)
+  ;; TODO Add typechecking
   (let* ((ewoc    lister-local-ewoc)
          (current (lister-get-data-at ewoc :point)))
     (unless (lister-items-marked-p ewoc)
@@ -628,7 +714,7 @@ collecting."
 (defun delve-key-spread-pile-below (ewoc pos)
   "Replace the pile at POS in EWOC through its content Zettels."
   (interactive (list lister-local-ewoc :point))
-  (let* ((node (lister-get-node-at ewoc pos))
+  (let* ((node (delve--current-item 'delve--pile ewoc pos))
          (pile (lister-get-data-at ewoc node))
          (z    (delve--pile-zettels pile)))
     (unless z
@@ -791,8 +877,9 @@ ask user for multiple nodes for insertion."
   "Do something with the ITEM at point."
   (interactive (list (delve--current-item)))
   (cl-typecase item
-    (delve--zettel  (delve-key-visit-zettel item))
-    (delve--pile    (delve-key-visit-pile   item))
+    (delve--zettel  (delve-key-visit-zettel))
+    (delve--pile    (delve-key-visit-pile))
+    (delve--query   (delve-key-visit-query))
     (t              (error "No action defined for this item"))))
 
 ;;; * Delve Major Mode
@@ -800,12 +887,12 @@ ask user for multiple nodes for insertion."
 ;; * Delve Keymap
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "<delete>")   #'delve-key-delete)
-    (define-key map (kbd "<RET>")      #'delve-key-ret)
-    (define-key map [remap save-buffer] #'delve-save-buffer)
+    (define-key map (kbd "<delete>")      #'delve-key-delete)
+    (define-key map (kbd "<RET>")         #'delve-key-ret)
+    (define-key map [remap save-buffer]              #'delve-save-buffer)
+    (define-key map [remap org-roam-bufer-toggle]    #'delve-key-roam)
     (define-key map (kbd "s")          #'delve-key-spread-pile-below)
-    (define-key map (kbd "v")          #'delve-key-visit)
-    (define-key map (kbd "r")          #'delve-key-roam)
+    (define-key map (kbd "v")          #'delve-key-visit-item-at-point)
     (define-key map (kbd "+")          #'delve-key-plus)
     (define-key map (kbd "p")          #'delve-key-toggle-preview)
     map)

@@ -77,9 +77,8 @@ SLOT-NAME must be the name of a slot of an org-roam-node.  Give
 (cl-defstruct (delve--query
             (:include delve--item)
             (:constructor delve--query-create))
-  "A query function returning Delve objects."
-  name query-fn)
-
+  "A query returning Delve objects."
+  info fn)
 
 (provide 'delve-data-types)
 ;;; delve-data-types.el ends here
