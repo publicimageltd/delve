@@ -35,8 +35,6 @@
 ;;; Code:
 
 ;; TODO Turn Tags into Buttons which query
-;;; TODO add db info in header in dashboard
-;;; TODO disable inserting in dashboard
 ;;; TODO add r / g to update dashboard, display it in header
 ;;; TODO delve-query.el: Add function which queries for last mtime
 ;;; TODO delve-query.el: Add function which queries for backlinks
@@ -539,7 +537,7 @@ list to nodes matching specific tags."
 
 (defun delve--create-tag-query (tags)
   "Create a query object searching for nodes matching TAGS."
-  (let ((tags (if (listp tags) tags (list tags))))
+  (let* ((tags (if (listp tags) tags (list tags))))
     (delve--query-create :info (format "Query for nodes matching %s"
                                        (delve--string-join tags " and " "#"))
                          :fn (lambda ()

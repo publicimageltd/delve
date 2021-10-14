@@ -25,10 +25,6 @@
 
 ;;; * Dependencies
 
-;; TODO Add delve-query-backlinks-by-ids
-;; TODO Add delve-query-tolinks-by-ids
-;; NOTE Backlinks-Query in der alten DELVE Version suchen!
-
 (require 'subr-x)
 (require 'cl-lib)
 (require 'seq)
@@ -36,6 +32,9 @@
 (require 'org-roam-db)
 (require 'org-roam-node)
 (require 'emacsql-compiler)
+
+
+(declare-function lister--flatten "lister")
 
 ;;; * Framework for 'save' and 'verbose' querying
 
@@ -187,16 +186,18 @@ query `delve-query--super-query' for allowed fields."
              (format "WHERE tags LIKE %s"
                      (string-join (mapcar (lambda (s)
                                             (thread-last s
+                                              ;; FIXME this does not work
+                                              ;; for \" as intended
+                                              ;; (e.g. tag "\"test\"")
                                               (emacsql-quote-identifier)
                                               ;; emacsql-parse passes SQL to
                                               ;; #'format, so double % to avoid
                                               ;; interpretation as format char
                                               (format "%%%%%s%%%%")
+                                              ;; surround with '...'
                                               (emacsql-quote-scalar)))
                                           tag-list)
                                   " AND tags LIKE "))))))
-
-;; (delve-query-nodes-by-tags '("Referenz" "gedanke"))
 
 (defun delve-query-tags ()
   "Return all tags as a sorted list of strings."
@@ -212,6 +213,36 @@ query `delve-query--super-query' for allowed fields."
   "Return node with ID."
   (car (delve-query-nodes-by-id (list id))))
 
+;;; TODO Write tests
+(defun delve-query--ids-linking-to (id)
+  "Get all ids linking to ID (backlinks)."
+  (lister--flatten (delve-query [:select [ source ]
+                                         :from links
+                                         :where (= dest $s1)
+                                         :and (= type "id")]
+                                id)))
+
+;;; TODO Write tests
+(defun delve-query--ids-linking-from (id)
+  "Get all ids linking from node ID (fromlinks)."
+  (lister--flatten (delve-query [:select [ dest ]
+                                         :from links
+                                         :where (= source $s1)
+                                         :and (= type "id")]
+                                id)))
+
+(defun delve-query-backlinks-by-id (id)
+  "Get all nodes linking to ID."
+  (let ((backlinks (delve-query--ids-linking-to id)))
+    (delve-query-nodes-by-id (lister--flatten backlinks))))
+
+(defun delve-query-fromlinks-by-id (id)
+  "Get all nodes linking from ID."
+  (let ((tolinks (delve-query--ids-linking-from id)))
+    (delve-query-nodes-by-id (lister--flatten tolinks))))
+
+;; (delve-query-backlinks-by-id "39f55f61-2e1a-488d-a495-a22b4e39a7e0")
+;; (delve-query-fromlinks-by-id "39f55f61-2e1a-488d-a495-a22b4e39a7e0")
 
 (provide 'delve-query)
 ;;; delve-query.el  ends here
