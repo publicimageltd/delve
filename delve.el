@@ -4,7 +4,7 @@
 
 ;; Author:  <joerg@joergvolbers.de>
 ;; Version: 0.9
-;; Package-Requires: ((emacs "26.1") (org-roam "2.1") (lister "0.9.1"))
+;; Package-Requires: ((emacs "26.1") (org-roam "2.1") (lister "0.9.1")(transient "0.3.6"))
 ;;
 ;; Keywords: hypermedia, org-roam
 ;; URL: https://github.com/publicimageltd/delve
@@ -34,10 +34,10 @@
 
 ;;; Code:
 
+;; TODO Bugfix: Prefix in neuem Buffer klappt nicht! (bei query testen)
 ;; TODO Turn Tags into Buttons which query
 ;;; TODO add r / g to update dashboard, display it in header
 ;;; TODO delve-query.el: Add function which queries for last mtime
-;;; TODO delve-query.el: Add function which queries for backlinks
 ;;; TODO Add function to insert backlinks below point
 ;;; TODO Add function to insert fromlinks below point
 
@@ -476,7 +476,32 @@ Use PROMPT as a prompt to prompt the user to choose promptly."
   (interactive)
   (seq-do #'kill-buffer (delve-buffer-list)))
 
-;;; * Keys / Commands
+;;; * Action / Object Schemes
+
+;;; Idea:
+
+;; Each command is composed of two parts: The actual command
+;; ('action') and its object ('argument').  The argument is a function
+;; which returns object(s) of a certain type, the command is a
+;; function which receives object(s) of a certain type.  The command
+;; is what is to be done (open in a new buffer, delete, insert); the
+;; arg provides the object the command is done with.
+
+;; The idea is to first select the action and then the currently
+;; available objects, which match the action's type.  Once the
+;; command is composed, its functions are called.
+
+;;; Examples:
+
+;; Insert new zettel -> "Insert action" + "new zettel object"
+;; Delete current item -> "Delete action" + "current item object"
+;; Spread pile       -> "Insert action" + "pile at point"
+
+;; We use transients to compose the commands.  For that, we need to
+;; call a transient map optionally with or without an argument.
+
+
+;;; * Commands (Old Keys stuff, to be relocated)
 
 ;;; Generic key related stuff
 
@@ -535,6 +560,7 @@ list to nodes matching specific tags."
 
 ;;; * Queries
 
+;; TODO Let it only return Zettel objects, not org roam nodes.
 (defun delve--create-tag-query (tags)
   "Create a query object searching for nodes matching TAGS."
   (let* ((tags (if (listp tags) tags (list tags))))
@@ -544,14 +570,14 @@ list to nodes matching specific tags."
                                (delve-query-nodes-by-tags tags)))))
 
 
-(defun delve--insert-or-visit-nodes (nodes info &optional prefix as-sublist)
+(defun delve--insert-or-visit-nodes (nodes buffer-info &optional prefix as-sublist)
   "Insert NODES as Zettels in the current Delve buffer, at point.
 Insert NODES as a sublist below point, if AS-SUBLIST is non-nil.
 If called with PREFIX, open NODES in a new Delve buffer
-instead.  Use INFO as the title for the new Delve buffer."
+instead.  Use BUFFER-INFO as the title for the new Delve buffer."
   (let ((zettels (mapcar #'delve--zettel-create nodes)))
     (if prefix
-        (delve--new-buffer (concat "DELVE " info) zettels)
+        (switch-to-buffer (delve--new-buffer (concat "DELVE " buffer-info) zettels))
       ;; TODO Warn when list is too big
       (if as-sublist
           (lister-insert-sublist-below lister-local-ewoc :point zettels)
@@ -574,6 +600,32 @@ With PREFIX, open search results in a new buffer."
                                       prefix)
       (message "No nodes found matching %s" matching-string))))
     
+
+;;; * Backlinks / Fromlinks
+
+(defun delve-key-insert-backlinks (&optional prefix)
+  "In current Delve buffer, insert backlinks to node at point.
+With PREFIX, open link list in a new buffer."
+  (interactive "P")
+  (let* ((zettel (delve--current-item 'delve--zettel))
+         (links  (delve-query-backlinks-by-id (delve--zettel-id zettel))))
+    (delve--insert-or-visit-nodes links
+                                  (format "DELVE Links pointing to Zettel '%s'"
+                                          (delve--zettel-title zettel))
+                                  prefix
+                                  :as-sublist)))
+
+(defun delve-key-insert-fromlinks (&optional prefix)
+    "In current Delve buffer, insert fromlinks of node at point.
+With PREFIX, open link list in a new buffer."
+    (interactive "P")
+    (let* ((zettel (delve--current-item 'delve--zettel))
+           (links  (delve-query-fromlinks-by-id (delve--zettel-id zettel))))
+      (delve--insert-or-visit-nodes links
+                                    (format "DELVE Links from Zettel '%s'"
+                                          (delve--zettel-title zettel))
+                                  prefix
+                                  :as-sublist)))
 
 ;;; * Remote Editing
 
@@ -617,7 +669,7 @@ Return the new buffer."
     (with-current-buffer (org-roam-node-visit (delve--zettel-node z))
       (org-show-entry))))
 
-(defun delve-key-visit-pile ()
+(defun delve-key-open-this-pile ()
   "Open pile at point in a new Delve buffer."
   (let* ((pile (delve--current-item 'delve--pile))
          (name (format "DELVE Pile: %s" (delve--pile-name pile)))
@@ -631,7 +683,7 @@ Return the new buffer."
         (setq buf (delve--new-buffer name zettels)))
       (switch-to-buffer buf))))
 
-(defun delve-key-visit-query (&optional prefix)
+(defun delve-key-open-this-query (&optional prefix)
   "Insert the results from the query at point.
 With PREFIX, open results in a new buffer."
   (let* ((query  (delve--current-item 'delve--query))
@@ -643,20 +695,18 @@ With PREFIX, open results in a new buffer."
                                       :as-sublist)
       (message "No matching nodes found"))))
 
-(defun delve-key-visit-item-at-point (&optional prefix)
-  "Visit the item at point.
+(defun delve-key-open-item-at-point ()
+  "Open item at point in a new buffer.
 
-Call a function which visits the thing at point according to the
-type of the object (zettel, pile, query).  Also pass PREFIX arg
-to that type specific visit function."
+Call a function which opens the thing at point in a new buffer."
   (interactive)
   (if (lister-items-marked-p lister-local-ewoc)
       (switch-to-buffer (delve--collect-marked-in-new-buffer))
     (let ((item (delve--current-item)))
       (cl-typecase item
         (delve--zettel  (delve-key-visit-zettel))
-        (delve--pile    (delve-key-visit-pile))
-        (delve--query   (delve-key-visit-query prefix))
+        (delve--pile    (delve-key-open-this-pile))
+        (delve--query   (delve-key-open-this-query))
         (t              (error "No visit action defined for this item"))))))
 
 ;;; * Pile Zettels
@@ -859,10 +909,16 @@ non-nil.  Offer completion of files in the directory
 
 ;;; * Multiple action keys
 
+;;; IDEA: Context maps:  For each type, a list of actions plus some special
+;;; properties.  The actual menu is then created for the item at
+;;; point.  Type 't' will be included in every menu.  Prefix will be
+;;; passed.
+
 (defun delve-key-plus (&optional prefix)
-  "Pile marked items or insert a new one.
-If called with a PREFIX argument and there are no marked items,
-ask user for multiple nodes for insertion."
+  "Pile marked items or interactively insert a new one.
+If there are marked items, pile them.  Else insert node
+interactively.  With PREFIX, ask for limiting tag before choosing
+the node to insert."
   (interactive "P")
   (when (use-region-p)
     (lister-mode--mark-unmark-region lister-local-ewoc
@@ -871,13 +927,14 @@ ask user for multiple nodes for insertion."
       (delve-key-pile)
     (delve-key-insert-node prefix)))
 
-(defun delve-key-ret (item)
-  "Do something with the ITEM at point."
-  (interactive (list (delve--current-item)))
+(defun delve-key-ret (item prefix)
+  "Do something with the ITEM at point.
+With PREFIX, do it in a new buffer."
+  (interactive (list (delve--current-item) current-prefix-arg))
   (cl-typecase item
     (delve--zettel  (delve-key-visit-zettel))
-    (delve--pile    (delve-key-visit-pile))
-    (delve--query   (delve-key-visit-query))
+    (delve--pile    (delve-key-open-this-pile))
+    (delve--query   (delve-key-open-this-query prefix))
     (t              (error "No action defined for this item"))))
 
 ;;; * Delve Major Mode
@@ -885,14 +942,18 @@ ask user for multiple nodes for insertion."
 ;; * Delve Keymap
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "<delete>")      #'delve-key-delete)
-    (define-key map (kbd "<RET>")         #'delve-key-ret)
+    (define-key map (kbd "<delete>")     #'delve-key-delete)
+    (define-key map (kbd "<RET>")        #'delve-key-ret)
     (define-key map [remap save-buffer]              #'delve-save-buffer)
     (define-key map [remap org-roam-bufer-toggle]    #'delve-key-roam)
-    (define-key map (kbd "s")          #'delve-key-spread-pile-below)
-    (define-key map (kbd "v")          #'delve-key-visit-item-at-point)
-    (define-key map (kbd "+")          #'delve-key-plus)
-    (define-key map (kbd "p")          #'delve-key-toggle-preview)
+    (define-key map (kbd "s")            #'delve-key-spread-pile-below)
+    (define-key map (kbd "v")            #'delve-key-open-item-at-point)
+    (define-key map (kbd "+")            #'delve-key-plus)
+    (define-key map (kbd "p")            #'delve-key-toggle-preview)
+    (define-key map (kbd "lb")           #'delve-key-insert-backlinks)
+    (define-key map (kbd "lf")           #'delve-key-insert-fromlinks)
+    (define-key map (kbd "l <left>")      #'delve-key-insert-backlinks)
+    (define-key map (kbd "l <right>")     #'delve-key-insert-fromlinks)
     map)
   "Key map for `delve-mode'.")
 
