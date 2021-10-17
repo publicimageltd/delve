@@ -894,6 +894,7 @@ non-nil.  Offer completion of files in the directory
     (define-key map (kbd "o")                        #'delve--key--open-zettel)
     (define-key map (kbd "f")                        #'delve--key--fromlinks)
     (define-key map (kbd "b")                        #'delve--key--backlinks)
+    (define-key map (kbd "<RET>")                    #'delve--key--toggle-preview)
     ;; Insert Queries or Piles:
     (define-key map (kbd "i")                        #'delve--key--insert-query-or-pile)
     (define-key map (kbd "t")                        #'delve--key--insert-tagged)
