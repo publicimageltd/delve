@@ -34,12 +34,9 @@
 
 ;;; Code:
 
-;; TODO Bugfix: Prefix in neuem Buffer klappt nicht! (bei item testen)
 ;; TODO Turn Tags into Buttons which item
 ;;; TODO add r / g to update dashboard, display it in header
 ;;; TODO delve-query.el: Add function which queries for last mtime
-;;; TODO Add function to insert backlinks below point
-;;; TODO Add function to insert fromlinks below point
 
 ;; * Dependencies
 
