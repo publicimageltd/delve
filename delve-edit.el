@@ -62,7 +62,7 @@ If TAGS is nil, ask the user."
         (org-roam-tag-add tags))
     (call-interactively 'org-roam-tag-add)))
 
-(defun delve-edit--remove-tag (zettel &optional tags)
+(defun delve-edit--remove-tags (zettel &optional tags)
   "Remove TAGS from the node in ZETTEL.
 If TAGS is nil, ask the user."
   (delve-edit--with-zettel-node zettel

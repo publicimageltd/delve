@@ -34,8 +34,8 @@
 
 ;;; Code:
 
-;; TODO Bugfix: Prefix in neuem Buffer klappt nicht! (bei query testen)
-;; TODO Turn Tags into Buttons which query
+;; TODO Bugfix: Prefix in neuem Buffer klappt nicht! (bei item testen)
+;; TODO Turn Tags into Buttons which item
 ;;; TODO add r / g to update dashboard, display it in header
 ;;; TODO delve-query.el: Add function which queries for last mtime
 ;;; TODO Add function to insert backlinks below point
@@ -52,6 +52,7 @@
 (require 'delve-query)
 (require 'delve-pp)
 (require 'delve-store)
+(require 'delve-edit)
 
 ;; * Silence Byte Compiler
 
@@ -379,11 +380,20 @@ Return the buffer object."
   (let ((buf (generate-new-buffer name)))
     (with-current-buffer buf
       (delve-mode)
+      (setf delve-local-header-info name)
       (lister-setup buf #'delve-mapper #'delve--header-function)
       (lister-mode)
       (when initial-list
         (lister-set-list lister-local-ewoc initial-list)))
     buf))
+
+(defun delve--create-tag-query (tags)
+  "Create a item object searching for nodes matching TAGS."
+  (let* ((tags (if (listp tags) tags (list tags))))
+    (delve--query-create :info (format "Query for nodes matching %s"
+                                       (delve--string-join tags " and " "#"))
+                         :fn (lambda ()
+                               (delve-query-nodes-by-tags tags)))))
 
 (defun delve--new-dashboard ()
   "Create a new Delve dashboard buffer."
@@ -476,32 +486,29 @@ Use PROMPT as a prompt to prompt the user to choose promptly."
   (interactive)
   (seq-do #'kill-buffer (delve-buffer-list)))
 
-;;; * Action / Object Schemes
+;;; * Remote Editing - Background Utilites
 
-;;; Idea:
+(defun delve--sync-zettel (zettels)
+  "Force sync of all ZETTELS with the org roam db.
+First update the db, then reload the ZETTELS."
+  (let* ((filelist (mapcar #'delve--zettel-file zettels)))
+    (cl-dolist (file (seq-uniq filelist #'string=))
+      (org-roam-db-update-file file))
+    (cl-dolist (z zettels)
+      (setf (delve--zettel-node z)
+            (delve-query-node-by-id (delve--zettel-id z))))))
 
-;; Each command is composed of two parts: The actual command
-;; ('action') and its object ('argument').  The argument is a function
-;; which returns object(s) of a certain type, the command is a
-;; function which receives object(s) of a certain type.  The command
-;; is what is to be done (open in a new buffer, delete, insert); the
-;; arg provides the object the command is done with.
+;; TODO Test sync delve--zettel <-> DB
+(defun delve--sync-marked (ewoc)
+  "Force sync all marked list items of EWOC."
+  (let ((nodes (lister-collect-nodes ewoc nil nil
+                                     #'lister-node-marked-p)))
+    (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
+    (cl-dolist (n nodes)
+      (setf (lister--item-marked (ewoc-data n)) nil))
+    (ewoc-invalidate ewoc nodes)))
 
-;; The idea is to first select the action and then the currently
-;; available objects, which match the action's type.  Once the
-;; command is composed, its functions are called.
-
-;;; Examples:
-
-;; Insert new zettel -> "Insert action" + "new zettel object"
-;; Delete current item -> "Delete action" + "current item object"
-;; Spread pile       -> "Insert action" + "pile at point"
-
-;; We use transients to compose the commands.  For that, we need to
-;; call a transient map optionally with or without an argument.
-
-
-;;; * Commands (Old Keys stuff, to be relocated)
+;;; * Key handling / Commands
 
 ;;; Generic key related stuff
 
@@ -509,21 +516,167 @@ Use PROMPT as a prompt to prompt the user to choose promptly."
   "Push current point on the global mark ring."
   (add-to-history 'global-mark-ring (copy-marker (point-marker)) global-mark-ring-max t))
 
-(defun delve--current-item (&optional type ewoc pos)
+(defun delve--current-item (&optional types ewoc pos)
   "Get the item bound to the current Lister node.
-If the item is not of type TYPE, throw an error.  Use the
-position at point in EWOC or POS, if supplied.  Skip any
-typechecking if TYPE is nil."
+TYPES is a type symbol or a list of type symbols.  If the item is
+not of type TYPES, throw an error.  Use the position at point in
+EWOC or POS, if supplied.  Skip any typechecking if TYPES is nil."
   (let ((ewoc (or ewoc lister-local-ewoc)))
     (unless ewoc
       (error "Command must be called in a Delve buffer"))
     (let ((item (lister-get-data-at ewoc (or pos :point))))
-      (if (or (not type)
-              (eq (type-of item) type))
+      (if (or (not types)
+              (memq (type-of item) (if (listp types) types (list types))))
           item
-        (error "The item at point is not of the right type for that command")))))
+        (error "The item at point is not of the right types for that command")))))
 
-;;; * Insert node(s)
+(defun delve--insert-or-open-zettels (zettels buffer-info &optional prefix as-sublist)
+  "Insert ZETTELS in the current Delve buffer, at point.
+If AS-SUBLIST is non-nil, insert as a sublist below point.  If
+called with PREFIX, insert ZETTEL in a new Delve buffer instead.
+Use BUFFER-INFO as the title for the new Delve buffer."
+  (if prefix
+      (switch-to-buffer (delve--new-buffer (concat "DELVE " buffer-info) zettels))
+    ;; TODO Warn when list is too big
+    (if as-sublist
+        (lister-insert-sublist-below lister-local-ewoc
+                                     :point
+                                     zettels)
+      (lister-insert-list-at lister-local-ewoc
+                             :point
+                             zettels
+                             nil
+                             (lister-eolp)))
+    (message "Inserted %d Zettels" (length zettels))))
+
+;;; * Key commands working with the "item at point"
+
+;; TODO Write a transient for more comfy editing
+;; TODO Test function interactively
+;; TODO Handle syncing
+(defun delve--key--add-tags (zettel)
+  "Add the tags of the ZETTEL at point."
+  (interactive (list (delve--current-item 'delve--zettel)))
+  (delve-edit--add-tags zettel))
+
+;; TODO Test function interactively
+;; TODO Handle syncing
+(defun delve--key--remove-tags (zettel)
+  "Remove the tags of the ZETTEL at point."
+  (interactive (list (delve--current-item 'delve--zettel)))
+  (delve-edit--remove-tags zettel))
+
+(defun delve--key--open-zettel (zettel)
+  "Open the ZETTEL at point."
+  (interactive (list (delve--current-item 'delve--zettel)))
+  (delve--push-to-global-mark-ring)
+  (with-current-buffer (org-roam-node-visit (delve--zettel-node zettel))
+    (org-show-entry)))
+
+(defun delve--key--backlinks (zettel &optional prefix)
+  "Insert backlinks of current ZETTEL.
+With PREFIX, open link list in a new buffer, else insert it as a
+sublist below point."
+  (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
+  (delve--insert-or-open-zettels
+   (mapcar #'delve--zettel-create (delve-query-backlinks-by-id (delve--zettel-id zettel)))
+   (format "Links pointing to Zettel '%s'"
+           (delve--zettel-title zettel))
+   prefix
+   :as-sublist))
+
+(defun delve--key--fromlinks (zettel &optional prefix)
+  "Insert fromlinks of current ZETTEL.
+With PREFIX, open link list in a new buffer, else insert it as a
+sublist below point."
+  (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
+  (delve--insert-or-open-zettels
+   (mapcar #'delve--zettel-create (delve-query-fromlinks-by-id (delve--zettel-id zettel)))
+   (format "Links from Zettel '%s'"
+           (delve--zettel-title zettel))
+   prefix
+   :as-sublist))
+
+(defun delve--key--insert-query-or-pile (item &optional prefix)
+  "Insert results from ITEM, either a query or a pile object.
+With PREFIX, insert results in a new buffer, else insert it as a
+sublist below point."
+  (interactive (list (delve--current-item '(delve--query delve--pile))
+                     current-prefix-arg))
+  (let ((pile-node (lister-get-node-at lister-local-ewoc :point))
+        zettels insertion-type info)
+    (cl-typecase item
+      (delve--pile  (setq zettels (delve--pile-zettels item)
+                          info  (delve--pile-name item)
+                          insertion-type nil))
+      (delve--query (setq zettels (mapcar #'delve--zettel-create (funcall (delve--query-fn item)))
+                          info  (delve--query-info item)
+                          insertion-type :as-sublist)))
+    (if (null zettels)
+        (message "No matching zettels found")
+      (delve--insert-or-open-zettels zettels info prefix insertion-type)
+      (unless prefix
+        (if (eq (type-of item) 'delve--pile)
+            (lister-delete-at lister-local-ewoc pile-node))))))
+
+(defun delve--get-preview-contents (zettel)
+  "Get the raw preview contents for ZETTEL."
+  (org-roam-with-temp-buffer (delve--zettel-file zettel)
+    (org-roam-preview-get-contents
+     (delve--zettel-file zettel)
+     (if (eq (delve--zettel-level zettel) 0)
+         (if (org-goto-first-child)
+             (1- (point))
+           (point-max))
+       (delve--zettel-point zettel)))))
+
+;; FIXME If called on a file node (level 0), preview always
+;;       shows the property keywords; we should fix that.
+(defun delve--key--toggle-preview (zettel)
+  "Toggle the display of the preview of ZETTEL."
+  (interactive (list (delve--current-item 'delve--zettel)))
+  (let ((preview (and (not (delve--zettel-preview zettel))
+                      (or (delve--get-preview-contents zettel)
+                          "No preview available"))))
+    (setf (delve--zettel-preview zettel) preview)
+    (lister-refresh-at lister-local-ewoc :point)))
+
+;; * Open the org roam buffer
+
+(defun delve--key--roam (zettel)
+  "Open the org roam buffer for ZETTEL."
+  (interactive (list (delve--current-item 'delve--zettel)))
+  (org-roam-buffer-display-dedicated (delve--zettel-node zettel)))
+
+;;; * Key commands not bound to a specific item at point
+
+(defun delve--key--insert-tagged (tags &optional prefix)
+  "Insert zettel matching TAGS.
+With PREFIX, open search results in a new buffer."
+  (interactive (list (completing-read-multiple " Insert zettels matching tag(s): "
+                                               (delve-query-tags))
+                     current-prefix-arg))
+  (let* ((matching-string (delve--string-join tags " and " "#"))
+         (zettels         (delve-query-nodes-by-tags tags)))
+    (if zettels
+        (delve--insert-or-open-zettels zettels
+                                       (format "Nodes matching %s" matching-string)
+                                       prefix)
+      (message "No zettels found matching %s" matching-string))))
+
+(defun delve--key--collect-in-new-buffer (ewoc)
+  "In Delve EWOC, collect all marked items in a new buffer.
+Return the new buffer."
+  (interactive (list lister-local-ewoc))
+  (let (acc)
+    (lister-walk-marked-nodes ewoc
+                              (lambda (_ node)
+                                (push (lister-node-get-data node) acc)))
+    (delve--new-buffer
+     (format-time-string "DELVE Items collected at %X")
+     (nreverse acc))))
+
+;; Insert node(s)
 
 (defun delve--select-multiple-nodes (node-fn)
   "Let the user select multiple nodes from NODE-FN."
@@ -558,288 +711,90 @@ list to nodes matching specific tags."
                            (mapcar #'delve--zettel-create nodes)
                            nil (lister-eolp))))
 
-;;; * Queries
-
-;; TODO Let it only return Zettel objects, not org roam nodes.
-(defun delve--create-tag-query (tags)
-  "Create a query object searching for nodes matching TAGS."
-  (let* ((tags (if (listp tags) tags (list tags))))
-    (delve--query-create :info (format "Query for nodes matching %s"
-                                       (delve--string-join tags " and " "#"))
-                         :fn (lambda ()
-                               (delve-query-nodes-by-tags tags)))))
-
-
-(defun delve--insert-or-visit-nodes (nodes buffer-info &optional prefix as-sublist)
-  "Insert NODES as Zettels in the current Delve buffer, at point.
-Insert NODES as a sublist below point, if AS-SUBLIST is non-nil.
-If called with PREFIX, open NODES in a new Delve buffer
-instead.  Use BUFFER-INFO as the title for the new Delve buffer."
-  (let ((zettels (mapcar #'delve--zettel-create nodes)))
-    (if prefix
-        (switch-to-buffer (delve--new-buffer (concat "DELVE " buffer-info) zettels))
-      ;; TODO Warn when list is too big
-      (if as-sublist
-          (lister-insert-sublist-below lister-local-ewoc :point zettels)
-        (lister-insert-list-at lister-local-ewoc :point
-                               zettels
-                               nil (lister-eolp)))
-      (message "Inserted %d Zettels" (length nodes)))))
-
-(defun delve-key-insert-nodes-tagged-as (&optional prefix)
-  "In current Delve buffer, insert nodes with tags.
-With PREFIX, open search results in a new buffer."
-  (interactive "P")
-  (let* ((tags (completing-read-multiple " Insert nodes matching tag(s): "
-                                         (delve-query-tags)))
-         (matching-string (delve--string-join tags " and " "#"))
-         (nodes  (delve-query-nodes-by-tags tags)))
-    (if nodes
-        (delve--insert-or-visit-nodes nodes
-                                      (format "Nodes matching %s" matching-string)
-                                      prefix)
-      (message "No nodes found matching %s" matching-string))))
-    
-
-;;; * Backlinks / Fromlinks
-
-(defun delve-key-insert-backlinks (&optional prefix)
-  "In current Delve buffer, insert backlinks to node at point.
-With PREFIX, open link list in a new buffer."
-  (interactive "P")
-  (let* ((zettel (delve--current-item 'delve--zettel))
-         (links  (delve-query-backlinks-by-id (delve--zettel-id zettel))))
-    (delve--insert-or-visit-nodes links
-                                  (format "DELVE Links pointing to Zettel '%s'"
-                                          (delve--zettel-title zettel))
-                                  prefix
-                                  :as-sublist)))
-
-(defun delve-key-insert-fromlinks (&optional prefix)
-    "In current Delve buffer, insert fromlinks of node at point.
-With PREFIX, open link list in a new buffer."
-    (interactive "P")
-    (let* ((zettel (delve--current-item 'delve--zettel))
-           (links  (delve-query-fromlinks-by-id (delve--zettel-id zettel))))
-      (delve--insert-or-visit-nodes links
-                                    (format "DELVE Links from Zettel '%s'"
-                                          (delve--zettel-title zettel))
-                                  prefix
-                                  :as-sublist)))
-
-;;; * Remote Editing
-
-(defun delve--sync-zettel (zettels)
-  "Force sync of all ZETTELS with the org roam db.
-First update the db, then reload the ZETTELS."
-  (let* ((filelist (mapcar #'delve--zettel-file zettels)))
-    (cl-dolist (file (seq-uniq filelist #'string=))
-      (org-roam-db-update-file file))
-    (cl-dolist (z zettels)
-      (setf (delve--zettel-node z)
-            (delve-query-node-by-id (delve--zettel-id z))))))
-
-;; TODO Test sync delve--zettel <-> DB
-(defun delve--sync-marked (ewoc)
-  "Force sync all marked list items of EWOC."
-  (let ((nodes (lister-collect-nodes ewoc nil nil
-                                     #'lister-node-marked-p)))
-    (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
-    (cl-dolist (n nodes)
-      (setf (lister--item-marked (ewoc-data n)) nil))
-    (ewoc-invalidate ewoc nodes)))
-
-;;; * Default visit functions for various objects
-
-(defun delve--collect-marked-in-new-buffer ()
-  "Collect all marked items in a new buffer.
-Return the new buffer."
-  (let (acc)
-    (lister-walk-marked-nodes lister-local-ewoc
-                              (lambda (_ewoc node)
-                                (push (lister-node-get-data node) acc)))
-    (delve--new-buffer
-     (format-time-string "DELVE Items collected at %X")
-     (nreverse acc))))
-
-(defun delve-key-visit-zettel ()
-  "Find the Zettel at point in a (new) buffer."
-  (let ((z (delve--current-item 'delve--zettel)))
-    (delve--push-to-global-mark-ring)
-    (with-current-buffer (org-roam-node-visit (delve--zettel-node z))
-      (org-show-entry))))
-
-(defun delve-key-open-this-pile ()
-  "Open pile at point in a new Delve buffer."
-  (let* ((pile (delve--current-item 'delve--pile))
-         (name (format "DELVE Pile: %s" (delve--pile-name pile)))
-         (zettels (delve--pile-zettels pile)))
-    (unless zettels
-      (error "Pile is empty"))
-    (let ((buf (get-buffer name)))
-      (if buf
-          ;; TODO add only "new" items (diff) to existing buffer
-          (message "Leaving existing buffer unchanged; no items added")
-        (setq buf (delve--new-buffer name zettels)))
-      (switch-to-buffer buf))))
-
-(defun delve-key-open-this-query (&optional prefix)
-  "Insert the results from the query at point.
-With PREFIX, open results in a new buffer."
-  (let* ((query  (delve--current-item 'delve--query))
-         (nodes  (funcall (delve--query-fn query))))
-    (if nodes
-        (delve--insert-or-visit-nodes nodes
-                                      (delve--query-info query)
-                                      prefix
-                                      :as-sublist)
-      (message "No matching nodes found"))))
-
-(defun delve-key-open-item-at-point ()
-  "Open item at point in a new buffer.
-
-Call a function which opens the thing at point in a new buffer."
-  (interactive)
-  (if (lister-items-marked-p lister-local-ewoc)
-      (switch-to-buffer (delve--collect-marked-in-new-buffer))
-    (let ((item (delve--current-item)))
-      (cl-typecase item
-        (delve--zettel  (delve-key-visit-zettel))
-        (delve--pile    (delve-key-open-this-pile))
-        (delve--query   (delve-key-open-this-query))
-        (t              (error "No visit action defined for this item"))))))
-
-;;; * Pile Zettels
-
-(defun delve--move-into-pile (ewoc pile)
-  "In EWOC, stuff all marked nodes in PILE.
-Delete all moved nodes.  Return the PILE object."
-  (cl-labels ((push-on-pile (ewoc node)
-                            (let ((item (lister-node-get-data node)))
-                              (when (eq (type-of item) 'delve--zettel)
-                                (push item (delve--pile-zettels pile))
-                                (lister-delete-at ewoc node)))))
-    (lister-walk-marked-nodes ewoc #'push-on-pile))
-    ;; uniqify the pile zettels:
-    (setf (delve--pile-zettels pile)
-          (seq-uniq (delve--pile-zettels pile)))
-    pile)
+;; Collect items into a pile
 
 (defun delve--move-into-pile-at (ewoc pos)
   "In EWOC, move all marked nodes into the pile at POS.
-Delete all moved nodes.  Throw an error if there is no pile at
+Delete all copied nodes.  Throw an error if there is no pile at
 POS, or if PILE is marked."
   (let ((pile (lister-get-data-at ewoc pos)))
     (unless (eq 'delve--pile (type-of pile))
-      (error "Item is not a pile"))
-    (when (lister-marked-at-p ewoc pos)
-      (error "Cannot move pile in itself"))
-    (delve--move-into-pile ewoc pile)
+      (error "Item at position is not a pile"))
+    ;; push:
+    (lister-walk-marked-nodes ewoc
+                              (lambda (ewoc node)
+                                (let ((item (lister-node-get-data node)))
+                                  (when (eq (type-of item) 'delve--zettel)
+                                    (push item (delve--pile-zettels pile))
+                                    (lister-delete-at ewoc node)))))
+    ;; uniqify the pile zettels:
+    (setf (delve--pile-zettels pile)
+          (seq-uniq (delve--pile-zettels pile)))
     (lister-refresh-at ewoc pos)))
 
-(defun delve-key-pile ()
-  "Collect all marked Zettel items in a new pile and insert it.
-If point is on a pile item, add to this pile instead.  Remove any
-duplicates in the final pile.  Skip non-zettel items when
+(defun delve--key--collect-into-pile (ewoc)
+  "In EWOC, collect all marked Zettel items in a new pile and insert it.
+If region is active, mark all items in the region.  If point is
+on a pile item, add marked items to this pile instead.  Remove
+any duplicates in the final pile.  Skip non-zettel items when
 collecting."
-  (interactive)
-  ;; TODO Add typechecking
-  (let* ((ewoc    lister-local-ewoc)
-         (current (lister-get-data-at ewoc :point)))
-    (unless (lister-items-marked-p ewoc)
-      (error "No items marked"))
-    ;; insert empty pile at point if there is none:
-    (unless (eq 'delve--pile (type-of current))
-      (let ((name (read-string "Name for the new pile: ")))
-        (setq current (delve--pile-create :name name))
-        (lister-insert-at ewoc :point current)))
-    ;; now stuff it:
-    (delve--move-into-pile-at ewoc :point)
-    ;; TODO Once "lister-walk-marked" returns a count, use this to give
-    ;; feedback how many items have been moved
-    (lister-refresh-at ewoc :point)))
+  (interactive (list lister-local-ewoc))
+  ;; Mark items in the region:
+  (when (use-region-p)
+    (lister-mode--mark-unmark-region ewoc
+                                     (region-beginning)
+                                     (region-end)
+                                     t))
+  (unless (lister-items-marked-p ewoc)
+    (user-error "No items marked"))
+  ;; Quit if there are piles marked:
+  (lister-walk-marked-nodes ewoc
+                            (lambda (_ node)
+                              (when (eq (type-of (lister-node-get-data node))
+                                        'delve--pile)
+                                (user-error "Cannot move pile in itself"))))
+  ;; If there is no pile at point, create one:
+  (unless (eq (type-of (lister-get-data-at ewoc :point)) 'delve--pile)
+    (lister-insert-at ewoc :point
+                      (delve--pile-create
+                       :name (read-string "Name for the new pile: "))))
+  ;; now stuff marked items into this pile at point:
+  (delve--move-into-pile-at ewoc :point)
+  ;; FIXME Once "lister-walk-marked" returns a count, use this to give
+  ;; feedback how many items have been moved
+  (lister-refresh-at ewoc :point))
 
-(defun delve-key-spread-pile-below (ewoc pos)
-  "Replace the pile at POS in EWOC through its content Zettels."
-  (interactive (list lister-local-ewoc :point))
-  (let* ((node (delve--current-item 'delve--pile ewoc pos))
-         (pile (lister-get-data-at ewoc node))
-         (z    (delve--pile-zettels pile)))
-    (unless z
-      (error "Pile is empty"))
-    (lister-insert-list-at ewoc node z nil t)
-    (lister-delete-at ewoc node)))
 
 ;;; * Delete Items
 
-(defun delve-key-delete ()
-  "Delete all marked items or the single ITEM at point.
+(defun delve--key--delete ()
+  "Delete all marked items or the single iten at point.
 If a region is active, first mark all the items in the region.
-Then delete all marked items, if there are any.  If there are no
-marked items, delete the item at point.  If the single item has a
-sublist, also decrease the indentation of these items."
+Delete all marked items, if there are any.  Only delete the item
+at point if there are no marked items.  If any of the items has a
+sublist, also decrease the indentation of these subitems."
   (interactive)
-  (when (use-region-p)
-    (lister-mode--mark-unmark-region lister-local-ewoc
-                                     (region-beginning) (region-end) t))
-  (let* ((ewoc         lister-local-ewoc)
-         (sublist-beg  (and (lister-sublist-below-p ewoc :point)
-                            (lister-get-node-at ewoc :next)))
-         (marked-n     (lister-count-marked-items ewoc))
-         (top-deleted? nil))
-    ;;
-    (if (> marked-n 0)
-        ;; delete the marked items:
-        (when (y-or-n-p (format "Delete %d marked items? "
-                                marked-n))
-          (lister-delete-marked-list ewoc))
-      ;; else delete the top item at point and maybe its sublist:
-      (lister-mark-unmark-at ewoc :point t)
-      (if (setq top-deleted? (y-or-n-p "Delete this item? "))
-          (lister-delete-at ewoc :point)
-        (lister-mark-unmark-at ewoc :point nil))
-      ;; now maybe delete the sublist:
-      (when sublist-beg
-        (lister-mark-unmark-sublist-at ewoc sublist-beg t)
-        (if (y-or-n-p "Delete the sublist? ")
-            (lister-delete-sublist-at ewoc sublist-beg)
-          ;; realign remaining sublist since top has been deleted:
-          (when top-deleted?
-            (lister-walk-marked-nodes ewoc #'lister-move-item-left))
-          (lister-mark-unmark-sublist-at ewoc sublist-beg nil))))))
+  (let ((ewoc lister-local-ewoc))
+    ;; Mark items in the region:
+    (when (use-region-p)
+      (lister-mode--mark-unmark-region ewoc
+                                       (region-beginning)
+                                       (region-end)
+                                       t))
+    ;; If there are no marked items, mark the item at point:
+    (unless (lister-items-marked-p ewoc)
+      (lister-mark-unmark-at ewoc :point t))
+    ;; Ask the user:
+    (if (not (y-or-n-p (format "Delete %s item(s)? " (lister-count-marked-items ewoc))))
+        (user-error "Canceled")
+      ;; Decrease any sublists:
+      (lister-walk-marked-nodes ewoc
+                                (lambda (ewoc node)
+                                  (lister-with-sublist-below ewoc node beg end
+                                    (lister-walk-nodes ewoc #'lister-move-item-left beg end))))
+      ;; Actually delete the items:
+      (lister-delete-marked-list ewoc))))
 
-;; * Preview
-
-(defun delve--get-preview-contents (zettel)
-  "Get the raw preview contents for ZETTEL."
-  (org-roam-with-temp-buffer (delve--zettel-file zettel)
-    (org-roam-preview-get-contents
-     (delve--zettel-file zettel)
-     (if (eq (delve--zettel-level zettel) 0)
-         ;; FIXME We could here add a function which uses a special
-         ;; heading as the "summary" and displays it.
-         (if (org-goto-first-child)
-             (1- (point))
-           (point-max))
-       (delve--zettel-point zettel)))))
-
-;; FIXME If called on a file node (level 0), preview always
-;;       shows the property keywords; we should fix that.
-(defun delve-key-toggle-preview (zettel)
-  "Toggle the display of the preview of ZETTEL."
-  (interactive (list (delve--current-item 'delve--zettel)))
-  (let ((preview (and (not (delve--zettel-preview zettel))
-                      (or (delve--get-preview-contents zettel)
-                          "No preview available"))))
-    (setf (delve--zettel-preview zettel) preview)
-    (lister-refresh-at lister-local-ewoc :point)))
-
-;; * Open the org roam buffer
-
-(defun delve-key-roam (zettel)
-  "Open the org roam buffer for ZETTEL."
-  (interactive (list (delve--current-item 'delve--zettel)))
-  (org-roam-buffer-display-dedicated (delve--zettel-node zettel)))
 
 ;; * Storing and reading buffer lists in a file
 
@@ -909,11 +864,6 @@ non-nil.  Offer completion of files in the directory
 
 ;;; * Multiple action keys
 
-;;; IDEA: Context maps:  For each type, a list of actions plus some special
-;;; properties.  The actual menu is then created for the item at
-;;; point.  Type 't' will be included in every menu.  Prefix will be
-;;; passed.
-
 (defun delve-key-plus (&optional prefix)
   "Pile marked items or interactively insert a new one.
 If there are marked items, pile them.  Else insert node
@@ -924,17 +874,15 @@ the node to insert."
     (lister-mode--mark-unmark-region lister-local-ewoc
                                      (region-beginning) (region-end) t))
   (if (lister-items-marked-p lister-local-ewoc)
-      (delve-key-pile)
+      (delve--key--collect-into-pile lister-local-ewoc)
     (delve-key-insert-node prefix)))
 
 (defun delve-key-ret (item prefix)
   "Do something with the ITEM at point.
 With PREFIX, do it in a new buffer."
   (interactive (list (delve--current-item) current-prefix-arg))
+  (ignore item prefix)
   (cl-typecase item
-    (delve--zettel  (delve-key-visit-zettel))
-    (delve--pile    (delve-key-open-this-pile))
-    (delve--query   (delve-key-open-this-query prefix))
     (t              (error "No action defined for this item"))))
 
 ;;; * Delve Major Mode
@@ -942,18 +890,24 @@ With PREFIX, do it in a new buffer."
 ;; * Delve Keymap
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "<delete>")     #'delve-key-delete)
-    (define-key map (kbd "<RET>")        #'delve-key-ret)
+    ;; Buffer as a whole:
     (define-key map [remap save-buffer]              #'delve-save-buffer)
-    (define-key map [remap org-roam-bufer-toggle]    #'delve-key-roam)
-    (define-key map (kbd "s")            #'delve-key-spread-pile-below)
-    (define-key map (kbd "v")            #'delve-key-open-item-at-point)
-    (define-key map (kbd "+")            #'delve-key-plus)
-    (define-key map (kbd "p")            #'delve-key-toggle-preview)
-    (define-key map (kbd "lb")           #'delve-key-insert-backlinks)
-    (define-key map (kbd "lf")           #'delve-key-insert-fromlinks)
-    (define-key map (kbd "l <left>")      #'delve-key-insert-backlinks)
-    (define-key map (kbd "l <right>")     #'delve-key-insert-fromlinks)
+    ;; Any item:
+    (define-key map (kbd "<delete>")                 #'delve--key--delete)
+    ;; Work with marks:
+    (define-key map (kbd "c")                        #'delve--key--collect-in-new-buffer)
+    (define-key map (kbd "p")                        #'delve--key--collect-into-pile)
+    ;; Work with the Zettel at point:
+    (define-key map [remap org-roam-bufer-toggle]    #'delve--key--roam)
+    (define-key map (kbd "o")                        #'delve--key--open-zettel)
+    (define-key map (kbd "f")                        #'delve--key--fromlinks)
+    (define-key map (kbd "b")                        #'delve--key--backlinks)
+    ;; Insert Queries or Piles:
+    (define-key map (kbd "i")                        #'delve--key--insert-query-or-pile)
+    (define-key map (kbd "t")                        #'delve--key--insert-tagged)
+    ;; Remote Editing:
+    (define-key map (kbd "+")                        #'delve--key--add-tags)
+    (define-key map (kbd "-")                        #'delve--key--remove-tags)
     map)
   "Key map for `delve-mode'.")
 
