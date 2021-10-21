@@ -11,5 +11,8 @@
 (eldev-add-loading-roots 'test "tests")
 (eldev-add-loading-roots 'test "tests/utils")
 
+;; Avoid including archived files
+(setf eldev-standard-excludes (append eldev-standard-excludes '("./archive/**")))
+
 ;; Tell checkdoc not to demand two spaces after a period.
 (setq sentence-end-double-space nil)
