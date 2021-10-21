@@ -34,10 +34,6 @@
 
 ;;; Code:
 
-;; TODO Turn Tags into Buttons which item
-;;; TODO add r / g to update dashboard, display it in header
-;;; TODO delve-query.el: Add function which queries for last mtime
-
 ;; * Dependencies
 
 (require 'org-roam)
@@ -55,6 +51,7 @@
 
 (declare-function all-the-icons-faicon "all-the-icons" (string) t)
 (declare-function consult-completing-read-multiple "consult")
+(defvar org-roam-node-read--cached-display-format)
 
 ;;; * Global Variables
 
