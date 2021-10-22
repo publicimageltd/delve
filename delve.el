@@ -586,20 +586,24 @@ called with PREFIX, insert ZETTEL in a new Delve buffer instead."
 With PREFIX, open link list in a new buffer, else insert it as a
 sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
-  (delve--insert-or-open-zettels
-   (mapcar #'delve--zettel-create (delve-query-backlinks-by-id (delve--zettel-id zettel)))
-   prefix
-   :as-sublist))
+  (if-let ((nodes (delve-query-backlinks-by-id (delve--zettel-id zettel))))
+      (delve--insert-or-open-zettels
+       (mapcar #'delve--zettel-create nodes)
+       prefix
+       :as-sublist)
+    (message "No backlinks to this zettel node")))
 
 (defun delve--key--fromlinks (zettel &optional prefix)
   "Insert fromlinks of current ZETTEL.
 With PREFIX, open link list in a new buffer, else insert it as a
 sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
-  (delve--insert-or-open-zettels
-   (mapcar #'delve--zettel-create (delve-query-fromlinks-by-id (delve--zettel-id zettel)))
-   prefix
-   :as-sublist))
+  (if-let ((nodes (delve-query-fromlinks-by-id (delve--zettel-id zettel))))
+      (delve--insert-or-open-zettels
+       (mapcar #'delve--zettel-create nodes)
+       prefix
+       :as-sublist)
+    (message "No tolinks to this zettel node")))
 
 (defun delve--key--insert-query-or-pile (item &optional prefix)
   "Insert results from ITEM, either a query or a pile object.
