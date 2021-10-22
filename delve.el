@@ -933,7 +933,7 @@ non-nil.  Offer completion of files in the directory
   (let* ((l          (delve-store--read file-name))
          (delve-list (with-temp-message "Creating data objects..."
                        (delve-store--create-object-list l)))
-         (buf-name   (format "DELVE Zettel imported from '%s'" (file-name-nondirectory file-name)))
+         (buf-name   (format "Zettel imported from '%s'" (file-name-nondirectory file-name)))
          (buf        (delve--new-buffer buf-name delve-list)))
     (with-current-buffer buf
       (setq-local delve-local-storage-file file-name)
