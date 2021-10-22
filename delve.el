@@ -629,8 +629,9 @@ Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item 'delve--zettel)))
   (ignore prefix)
   (delve--push-to-global-mark-ring)
-  (with-current-buffer (org-roam-node-visit (delve--zettel-node zettel))
-    (org-show-entry)))
+  (let ((buf (org-roam-node-find-noselect (delve--zettel-node zettel))))
+    (switch-to-buffer buf)
+    (when (org-invisible-p) (org-show-context))))
 
 (defun delve--key--backlinks (zettel &optional prefix)
   "Insert backlinks of current ZETTEL.
