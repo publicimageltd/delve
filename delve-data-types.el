@@ -42,10 +42,10 @@
   "A text item for information to the user.")
 
 (cl-defstruct (delve--zettel
-            (:include delve--item)
-            (:constructor delve--zettel-create (node)))
+               (:include delve--item)
+               (:constructor delve--zettel-create (node)))
   "A Zettel item storing an org roam node."
-  node preview)
+  node preview out-of-sync)
 
 ;; Some shortcuts to the node element of a zettel:
 (defmacro zettel--accessor-fn (name slot-name)

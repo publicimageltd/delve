@@ -272,8 +272,14 @@ Return the prepared string."
   "Return a list of strings representing ZETTEL."
   (let ((node (delve--zettel-node zettel)))
     (list
-     ;; Display node:
-     (delve-pp-fields node '((org-roam-node-title   (:add-face delve-title-face))))
+     ;; First line:
+     (concat
+      ;; Maybe mark out of sync:
+      (when (delve--zettel-out-of-sync zettel)
+        (delve-pp--add-face "* " 'warning))
+      ;; Display node:
+      (delve-pp-fields node '((org-roam-node-title   (:add-face delve-title-face)))))
+     ;; Second line:
      (delve-pp-fields node '((delve--tags-as-string (:add-face delve-tags-face))))
      ;; additional Zettel slots:
      (when-let ((preview (delve--zettel-preview zettel)))
@@ -495,23 +501,43 @@ Use PROMPT when asking the user to select or create a buffer."
 
 (defun delve--sync-zettel (zettels)
   "Force sync of all ZETTELS with the org roam db.
-First update the db, then reload the ZETTELS."
-  (let* ((filelist (mapcar #'delve--zettel-file zettels)))
+First update the db, then reload the ZETTELS.  Do not redisplay
+anything; that's up to the calling function."
+  (when-let* ((filelist (mapcar #'delve--zettel-file zettels)))
     (cl-dolist (file (seq-uniq filelist #'string=))
       (org-roam-db-update-file file))
     (cl-dolist (z zettels)
-      (setf (delve--zettel-node z)
-            (delve-query-node-by-id (delve--zettel-id z))))))
+      (setf (delve--zettel-node z)       (delve-query-node-by-id (delve--zettel-id z))
+            (delve--zettel-out-of-sync z) nil)
+      (when (delve--zettel-preview z)
+        (setf (delve--zettel-preview z)  (delve--get-preview-contents z))))))
 
-;; TODO Test sync delve--zettel <-> DB
+(defun delve--refresh-nodes (ewoc nodes)
+  "Redisplay the EWOC nodes NODES."
+  (when nodes
+    (cl-dolist (n nodes)
+      (setf (lister--item-marked (ewoc-data n)) nil))
+    (apply #'ewoc-invalidate ewoc nodes)))
+
+(defun delve--out-of-sync-p (node)
+  "Check if NODE has a zettel item which is out of sync."
+  (let ((data (lister-node-get-data node)))
+    (and (eq (type-of data) 'delve--zettel)
+         (delve--zettel-out-of-sync data))))
+
+(defun delve--sync-out-of-sync (ewoc)
+  "Sync all zettel in EWOC which are out of sync."
+  (let ((nodes (lister-collect-nodes ewoc :first :last
+                                     #'delve--out-of-sync-p)))
+    (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
+    (delve--refresh-nodes ewoc nodes)))
+
 (defun delve--sync-marked (ewoc)
   "Force sync all marked list items of EWOC."
   (let ((nodes (lister-collect-nodes ewoc nil nil
                                      #'lister-node-marked-p)))
     (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
-    (cl-dolist (n nodes)
-      (setf (lister--item-marked (ewoc-data n)) nil))
-    (ewoc-invalidate ewoc nodes)))
+    (delve--refresh-nodes ewoc nodes)))
 
 ;;; * Key handling / Commands
 
@@ -580,7 +606,9 @@ If no region is active, do nothing."
 Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item 'delve--zettel)))
   (ignore prefix)
-  (delve-edit--add-tags zettel))
+  (delve-edit--add-tags zettel)
+  (setf (delve--zettel-out-of-sync zettel) t)
+  (lister-refresh-at lister-local-ewoc :point))
 
 ;; TODO Test function interactively
 ;; TODO Handle syncing
@@ -589,7 +617,9 @@ Optional argument PREFIX is currently not used."
 Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item 'delve--zettel)))
   (ignore prefix)
-  (delve-edit--remove-tags zettel))
+  (delve-edit--remove-tags zettel)
+  (setf (delve--zettel-out-of-sync zettel) t)
+  (lister-refresh-at lister-local-ewoc :point))
 
 (defun delve--key--open-zettel (zettel &optional prefix)
   "Open the ZETTEL at point.
@@ -667,7 +697,7 @@ With PREFIX, open the ZETTEL in a buffer."
                             "No preview available"))))
       (setf (delve--zettel-preview zettel) preview)
       (lister-refresh-at lister-local-ewoc :point))))
-  
+
 (defun delve--key--roam (zettel &optional prefix)
   "Open the org roam buffer for ZETTEL.
 Optional argument PREFIX is currently not used."
@@ -676,6 +706,17 @@ Optional argument PREFIX is currently not used."
   (org-roam-buffer-display-dedicated (delve--zettel-node zettel)))
 
 ;;; * Key commands not bound to a specific item at point
+
+(defun delve--key--sync (ewoc &optional prefix)
+  "In EWOC, sync all zettel with the org roam database.
+With PREFIX, only sync the zettel at point."
+  (interactive (list lister-local-ewoc current-prefix-arg))
+  (if (not prefix)
+      (delve--sync-out-of-sync ewoc)
+    (let ((z (lister-get-data-at ewoc :point)))
+      (if (eq (type-of z) 'delve--zettel)
+          (delve--sync-zettel z)
+        (user-error "Item at point is not a zettel, cannot sync")))))
 
 (defun delve--key--insert-tagged (tags &optional prefix)
   "Insert zettel matching TAGS.
@@ -915,6 +956,7 @@ non-nil.  Offer completion of files in the directory
   (let ((map (make-sparse-keymap)))
     ;; Buffer as a whole:
     (define-key map [remap save-buffer]              #'delve-save-buffer)
+    (define-key map (kbd "g")                        #'delve--key--sync)
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
     ;; Insert node(s):
