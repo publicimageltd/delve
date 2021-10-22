@@ -27,7 +27,7 @@
 ;;; Code:
 (require 'delve)
 
-;; TODO Add special key to collect the file with all of its nodes
+;; TODO Add key to collect the complete file with all of its nodes
 
 ;; * Variables
 

@@ -228,32 +228,44 @@ Optionally add string PREFIX to each non-nil item."
                         nil t)
     (user-error "No node with this ID found")))
 
-(defun delve--buttonize-link (link)
-  "In an org mode buffer, replace element LINK with a button.
+(defun delve--collect-link (link)
+  "In an org mode buffer, collect data for buttonizing LINK.
 LINK has to be a LINK element as returned by
 `org-element-parse-buffer'."
   (when (equal (org-element-property :type link) "id")
-    (let* ((beg (org-element-property :begin link))
-           (end (org-element-property :end link))
-           (id  (org-element-property :path link))
-           (blanks (org-element-property :post-blank link))
-           (label (buffer-substring-no-properties
-                   (org-element-property :contents-begin link)
-                   (org-element-property :contents-end link))))
-      (delete-region beg (- end blanks))
-      (goto-char beg)
-      (insert-text-button
-       label
-       'follow-link t
-       'action (lambda (_)
-                 (org-link-open link))
-       'keymap (let ((map (make-sparse-keymap)))
-                 (set-keymap-parent map button-map)
-                 (define-key map "+"
-                   (lambda ()
-                     (interactive)
-                     (delve--insert-by-id id)))
-                 map)))))
+    (list
+     :beg    (copy-marker (org-element-property :begin link))
+     :end    (copy-marker (org-element-property :end link))
+     :id     (org-element-property :path link)
+     :blanks (org-element-property :post-blanks link)
+     :label  (buffer-substring-no-properties
+              (org-element-property :contents-begin link)
+              (org-element-property :contents-end link))
+     :link   link)))
+
+(defun delve--buttonize-link (link-plist)
+  "In current buffer, replace link LINK-PLIST with a button."
+  (let ((beg (plist-get link-plist :beg))
+        (end (plist-get link-plist :end))
+        (link  (plist-get link-plist :link))
+        (label (plist-get link-plist :label))
+        (blanks (plist-get link-plist :blanks))
+        (id    (plist-get link-plist :id)))
+    (delete-region beg (- end (or blanks 1)))
+    (goto-char beg)
+    (insert-text-button
+     label
+     'follow-link t
+     'action (lambda (_)
+               (org-link-open link))
+     'keymap (let ((map (make-sparse-keymap)))
+               (set-keymap-parent map button-map)
+               (define-key map (kbd "i")
+                 (lambda ()
+                   (interactive)
+                   (delve--insert-by-id id)
+                   (message "Inserted node %s" label)))
+               map))))
 
 (defun delve--prepare-preview (s)
   "Prepare preview string S for insertion.
@@ -262,10 +274,12 @@ Return the prepared string."
     (insert s)
     (let ((org-inhibit-startup nil))
       (org-mode)
-      (org-font-lock-ensure)
-      (let ((tree (org-element-parse-buffer)))
-        (org-element-map tree 'link
-          #'delve--buttonize-link))
+      (let* ((tree  (org-element-parse-buffer))
+             (links (org-element-map tree 'link
+                      #'delve--collect-link)))
+        (font-lock-ensure)
+        (cl-dolist (link links)
+          (delve--buttonize-link link)))
       (buffer-string))))
 
 (defun delve--zettel-strings (zettel)
@@ -968,7 +982,7 @@ non-nil.  Offer completion of files in the directory
     (define-key map (kbd "c")                        #'delve--key--collect-into-buffer)
     (define-key map (kbd "p")                        #'delve--key--collect-into-pile)
     ;; Work with the Zettel at point:
-    (define-key map [remap org-roam-bufer-toggle]    #'delve--key--roam)
+    (define-key map [remap org-roam-buffer-toggle]   #'delve--key--roam)
     (define-key map (kbd "o")                        #'delve--key--open-zettel)
     (define-key map (kbd "f")                        #'delve--key--fromlinks)
     (define-key map (kbd "<C-right>")                #'delve--key--fromlinks)
@@ -989,7 +1003,7 @@ non-nil.  Offer completion of files in the directory
   "Major mode for browsing your org roam zettelkasten."
   (lister-setup	(current-buffer) #'delve-mapper
                 (concat "DELVE Version " delve-version))
-  (add-to-invisibility-spec '(org-link ))
+  (add-to-invisibility-spec '(org-link))
   (lister-mode))
 
 ;;; * Main Entry Point
