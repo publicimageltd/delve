@@ -559,24 +559,34 @@ called with PREFIX, insert ZETTEL in a new Delve buffer instead."
 
 ;;; * Key commands working with the "item at point"
 
+;; Every key command in this subsection should have an optional prefix
+;; argument even if it is not used, so that it can be used by
+;; delve--key--dispatch.
+
 ;; TODO Write a transient for more comfy editing
 ;; TODO Test function interactively
 ;; TODO Handle syncing
-(defun delve--key--add-tags (zettel)
-  "Add the tags of the ZETTEL at point."
+(defun delve--key--add-tags (zettel &optional prefix)
+  "Add the tags of the ZETTEL at point.
+Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item 'delve--zettel)))
+  (ignore prefix)
   (delve-edit--add-tags zettel))
 
 ;; TODO Test function interactively
 ;; TODO Handle syncing
-(defun delve--key--remove-tags (zettel)
-  "Remove the tags of the ZETTEL at point."
+(defun delve--key--remove-tags (zettel &optional prefix)
+  "Remove the tags of the ZETTEL at point.
+Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item 'delve--zettel)))
+  (ignore prefix)
   (delve-edit--remove-tags zettel))
 
-(defun delve--key--open-zettel (zettel)
-  "Open the ZETTEL at point."
+(defun delve--key--open-zettel (zettel &optional prefix)
+  "Open the ZETTEL at point.
+Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item 'delve--zettel)))
+  (ignore prefix)
   (delve--push-to-global-mark-ring)
   (with-current-buffer (org-roam-node-visit (delve--zettel-node zettel))
     (org-show-entry)))
@@ -649,11 +659,11 @@ With PREFIX, open the ZETTEL in a buffer."
       (setf (delve--zettel-preview zettel) preview)
       (lister-refresh-at lister-local-ewoc :point))))
   
-;; * Open the org roam buffer
-
-(defun delve--key--roam (zettel)
-  "Open the org roam buffer for ZETTEL."
+(defun delve--key--roam (zettel &optional prefix)
+  "Open the org roam buffer for ZETTEL.
+Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item 'delve--zettel)))
+  (ignore prefix)
   (org-roam-buffer-display-dedicated (delve--zettel-node zettel)))
 
 ;;; * Key commands not bound to a specific item at point
@@ -672,9 +682,10 @@ With PREFIX, open search results in a new buffer."
                                        prefix)
       (message "No zettels found matching %s" matching-string))))
 
-(defun delve--key--collect-in-new-buffer (ewoc)
+(defun delve--key--collect-into-buffer (ewoc)
   "In Delve EWOC, collect all marked items in a new buffer.
-Mark items in the region.  Switch to the new buffer."
+If region is active, mark items in that region.  Switch to the
+new buffer."
   (interactive (list lister-local-ewoc))
   ;; Mark items in the region:
   (when (use-region-p)
@@ -783,9 +794,9 @@ collecting."
   (lister-refresh-at ewoc :point))
 
 
-;;; * Delete Items
+;; Delete Items
 
-(defun delve--key--delete ()
+(defun delve--key--multi-delete ()
   "Delete all marked items or the single iten at point.
 If a region is active, first mark all the items in the region.
 Delete all marked items, if there are any.  Only delete the item
@@ -813,6 +824,19 @@ sublist, also decrease the indentation of these subitems."
       ;; Actually delete the items:
       (lister-delete-marked-list ewoc))))
 
+
+;; The multi key dispatcher
+
+(defun delve--key--dispatch (item &optional prefix)
+  "Call key command according to the type of ITEM.
+Also pass PREFIX to the corresponding function."
+  (interactive (list (delve--current-item)
+                     current-prefix-arg))
+  (cl-typecase item
+    (delve--zettel (delve--key--toggle-preview item prefix))
+    (delve--query  (delve--key--insert-query-or-pile item prefix))
+    (delve--pile   (delve--key--insert-query-or-pile item prefix))
+    (t (user-error "No operation defined for items of that type"))))
 
 ;; * Storing and reading buffer lists in a file
 
@@ -888,11 +912,11 @@ non-nil.  Offer completion of files in the directory
     ;; Buffer as a whole:
     (define-key map [remap save-buffer]              #'delve-save-buffer)
     ;; Any item:
-    (define-key map (kbd "<delete>")                 #'delve--key--delete)
+    (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
     ;; Insert node(s):
     (define-key map (kbd "n")                        #'delve--key--insert-node)
     ;; Work with marks:
-    (define-key map (kbd "c")                        #'delve--key--collect-in-new-buffer)
+    (define-key map (kbd "c")                        #'delve--key--collect-into-buffer)
     (define-key map (kbd "p")                        #'delve--key--collect-into-pile)
     ;; Work with the Zettel at point:
     (define-key map [remap org-roam-bufer-toggle]    #'delve--key--roam)
@@ -901,7 +925,7 @@ non-nil.  Offer completion of files in the directory
     (define-key map (kbd "<C-right>")                #'delve--key--fromlinks)
     (define-key map (kbd "b")                        #'delve--key--backlinks)
     (define-key map (kbd "<C-left>")                 #'delve--key--backlinks)
-    (define-key map (kbd "<RET>")                    #'delve--key--toggle-preview)
+    (define-key map (kbd "<RET>")                    #'delve--key--dispatch)
     ;; Insert Queries or Piles:
     (define-key map (kbd "i")                        #'delve--key--insert-query-or-pile)
     (define-key map (kbd "t")                        #'delve--key--insert-tagged)
