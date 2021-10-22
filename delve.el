@@ -532,12 +532,14 @@ anything; that's up to the calling function."
     (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
     (delve--refresh-nodes ewoc nodes)))
 
-(defun delve--sync-marked (ewoc)
-  "Force sync all marked list items of EWOC."
-  (let ((nodes (lister-collect-nodes ewoc nil nil
-                                     #'lister-node-marked-p)))
-    (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
-    (delve--refresh-nodes ewoc nodes)))
+;; NOTE don't think users need that, but keep it for a while
+;;
+;; (defun delve--sync-marked (ewoc)
+;;   "Force sync all marked list items of EWOC."
+;;   (let ((nodes (lister-collect-nodes ewoc nil nil
+;;                                      #'lister-node-marked-p)))
+;;     (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
+;;     (delve--refresh-nodes ewoc nodes)))
 
 ;;; * Key handling / Commands
 
