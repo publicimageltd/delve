@@ -898,7 +898,9 @@ non-nil.  Offer completion of files in the directory
     (define-key map [remap org-roam-bufer-toggle]    #'delve--key--roam)
     (define-key map (kbd "o")                        #'delve--key--open-zettel)
     (define-key map (kbd "f")                        #'delve--key--fromlinks)
+    (define-key map (kbd "<C-right>")                #'delve--key--fromlinks)
     (define-key map (kbd "b")                        #'delve--key--backlinks)
+    (define-key map (kbd "<C-left>")                 #'delve--key--backlinks)
     (define-key map (kbd "<RET>")                    #'delve--key--toggle-preview)
     ;; Insert Queries or Piles:
     (define-key map (kbd "i")                        #'delve--key--insert-query-or-pile)
