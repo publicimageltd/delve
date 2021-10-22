@@ -557,6 +557,15 @@ called with PREFIX, insert ZETTEL in a new Delve buffer instead."
                              (lister-eolp)))
     (message "Inserted %d Zettels" (length zettels))))
 
+(defun delve--maybe-mark-region (ewoc)
+  "In EWOC, mark all items in the active region.
+If no region is active, do nothing."
+  (when (use-region-p)
+    (lister-mode--mark-unmark-region ewoc
+                                     (region-beginning)
+                                     (region-end)
+                                     t)))
+
 ;;; * Key commands working with the "item at point"
 
 ;; Every key command in this subsection should have an optional prefix
@@ -689,12 +698,7 @@ new buffer.  If MOVE is non-nil, also delete the items in the
 source buffer, effectively moving the marked items into the new
 buffer."
   (interactive (list lister-local-ewoc current-prefix-arg))
-  ;; Mark items in the region:
-  (when (use-region-p)
-    (lister-mode--mark-unmark-region ewoc
-                                     (region-beginning)
-                                     (region-end)
-                                     t))
+  (delve--maybe-mark-region ewoc)
   (unless (lister-items-marked-p ewoc)
     (user-error "No items marked"))
   ;; Collect:
@@ -778,12 +782,7 @@ on a pile item, add marked items to this pile instead.  Remove
 any duplicates in the final pile.  Skip non-zettel items when
 collecting."
   (interactive (list lister-local-ewoc))
-  ;; Mark items in the region:
-  (when (use-region-p)
-    (lister-mode--mark-unmark-region ewoc
-                                     (region-beginning)
-                                     (region-end)
-                                     t))
+  (delve--maybe-mark-region ewoc)
   (unless (lister-items-marked-p ewoc)
     (user-error "No items marked"))
   ;; Quit if there are piles marked:
@@ -814,12 +813,7 @@ at point if there are no marked items.  If any of the items has a
 sublist, also decrease the indentation of these subitems."
   (interactive)
   (let ((ewoc lister-local-ewoc))
-    ;; Mark items in the region:
-    (when (use-region-p)
-      (lister-mode--mark-unmark-region ewoc
-                                       (region-beginning)
-                                       (region-end)
-                                       t))
+    (delve--maybe-mark-region ewoc)
     ;; If there are no marked items, mark the item at point:
     (unless (lister-items-marked-p ewoc)
       (lister-mark-unmark-at ewoc :point t))
