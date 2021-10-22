@@ -478,10 +478,10 @@ Use PROMPT as a prompt to prompt the user to choose promptly."
                 (_                   (error "Something went wrong")))
             (delve--new-buffer new-name)))))
 
-(defun delve--add-to-buffer (l)
+(defun delve--add-to-buffer (l prompt)
   "Add L to a Delve buffer and return that buffer object.
-Let the user select or create a buffer."
-  (let ((buf (delve--select-collection-buffer " Add to buffer or collection: ")))
+Use PROMPT when asking the user to select or create a buffer."
+  (let ((buf (delve--select-collection-buffer prompt)))
     (lister-add-list (with-current-buffer buf lister-local-ewoc)
                      l)
     buf))
@@ -544,7 +544,7 @@ EWOC or POS, if supplied.  Skip any typechecking if TYPES is nil."
 If AS-SUBLIST is non-nil, insert as a sublist below point.  If
 called with PREFIX, insert ZETTEL in a new Delve buffer instead."
   (if prefix
-      (switch-to-buffer (delve--add-to-buffer zettels))
+      (switch-to-buffer (delve--add-to-buffer zettels " Insert zettels in buffer or collection: "))
     ;; TODO Warn when list is too big
     (if as-sublist
         (lister-insert-sublist-below lister-local-ewoc
@@ -682,11 +682,13 @@ With PREFIX, open search results in a new buffer."
                                        prefix)
       (message "No zettels found matching %s" matching-string))))
 
-(defun delve--key--collect-into-buffer (ewoc)
+(defun delve--key--collect-into-buffer (ewoc &optional move)
   "In Delve EWOC, collect all marked items in a new buffer.
 If region is active, mark items in that region.  Switch to the
-new buffer."
-  (interactive (list lister-local-ewoc))
+new buffer.  If MOVE is non-nil, also delete the items in the
+source buffer, effectively moving the marked items into the new
+buffer."
+  (interactive (list lister-local-ewoc current-prefix-arg))
   ;; Mark items in the region:
   (when (use-region-p)
     (lister-mode--mark-unmark-region ewoc
@@ -696,12 +698,20 @@ new buffer."
   (unless (lister-items-marked-p ewoc)
     (user-error "No items marked"))
   ;; Collect:
-  (let (acc)
+  (let (acc n)
     (lister-walk-marked-nodes ewoc
                               (lambda (_ node)
                                 (push (lister-node-get-data node) acc)))
+    (setq n (length acc))
+    (when move
+      (lister-delete-marked-list ewoc))
     (switch-to-buffer
-     (delve--add-to-buffer (nreverse acc)))))
+     (delve--add-to-buffer (nreverse acc)
+                           (format "%s items to buffer: "
+                                   (if move "Move" "Add"))))
+    (message "%s %d items to this buffer"
+             (if move "Moved" "Added")
+             n)))
 
 ;; Insert node(s)
 
