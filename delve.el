@@ -30,6 +30,8 @@
 
 ;;; Code:
 
+;;; TODO Exclude dashboard buffer
+
 ;; * Dependencies
 
 (require 'org-roam)
@@ -57,7 +59,7 @@
 (defvar delve--no-icons nil
   "If bound, do not use any icons when creating output.")
 
-(defvar delve-dashboard-name "DELVE Dashboard"
+(defvar delve-dashboard-name "Dashboard"
   "Name of the dashboard buffer.")
 
 (defvar delve--select-history nil
@@ -364,10 +366,14 @@ Return the prepared string."
 Only return the file name relative to `delve-store-directory'."
   (directory-files delve-store-directory nil (rx string-start (not "."))))
 
+(defun delve--create-buffer-name (name)
+  "Create a name for a Delve buffer using NAME."
+  (concat "DELVE " name))
+
 (defun delve--new-buffer (name &optional initial-list)
   "Create a new delve buffer NAME with INITIAL-LIST.
 Return the buffer object."
-  (let* ((name (concat "DELVE " name))
+  (let* ((name (delve--create-buffer-name name))
          (buf (generate-new-buffer name)))
     (with-current-buffer buf
       (delve-mode)
@@ -398,7 +404,8 @@ Return the buffer object."
 
 (defun delve--dashboard-p (&optional buf)
   "Check if BUF is the Delve dashboard."
-  (string= delve-dashboard-name (buffer-name buf)))
+  (string= (delve--create-buffer-name delve-dashboard-name)
+           (buffer-name buf)))
 
 (defun delve--dashboard-buf ()
   "Return the dashboard buffer, if existing."
@@ -442,18 +449,17 @@ to the end, in parentheses."
   "Select Delve buffer, collection, or create a new buffer.
 Use PROMPT as a prompt to prompt the user to choose promptly."
   (let* ((buffer-suffix     "Switch to buffer")
-         (buffer-alist      (delve--prepare-candidates
-                             (seq-remove #'delve--dashboard-p (delve-buffer-list))
-                             #'buffer-name
-                             buffer-suffix))
+         (buffer-alist      (delve--prepare-candidates  (delve-buffer-list)
+                                                        #'buffer-name
+                                                        buffer-suffix))
          (collection-suffix "Read into new buffer")
          (collection-alist  (delve--prepare-candidates (delve-unopened-storages)
-                                                      #'identity
-                                                      collection-suffix))
+                                                       #'identity
+                                                       collection-suffix))
          (dashboard-suffix  "Create")
-         (dashboard-alist   (delve--prepare-candidates '("Dashboard")
-                                                      #'identity
-                                                      dashboard-suffix))
+         (dashboard-alist   (delve--prepare-candidates '("New Dashboard")
+                                                       #'identity
+                                                       dashboard-suffix))
          (alist             (append dashboard-alist buffer-alist collection-alist))
          (new-name          (completing-read prompt alist
                                              nil nil nil
