@@ -636,8 +636,6 @@ sublist below point."
            (point-max))
        (delve--zettel-point zettel)))))
 
-;; FIXME If called on a file node (level 0), preview always
-;;       shows the property keywords; we should fix that.
 (defun delve--key--toggle-preview (zettel)
   "Toggle the display of the preview of ZETTEL."
   (interactive (list (delve--current-item 'delve--zettel)))
