@@ -636,15 +636,19 @@ sublist below point."
            (point-max))
        (delve--zettel-point zettel)))))
 
-(defun delve--key--toggle-preview (zettel)
-  "Toggle the display of the preview of ZETTEL."
-  (interactive (list (delve--current-item 'delve--zettel)))
-  (let ((preview (and (not (delve--zettel-preview zettel))
-                      (or (delve--get-preview-contents zettel)
-                          "No preview available"))))
-    (setf (delve--zettel-preview zettel) preview)
-    (lister-refresh-at lister-local-ewoc :point)))
-
+(defun delve--key--toggle-preview (zettel &optional prefix)
+  "Toggle the display of the preview of ZETTEL.
+With PREFIX, open the ZETTEL in a buffer."
+  (interactive (list (delve--current-item 'delve--zettel)
+                     current-prefix-arg))
+  (if prefix
+      (delve--key--open-zettel zettel)
+    (let ((preview (and (not (delve--zettel-preview zettel))
+                        (or (delve--get-preview-contents zettel)
+                            "No preview available"))))
+      (setf (delve--zettel-preview zettel) preview)
+      (lister-refresh-at lister-local-ewoc :point))))
+  
 ;; * Open the org roam buffer
 
 (defun delve--key--roam (zettel)
