@@ -86,11 +86,13 @@ non-nil, use the previously selected buffer."
 
 (defun delve-minor-mode--find-id (id buf)
   "Find first ewoc node with ID in Delve buffer BUF."
-  (lister-first-matching (lister-get-ewoc buf) :first
-                        (lambda (delve-object)
-                          ;; TODO also check piles!
-                          (and (eq (type-of delve-object) 'delve--zettel)
-                               (equal (delve--zettel-id delve-object) id)))))
+  (cl-labels ((match-id (z)
+                         (equal (delve--zettel-id z) id)))
+    (lister-first-matching (lister-get-ewoc buf) :first
+                           (lambda (delve-object)
+                             (cl-typecase delve-object
+                               (delve--zettel (match-id delve-object))
+                               (delve--pile   (seq-find #'match-id (delve--pile-zettels delve-object))))))))
 
 (defun delve-minor-mode--find-node ()
   "Find node at point in open Delve buffers.
