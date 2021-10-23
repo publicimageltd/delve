@@ -294,6 +294,8 @@ Return the prepared string."
      ;; Second line:
      (delve-pp-fields node '((delve--tags-as-string (:add-face delve-tags-face))))
      ;; additional Zettel slots:
+     (delve--zettel-info zettel)
+     ;; Preview:
      (when-let ((preview (delve--zettel-preview zettel)))
        (split-string (delve--prepare-preview preview) "\n")))))
 
@@ -555,6 +557,37 @@ anything; that's up to the calling function."
 
 ;;; * Key handling / Commands
 
+(defun delve--find-zettel-by-id (id)
+  "Find first ewoc node with ID in current Delve buffer."
+  (cl-labels ((match-id (z)
+                         (equal (delve--zettel-id z) id)))
+    (lister-first-matching lister-local-ewoc :first
+                           (lambda (delve-object)
+                             (cl-typecase delve-object
+                               (delve--zettel (match-id delve-object))
+                               (delve--pile   (seq-find #'match-id (delve--pile-zettels delve-object))))))))
+
+(defun delve--truncate-string (s width)
+  "Truncate string S to maximal WIDTH."
+  (if (> (string-width s) width)
+      (substring s 0 width)
+    s))
+
+(defun delve--zettel-stub (zettel)
+  "Return a shortened title of ZETTEL.
+Return titel unchanged if it has less than 40 characters; else
+produce a shortened version."
+  (let* ((stub-width 40)
+         (s          (delve--zettel-title zettel)))
+    (if (> (string-width s) stub-width)
+        (delve--truncate-string
+         (string-join
+          (mapcar (lambda (s)
+                    (delve--truncate-string s 5))
+                  (split-string s)) " ")
+         stub-width)
+      s)))
+
 ;;; Generic key related stuff
 
 (defun delve--push-to-global-mark-ring ()
@@ -672,6 +705,41 @@ Optional argument PREFIX is currently not used."
     (switch-to-buffer buf)
     (when (org-invisible-p) (org-show-context))))
 
+(defun delve--verzetteln (nodes &optional info-string-or-fn)
+  "Turn all NODES into Delve zettel.
+Use INFO-STRING-OR-FN to fill the info slot, either by passing a
+string value or a function which will be called with the
+respective zettel."
+  (cl-labels ((add-info (z)
+                        (when info-string-or-fn
+                          (setf (delve--zettel-info z)
+                                (if (stringp info-string-or-fn)
+                                    info-string-or-fn
+                                  (funcall info-string-or-fn z))))
+                        z))
+    (thread-last nodes
+      (mapcar #'delve--zettel-create)
+      (mapcar #'add-info))))
+
+(defun delve--zettel-link-stub (format-string zettel)
+  "Apply FORMAT-STRING on ZETTEL, buttonizing the latter."
+  (let ((id    (delve--zettel-id zettel))
+        (stub (delve--zettel-stub zettel)))
+  (format format-string
+          (delve--get-button stub
+            'action (lambda (_)
+                      (if-let ((node (delve--find-zettel-by-id id)))
+                          (lister-goto lister-local-ewoc node)
+                        (user-error "Zettel not found in this buffer")))))))
+
+(defun delve--zettel-backlink-stub (zettel)
+  "Return a string explaining ZETTEL is a backlink."
+  (delve--zettel-link-stub "Backlink to %s" zettel))
+
+(defun delve--zettel-fromlink-stub (zettel)
+  "Return a string explaining ZETTEL is a fromlink."
+  (delve--zettel-link-stub "Link from %s" zettel))
+
 (defun delve--key--backlinks (zettel &optional prefix)
   "Insert backlinks of current ZETTEL.
 With PREFIX, open link list in a new buffer, else insert it as a
@@ -679,7 +747,7 @@ sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
   (if-let ((nodes (delve-query-backlinks-by-id (delve--zettel-id zettel))))
       (delve--insert-or-open-zettels
-       (mapcar #'delve--zettel-create nodes)
+       (delve--verzetteln nodes (delve--zettel-backlink-stub zettel))
        prefix
        :as-sublist)
     (message "No backlinks to this zettel node")))
@@ -691,7 +759,7 @@ sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
   (if-let ((nodes (delve-query-fromlinks-by-id (delve--zettel-id zettel))))
       (delve--insert-or-open-zettels
-       (mapcar #'delve--zettel-create nodes)
+       (delve--verzetteln nodes (delve--zettel-fromlink-stub zettel))
        prefix
        :as-sublist)
     (message "No tolinks to this zettel node")))
@@ -699,19 +767,21 @@ sublist below point."
 (defun delve--key--insert-backlink (zettel)
   "Interactively insert backlinks from current ZETTEL."
   (interactive (list (delve--current-item 'delve--zettel)))
-  (if-let ((nodes (delve-query-backlinks-by-id (delve--zettel-id zettel))))
+  (if-let* ((all-nodes (delve-query-backlinks-by-id (delve--zettel-id zettel)))
+            (nodes     (delve--select-nodes all-nodes "Insert backlinked nodes:")))
       (lister-insert-sublist-below lister-local-ewoc :point
-                                   (mapcar #'delve--zettel-create
-                                           (delve--select-nodes nodes "Insert backlinked nodes:")))
+                                   (delve--verzetteln nodes
+                                                      (delve--zettel-backlink-stub zettel)))
     (user-error "No backlinks to insert")))
 
 (defun delve--key--insert-fromlink (zettel)
   "Interactively insert fromlinks from current ZETTEL."
   (interactive (list (delve--current-item 'delve--zettel)))
-  (if-let ((nodes (delve-query-fromlinks-by-id (delve--zettel-id zettel))))
+  (if-let ((all-nodes (delve-query-fromlinks-by-id (delve--zettel-id zettel)))
+           (nodes     (delve--select-nodes all-nodes "Insert fromlinked nodes:")))
       (lister-insert-sublist-below lister-local-ewoc :point
-                                   (mapcar #'delve--zettel-create
-                                           (delve--select-nodes nodes "Insert fromlinked nodes:")))
+                                   (delve--verzetteln nodes
+                                                        (delve--zettel-fromlink-stub zettel)))
     (user-error "No fromlinks to insert")))
 
 (defun delve--key--insert-query-or-pile (item &optional prefix)

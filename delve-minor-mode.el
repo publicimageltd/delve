@@ -84,6 +84,7 @@ non-nil, use the previously selected buffer."
     (delve-minor-mode--add-to-collection buf zettel)
     (message "%d zettel added to '%s'" n (buffer-name buf))))
 
+;; TODO replace with delve--find-zettel-byid
 (defun delve-minor-mode--find-id (id buf)
   "Find first ewoc node with ID in Delve buffer BUF."
   (cl-labels ((match-id (z)
