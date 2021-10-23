@@ -987,6 +987,7 @@ non-nil.  Offer completion of files in the directory
     ;; Work with the Zettel at point:
     (define-key map [remap org-roam-buffer-toggle]   #'delve--key--roam)
     (define-key map (kbd "o")                        #'delve--key--open-zettel)
+    (define-key map (kbd "<C-return>")               #'delve--key--open-zettel)
     (define-key map (kbd "f")                        #'delve--key--fromlinks)
     (define-key map (kbd "<C-right>")                #'delve--key--fromlinks)
     (define-key map (kbd "b")                        #'delve--key--backlinks)
