@@ -723,14 +723,17 @@ Optional argument PREFIX is currently not used."
 ;;; * Key commands not bound to a specific item at point
 
 (defun delve--key--sync (ewoc &optional prefix)
-  "In EWOC, sync all zettel with the org roam database.
-With PREFIX, only sync the zettel at point."
+  "In EWOC, sync all zettel out of sync with the org roam database.
+With PREFIX, force sync the zettel at point."
   (interactive (list lister-local-ewoc current-prefix-arg))
   (if (not prefix)
       (delve--sync-out-of-sync ewoc)
     (let ((z (lister-get-data-at ewoc :point)))
       (if (eq (type-of z) 'delve--zettel)
-          (delve--sync-zettel z)
+          (let ((file (delve--zettel-file z)))
+            (org-roam-db-update-file file)
+            (delve--sync-zettel (list z))
+            (lister-refresh-at ewoc :point))
         (user-error "Item at point is not a zettel, cannot sync")))))
 
 (defun delve--key--insert-tagged (tags &optional prefix)
