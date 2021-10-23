@@ -606,6 +606,33 @@ If no region is active, do nothing."
                                      (region-end)
                                      t)))
 
+(defun delve--select-nodes (nodes-or-node-fn prompt)
+  "Let the user select multiple nodes from NODES-OR-NODE-FN.
+NODES-OR-NODE-FN can be either a list of nodes or a function
+which returns such a list.  PROMPT is padded with spaces and
+passed to completing read."
+  (setq org-roam-node-read--cached-display-format nil)
+  ;; Standard completing-read-multiple can't work with node
+  ;; candidates, so check if alternatives are available:
+  (cl-letf (((symbol-function 'completing-read-multiple)
+             (cond
+              ((featurep 'consult) #'consult-completing-read-multiple)
+              (t #'completing-read))))
+    ;; ...collect and select:
+    (let* ((template       (org-roam-node--process-display-format org-roam-node-display-template))
+           (node-alist     (with-temp-message "Collecting nodes..."
+                             (mapcar (lambda (n) (org-roam-node-read--to-candidate n template))
+                                     (if (listp nodes-or-node-fn)
+                                         nodes-or-node-fn
+                                       (funcall nodes-or-node-fn)))))
+           (prompt         (concat " " (string-trim prompt) " "))
+           (node-selected  (if node-alist
+                               (completing-read-multiple prompt node-alist)
+                             (user-error "No nodes to choose from"))))
+      (mapcar (lambda (cand)
+                (alist-get cand node-alist nil nil #'string=))
+              (if (listp node-selected) node-selected (list node-selected))))))
+
 ;;; * Key commands working with the "item at point"
 
 ;; Every key command in this subsection should have an optional prefix
@@ -668,6 +695,24 @@ sublist below point."
        prefix
        :as-sublist)
     (message "No tolinks to this zettel node")))
+
+(defun delve--key--insert-backlink (zettel)
+  "Interactively insert backlinks from current ZETTEL."
+  (interactive (list (delve--current-item 'delve--zettel)))
+  (if-let ((nodes (delve-query-backlinks-by-id (delve--zettel-id zettel))))
+      (lister-insert-sublist-below lister-local-ewoc :point
+                                   (mapcar #'delve--zettel-create
+                                           (delve--select-nodes nodes "Insert backlinked nodes:")))
+    (user-error "No backlinks to insert")))
+
+(defun delve--key--insert-fromlink (zettel)
+  "Interactively insert fromlinks from current ZETTEL."
+  (interactive (list (delve--current-item 'delve--zettel)))
+  (if-let ((nodes (delve-query-fromlinks-by-id (delve--zettel-id zettel))))
+      (lister-insert-sublist-below lister-local-ewoc :point
+                                   (mapcar #'delve--zettel-create
+                                           (delve--select-nodes nodes "Insert fromlinked nodes:")))
+    (user-error "No fromlinks to insert")))
 
 (defun delve--key--insert-query-or-pile (item &optional prefix)
   "Insert results from ITEM, either a query or a pile object.
@@ -778,39 +823,20 @@ buffer."
 
 ;; Insert node(s)
 
-(defun delve--select-multiple-nodes (node-fn)
-  "Let the user select multiple nodes from NODE-FN."
-  (setq org-roam-node-read--cached-display-format nil)
-  ;; Standard completing-read-multiple can't work with node
-  ;; candidates, so check if alternatives are available:
-  (cl-letf (((symbol-function 'completing-read-multiple)
-             (cond
-              ((featurep 'consult) #'consult-completing-read-multiple)
-              (t #'completing-read))))
-    ;; ...collect and select:
-    (let* ((template       (org-roam-node--process-display-format org-roam-node-display-template))
-           (node-alist     (with-temp-message "Collecting nodes..."
-                             (mapcar (lambda (n) (org-roam-node-read--to-candidate n template))
-                                     (funcall node-fn))))
-           (node-selected  (if node-alist
-                               (completing-read-multiple "Choose: " node-alist)
-                             (user-error "No nodes to choose from"))))
-      (mapcar (lambda (cand)
-                (alist-get cand node-alist nil nil #'string=))
-              (if (listp node-selected) node-selected (list node-selected))))))
+(defun delve--key--insert-node ()
+  "Interactively add node(s) to current buffer's Delve list."
+  (interactive)
+  (let* ((nodes (delve--select-nodes #'delve-query-node-list "Insert node:")))
+    (lister-insert-list-at lister-local-ewoc :point
+                           (mapcar #'delve--zettel-create nodes)
+                           nil (lister-eolp))))
 
-(defun delve--key--insert-node (&optional limit-to-tags)
-  "Interactively add node(s) to current buffer's Delve list.
-With prefix LIMIT-TO-TAGS, let the user first limit the selection
-candidate list to only those nodes matching specific tags."
-  (interactive "P")
-  (let* ((node-fn  (if limit-to-tags
-                       (apply-partially #'delve-query-nodes-by-tags
-                                        (completing-read-multiple " Limit to nodes matching tags: "
-                                                         (delve-query-tags)))
-                     #'delve-query-node-list))
-         (nodes    (delve--select-multiple-nodes node-fn)))
-    ;;
+(defun delve--key--insert-node-by-tags ()
+  "Insert nodes matching user selected tags."
+  (interactive)
+  (let* ((tags (completing-read-multiple " Limit to nodes matching tags:"
+                                         (delve-query-tags)))
+         (nodes (delve--select-nodes (delve-query-nodes-by-tags tags) "Insert nodes:")))
     (lister-insert-list-at lister-local-ewoc :point
                            (mapcar #'delve--zettel-create nodes)
                            nil (lister-eolp))))
@@ -980,7 +1006,10 @@ non-nil.  Offer completion of files in the directory
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
     ;; Insert node(s):
-    (define-key map (kbd "n")                        #'delve--key--insert-node)
+    (define-key map (kbd "nn")                       #'delve--key--insert-node)
+    (define-key map (kbd "nt")                       #'delve--key--insert-node-by-tags)
+    (define-key map (kbd "nb")                       #'delve--key--insert-backlink)
+    (define-key map (kbd "nf")                       #'delve--key--insert-fromlink)
     ;; Work with marks:
     (define-key map (kbd "c")                        #'delve--key--collect-into-buffer)
     (define-key map (kbd "p")                        #'delve--key--collect-into-pile)
