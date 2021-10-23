@@ -27,8 +27,6 @@
 ;;; Code:
 (require 'delve)
 
-;; TODO Add key to collect the complete file with all of its nodes
-
 ;; * Variables
 
 (defvar delve--last-selected-buffer) ;; used in delve.el
@@ -42,22 +40,79 @@ instead, if there is one.  If selection takes place, use PROMPT."
   (or (and prefer-last-one delve--last-selected-buffer)
       (delve--select-collection-buffer prompt)))
 
+(defun delve-minor-mode--add-to-collection (buf zettel)
+  "Insert ZETTEL at point in Delve buffer BUF.
+ZETTEL can be a list or a single zettel."
+  (let ((ewoc (lister-get-ewoc buf)))
+    (lister-insert-list-at ewoc :point
+                           (if (listp zettel) zettel (list zettel))
+                           nil
+                           (lister-eolp buf))
+    (lister-goto ewoc :next)))
+
 (defun delve-minor-mode-collect (&optional use-last-buffer)
   "Add node at point to a Delve buffer.
-If USE-LAST-BUFFER is non-nil, don't ask the user to select a
-buffer and use the one selected the last time.  Recognize the
-node by the ID property of the containing org entry.  If there is
-no node, refer to the whole file.  If the file has no ID either,
-throw an error."
+Use the ID property of the containing org entry or refer to the
+whole file.  If the file has no ID either, throw an error.  If
+USE-LAST-BUFFER is non-nil, don't ask the user to select a buffer
+and use the one selected the last time."
   (interactive "P")
+  (let* ((id     (or (org-roam-id-at-point)
+                     (user-error "No org roam node with ID found at point")))
+         (zettel (delve--zettel-create (delve-query-node-by-id id)))
+         (buf    (delve-minor-mode--maybe-select
+                  "Add node to buffer or collection: "
+                  use-last-buffer)))
+    (delve-minor-mode--add-to-collection buf zettel)
+    (message "Zettel added to '%s'" (buffer-name buf))))
+
+(defun delve-minor-mode-collect-all (&optional use-last-buffer)
+  "Add all headline nodes with an ID to a Delve buffer.
+Ask user to select the buffer to add to.  If USE-LAST-BUFFER is
+non-nil, use the previously selected buffer."
+  (interactive "P")
+  (let* ((tree  (org-element-parse-buffer))
+         (ids   (or (org-element-map tree 'headline
+                     (apply-partially #'org-element-property :ID))
+                   (user-error "No headlines found")))
+         (n     (length ids))
+         (buf   (delve-minor-mode--maybe-select
+                 (format "Add %d nodes to buffer or collection: " n)
+                 use-last-buffer))
+         (zettel (mapcar #'delve--zettel-create
+                         (delve-query-nodes-by-id ids))))
+    (delve-minor-mode--add-to-collection buf zettel)
+    (message "%d zettel added to '%s'" n (buffer-name buf))))
+
+(defun delve-minor-mode--find-id (id buf)
+  "Find first ewoc node with ID in Delve buffer BUF."
+  (lister-first-matching (lister-get-ewoc buf) :first
+                        (lambda (delve-object)
+                          ;; TODO also check piles!
+                          (and (eq (type-of delve-object) 'delve--zettel)
+                               (equal (delve--zettel-id delve-object) id)))))
+
+(defun delve-minor-mode--find-node ()
+  "Find node at point in open Delve buffers.
+Return a list with the ewoc node and the containing buffer."
   (let* ((id (or (org-roam-id-at-point)
-                 (user-error "No org roam node with ID found")))
-         (target-buf (delve-minor-mode--maybe-select "Add node to buffer or collection: "
-                                                     use-last-buffer)))
-    (save-window-excursion
-      (lister-add (buffer-local-value 'lister-local-ewoc target-buf)
-                  (delve--zettel-create (delve-query-node-by-id id)))
-      (message "Zettel added"))))
+                 (user-error "No org roam node with ID found at point")))
+         (bufs (delve-buffer-list)))
+    (cl-loop for buf in bufs
+             if (delve-minor-mode--find-id id buf)
+             return (list it buf)
+             finally return nil)))
+
+(defun delve-minor-mode-find-node ()
+  "Jump to a Delve zettel referring to the current headline or file."
+  (interactive)
+  (pcase-let ((`(,ewoc-node ,buf) (delve-minor-mode--find-node)))
+    (if (not ewoc-node)
+        (user-error "Node not found in any open Delve buffer")
+      (delve--push-to-global-mark-ring)
+      (switch-to-buffer buf)
+      (lister-goto (lister-get-ewoc buf) ewoc-node)
+      (message "Mark pushed; pop back to go to the original buffer"))))
 
 (defun delve-minor-mode-open-collection (&optional last-selection)
   "Open a Delve collection or create a new one.
@@ -74,6 +129,8 @@ before."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c d b") #'delve-minor-mode-open-collection)
     (define-key map (kbd "C-c d +") #'delve-minor-mode-collect)
+    (define-key map (kbd "C-c d a") #'delve-minor-mode-collect-all)
+    (define-key map (kbd "C-c d .") #'delve-minor-mode-find-node)
     map)
   "Local map for the delve minor mode.")
 

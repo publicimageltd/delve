@@ -30,8 +30,6 @@
 
 ;;; Code:
 
-;;; TODO Exclude dashboard buffer
-
 ;; * Dependencies
 
 (require 'org-roam)
