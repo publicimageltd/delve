@@ -785,8 +785,10 @@ buffer."
               ((featurep 'consult) #'consult-completing-read-multiple)
               (t #'completing-read))))
     ;; ...collect and select:
-    (let* ((node-alist     (with-temp-message "Collecting nodes..."
-                             (mapcar #'org-roam-node-read--to-candidate (funcall node-fn))))
+    (let* ((template       (org-roam-node--process-display-format org-roam-node-display-template))
+           (node-alist     (with-temp-message "Collecting nodes..."
+                             (mapcar (lambda (n) (org-roam-node-read--to-candidate n template))
+                                     (funcall node-fn))))
            (node-selected  (if node-alist
                                (completing-read-multiple "Choose: " node-alist)
                              (user-error "No nodes to choose from"))))
