@@ -3,7 +3,6 @@
 ;; Copyright (C) 2021
 
 ;; Author:  <joerg@joergvolbers.de>
-;; Keywords: library
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
