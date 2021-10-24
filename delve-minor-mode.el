@@ -92,7 +92,7 @@ non-nil, use the previously selected buffer."
 
 ;; TODO replace with delve--find-zettel-byid
 (defun delve-minor-mode--find-id (id buf)
-  "Find first ewoc node with ID in Delve buffer BUF."
+  "Find first ewoc node with ID in Delve buffer BUF."  
   (cl-labels ((match-id (z)
                          (equal (delve--zettel-id z) id)))
     (lister-first-matching (lister-get-ewoc buf) :first
@@ -108,7 +108,7 @@ Return a list with the ewoc node and the containing buffer."
                  (user-error "No org roam node with ID found at point")))
          (bufs (delve-buffer-list)))
     (cl-loop for buf in bufs
-             if (delve-minor-mode--find-id id buf)
+             if (delve--find-zettel-by-id id buf)
              return (list it buf)
              finally return nil)))
 

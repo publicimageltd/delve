@@ -557,15 +557,18 @@ anything; that's up to the calling function."
 
 ;;; * Key handling / Commands
 
-(defun delve--find-zettel-by-id (id)
-  "Find first ewoc node with ID in current Delve buffer."
+(defun delve--find-zettel-by-id (id &optional buf)
+  "Find first ewoc node with ID in Delve buffer BUF.
+If BUF is nil, use current buffer.  Searches both zettels and
+piles."
   (cl-labels ((match-id (z)
-                         (equal (delve--zettel-id z) id)))
-    (lister-first-matching lister-local-ewoc :first
-                           (lambda (delve-object)
-                             (cl-typecase delve-object
+                        (equal (delve--zettel-id z) id))
+              (find-zettel (delve-object)
+                           (cl-typecase delve-object
                                (delve--zettel (match-id delve-object))
-                               (delve--pile   (seq-find #'match-id (delve--pile-zettels delve-object))))))))
+                               (delve--pile   (seq-find #'match-id (delve--pile-zettels delve-object))))))
+    (lister-first-matching (lister-get-ewoc buf) :first
+                           #'find-zettel)))
 
 (defun delve--truncate-string (s width)
   "Truncate string S to maximal WIDTH."
