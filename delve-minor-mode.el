@@ -172,12 +172,12 @@ Activate the mode unless DEACTIVATE is non-nil."
                 (delve-minor-mode (if deactivate -1 +1)))))
           (buffer-list)))
 
+;;;###autoload
 (define-minor-mode delve-global-minor-mode
   "Add some Delve functionality in org roam files."
   :lighter ""
   :global t
   :group 'delve
-  :require 'delve
   ;; enable in future org mode buffers:
   (if delve-global-minor-mode
       (add-hook 'org-mode-hook #'delve--maybe-activate-minor-mode)
