@@ -205,7 +205,7 @@ button."
 (defun delve--string-join (strings &optional separator prefix)
   "Join all non-nil strings in STRINGS using SEPARATOR.
 Optionally add string PREFIX to each non-nil item."
-  (let ((strings (lister--flatten strings)))
+  (let ((strings (flatten-tree strings)))
     (when prefix
       (setq strings (mapcar (apply-partially #'concat prefix) strings)))
     (string-join strings separator)))
@@ -352,7 +352,7 @@ Return the prepared string."
                         (delve--query   (delve--query-strings item))
                         (t (list "no printer available for that item type")))))
     ;; hanging indent:
-    (let* ((datastrings (lister--flatten datastrings))
+    (let* ((datastrings (flatten-tree datastrings))
            (pad         (make-string (length typestring) ? ))
            (first-line  (concat typestring (car datastrings)))
            (rest-lines  (mapcar (apply-partially #'concat pad)
@@ -373,7 +373,7 @@ Return the prepared string."
 
 (defun delve--header-function ()
   "Generate a Lister header item from local buffer vars."
-  (lister--flatten
+  (flatten-tree
    (list (propertize delve-local-header-info 'face 'delve-header-face)
          (delve--db-info)
          (when delve-local-storage-file

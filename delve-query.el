@@ -34,8 +34,6 @@
 (require 'emacsql-compiler)
 
 
-(declare-function lister--flatten "lister")
-
 ;;; * Framework for 'save' and 'verbose' querying
 
 (defconst delve-query-db-version 17
@@ -234,12 +232,12 @@ query `delve-query--super-query' for allowed fields."
 (defun delve-query-backlinks-by-id (id)
   "Get all nodes linking to ID."
   (let ((backlinks (delve-query--ids-linking-to id)))
-    (delve-query-nodes-by-id (lister--flatten backlinks))))
+    (delve-query-nodes-by-id (flatten-tree backlinks))))
 
 (defun delve-query-fromlinks-by-id (id)
   "Get all nodes linking from ID."
   (let ((tolinks (delve-query--ids-linking-from id)))
-    (delve-query-nodes-by-id (lister--flatten tolinks))))
+    (delve-query-nodes-by-id (flatten-tree tolinks))))
 
 ;; (delve-query-backlinks-by-id "39f55f61-2e1a-488d-a495-a22b4e39a7e0")
 ;; (delve-query-fromlinks-by-id "39f55f61-2e1a-488d-a495-a22b4e39a7e0")

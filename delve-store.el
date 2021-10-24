@@ -128,7 +128,7 @@ Use ID-HASH to get the nodes by their ID."
   "Get all ids in the Delve storage list L."
   (thread-last l
     (delve-store--map-tokenized-tree #'delve-store--parse-get-id)
-    (lister--flatten)))
+    (flatten-tree)))
 
 (defun delve-store--prefetch-ids (l)
   "Return all nodes referred to in L as a hash table."
