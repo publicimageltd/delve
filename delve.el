@@ -208,7 +208,7 @@ button."
 Optionally add string PREFIX to each non-nil item."
   (let ((strings (flatten-tree strings)))
     (when prefix
-      (setq strings (mapcar (apply-partially #'concat prefix) strings)))
+      (setq strings (--map (concat prefix it) strings)))
     (string-join strings separator)))
 
 ;; TODO Change that to buttons which open all links with that tag in a
@@ -356,7 +356,7 @@ Return the prepared string."
     (let* ((datastrings (flatten-tree datastrings))
            (pad         (make-string (length typestring) ? ))
            (first-line  (concat typestring (car datastrings)))
-           (rest-lines  (mapcar (apply-partially #'concat pad)
+           (rest-lines  (--map (concat pad it)
                                 (cdr datastrings))))
       (apply #'list first-line rest-lines))))
 
@@ -452,19 +452,19 @@ Return the buffer object."
 Only return the file names relative to `delve-store-directory'"
   ;; FIXME This won't work currently as desired if the local file path
   ;; is outside of the delve store directory.
-  (thread-last (delve-buffer-list)
-    (mapcar          #'delve-get-storage-file)
-    (seq-filter      #'identity)
-    (mapcar          #'file-name-nondirectory)
-    (seq-difference  (delve--storage-files))))
+  (->> (delve-buffer-list)
+       (-map        #'delve-get-storage-file)
+       ;; remove nil values:
+       (-filter     #'identity)
+       (-map        #'file-name-nondirectory)
+       (-difference (delve--storage-files))))
 
 (defun delve--prepare-candidates (cand key-fn suffix)
   "Return list CAND as an alist with a string key.
 Use KEY-FN to create the string key.  It will have SUFFIX added
 to the end, in parentheses."
-  (seq-group-by (lambda (elt)
-                  (format "%s (%s)" (funcall key-fn elt) suffix))
-                cand))
+  (--group-by (format "%s (%s)" (funcall key-fn it) suffix)
+              cand))
 
 (defun delve--select-collection-buffer (prompt)
   "Select Delve buffer, collection, or create a new buffer.
@@ -518,7 +518,7 @@ Use PROMPT when asking the user to select or create a buffer."
   "Force sync of all ZETTELS with the org roam db.
 First update the db, then reload the ZETTELS.  Do not redisplay
 anything; that's up to the calling function."
-  (when-let* ((filelist (mapcar #'delve--zettel-file zettels)))
+  (when-let* ((filelist (-map #'delve--zettel-file zettels)))
     (cl-dolist (file (seq-uniq filelist #'string=))
       (org-roam-db-update-file file))
     (cl-dolist (z zettels)
@@ -544,15 +544,14 @@ anything; that's up to the calling function."
   "Sync all zettel in EWOC which are out of sync."
   (let ((nodes (lister-collect-nodes ewoc :first :last
                                      #'delve--out-of-sync-p)))
-    (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
+    (delve--sync-zettel (-map #'lister-node-get-data nodes))
     (delve--refresh-nodes ewoc nodes)))
 
 ;;; * Key handling / Commands
 
-(defun delve--find-zettel-by-id (id &optional buf)
+(cl-defun delve--find-zettel-by-id (id &optional (buf (current-buffer)))
   "Find first ewoc node with ID in Delve buffer BUF.
-If BUF is nil, use current buffer.  Searches both zettels and
-piles."
+Searches both zettels and piles."
   (cl-labels ((match-id (z)
                         (equal (delve--zettel-id z) id))
               (find-zettel (delve-object)
@@ -577,9 +576,9 @@ produce a shortened version."
     (if (> (string-width s) stub-width)
         (delve--truncate-string
          (string-join
-          (mapcar (lambda (s)
-                    (delve--truncate-string s 5))
-                  (split-string s)) " ")
+          (--map (delve--truncate-string it 5)
+                 (split-string s))
+          " ")
          stub-width)
       s)))
 
@@ -657,9 +656,8 @@ passed to completing read."
            (node-selected  (if node-alist
                                (completing-read-multiple prompt node-alist)
                              (user-error "No nodes to choose from"))))
-      (mapcar (lambda (cand)
-                (alist-get cand node-alist nil nil #'string=))
-              (-list node-selected)))))
+      (--map (alist-get it node-alist nil nil #'string=)
+             (-list node-selected)))))
 
 ;;; * Key commands working with the "item at point"
 
@@ -712,9 +710,9 @@ respective zettel."
                                     info-string-or-fn
                                   (funcall info-string-or-fn z))))
                         z))
-    (thread-last nodes
-      (mapcar #'delve--zettel-create)
-      (mapcar #'add-info))))
+    (->> nodes
+         (-map #'delve--zettel-create)
+         (-map #'add-info))))
 
 (defun delve--zettel-link-stub (format-string zettel)
   "Apply FORMAT-STRING on ZETTEL, buttonizing the latter."
@@ -790,7 +788,8 @@ sublist below point."
     (cl-typecase item
       (delve--pile  (setq zettels (delve--pile-zettels item)
                           insertion-type nil))
-      (delve--query (setq zettels (mapcar #'delve--zettel-create (funcall (delve--query-fn item)))
+      (delve--query (setq zettels
+                          (-map #'delve--zettel-create (funcall (delve--query-fn item)))
                           insertion-type :as-sublist)))
     (if (null zettels)
         (message "No matching zettels found")
@@ -853,7 +852,7 @@ With PREFIX, open search results in a new buffer."
                                                (delve-query-tags))
                      current-prefix-arg))
   (let* ((matching-string (delve--string-join tags " and " "#"))
-         (zettels         (mapcar #'delve--zettel-create (delve-query-nodes-by-tags tags))))
+         (zettels         (-map #'delve--zettel-create (delve-query-nodes-by-tags tags))))
     (if zettels
         (delve--insert-or-open-zettels zettels
                                        (format "Nodes matching %s" matching-string)
@@ -893,7 +892,7 @@ buffer."
   (interactive)
   (let* ((nodes (delve--select-nodes #'delve-query-node-list "Insert node:")))
     (lister-insert-list-at lister-local-ewoc :point
-                           (mapcar #'delve--zettel-create nodes)
+                           (-map #'delve--zettel-create nodes)
                            nil (lister-eolp))))
 
 (defun delve--key--insert-node-by-tags ()
@@ -903,7 +902,7 @@ buffer."
                                          (delve-query-tags)))
          (nodes (delve--select-nodes (delve-query-nodes-by-tags tags) "Insert nodes:")))
     (lister-insert-list-at lister-local-ewoc :point
-                           (mapcar #'delve--zettel-create nodes)
+                           (-map #'delve--zettel-create nodes)
                            nil (lister-eolp))))
 
 ;; Collect items into a pile
