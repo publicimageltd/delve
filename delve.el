@@ -33,6 +33,7 @@
 ;; * Dependencies
 
 (require 'org-roam)
+(require 'dash)
 (require 'seq)
 (require 'lister)
 (require 'lister-mode)
@@ -406,7 +407,7 @@ Return the buffer object."
 
 (defun delve--create-tag-query (tags)
   "Create a item object searching for nodes matching TAGS."
-  (let* ((tags (if (listp tags) tags (list tags))))
+  (let* ((tags (-list tags)))
     (delve--query-create :info (format "Query for nodes matching %s"
                                        (delve--string-join tags " and " "#"))
                          :fn (lambda ()
@@ -546,15 +547,6 @@ anything; that's up to the calling function."
     (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
     (delve--refresh-nodes ewoc nodes)))
 
-;; NOTE don't think users need that, but keep it for a while
-;;
-;; (defun delve--sync-marked (ewoc)
-;;   "Force sync all marked list items of EWOC."
-;;   (let ((nodes (lister-collect-nodes ewoc nil nil
-;;                                      #'lister-node-marked-p)))
-;;     (delve--sync-zettel (mapcar #'lister-node-get-data nodes))
-;;     (delve--refresh-nodes ewoc nodes)))
-
 ;;; * Key handling / Commands
 
 (defun delve--find-zettel-by-id (id &optional buf)
@@ -611,7 +603,7 @@ EWOC or POS, if supplied.  Skip any typechecking if TYPES is nil."
       (error "Command must be called in a Delve buffer"))
     (let ((item (lister-get-data-at ewoc (or pos :point))))
       (if (or (not types)
-              (apply #'delve--type-p item (if (listp types) types (list types))))
+              (apply #'delve--type-p item (-list types)))
           item
         (error "The item at point is not of the right types for that command")))))
 
@@ -657,17 +649,17 @@ passed to completing read."
     ;; ...collect and select:
     (let* ((template       (org-roam-node--process-display-format org-roam-node-display-template))
            (node-alist     (with-temp-message "Collecting nodes..."
-                             (mapcar (lambda (n) (org-roam-node-read--to-candidate n template))
-                                     (if (listp nodes-or-node-fn)
-                                         nodes-or-node-fn
-                                       (funcall nodes-or-node-fn)))))
+                             (--map (org-roam-node-read--to-candidate it template)
+                                    (if (listp nodes-or-node-fn)
+                                        nodes-or-node-fn
+                                      (funcall nodes-or-node-fn)))))
            (prompt         (concat " " (string-trim prompt) " "))
            (node-selected  (if node-alist
                                (completing-read-multiple prompt node-alist)
                              (user-error "No nodes to choose from"))))
       (mapcar (lambda (cand)
                 (alist-get cand node-alist nil nil #'string=))
-              (if (listp node-selected) node-selected (list node-selected))))))
+              (-list node-selected)))))
 
 ;;; * Key commands working with the "item at point"
 
