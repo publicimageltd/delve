@@ -28,6 +28,7 @@
 (require 'subr-x)
 (require 'cl-lib)
 (require 'seq)
+(require 'dash)
 (require 'benchmark)
 (require 'org-roam-db)
 (require 'org-roam-node)
@@ -214,20 +215,20 @@ query `delve-query--super-query' for allowed fields."
 ;;; TODO Write tests
 (defun delve-query--ids-linking-to (id)
   "Get all ids linking to ID (backlinks)."
-  (lister--flatten (delve-query [:select [ source ]
-                                         :from links
-                                         :where (= dest $s1)
-                                         :and (= type "id")]
-                                id)))
+  (flatten-tree (delve-query [:select [ source ]
+                                      :from links
+                                      :where (= dest $s1)
+                                      :and (= type "id")]
+                             id)))
 
 ;;; TODO Write tests
 (defun delve-query--ids-linking-from (id)
   "Get all ids linking from node ID (fromlinks)."
-  (lister--flatten (delve-query [:select [ dest ]
-                                         :from links
-                                         :where (= source $s1)
-                                         :and (= type "id")]
-                                id)))
+  (flatten-tree (delve-query [:select [ dest ]
+                                      :from links
+                                      :where (= source $s1)
+                                      :and (= type "id")]
+                             id)))
 
 (defun delve-query-backlinks-by-id (id)
   "Get all nodes linking to ID."
