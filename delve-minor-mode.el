@@ -21,8 +21,8 @@
 
 ;;; Commentary:
 
-;; Global minor mode to access some of delve's feature from
-;; within org roam.
+;; Global minor mode to access some of Delve's feature from
+;; within Org Roam.
 
 ;;; Code:
 (require 'delve)
@@ -41,8 +41,8 @@ the `:init' keyword.")
 
 (defun delve-minor-mode--maybe-select (prompt &optional prefer-last-one)
   "Maybe ask user to select a Delve collection.
-If PREFER-LAST-ONE is non-nil, choose the last selected buffer
-instead, if there is one.  If selection takes place, use PROMPT."
+If PREFER-LAST-ONE is non-nil, directlychoose the last selected
+buffer, if there is one.  Else use PROMPT to ask the user."
   (or (and prefer-last-one delve--last-selected-buffer)
       (delve--select-collection-buffer prompt)))
 
