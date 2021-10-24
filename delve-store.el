@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'seq)
+(require 'dash)
 (require 'lister)
 (require 'delve-data-types)
 (require 'delve-query)
@@ -107,11 +108,12 @@ Use ID-HASH to get the nodes by their ID."
 
 ;; Useful for looping over the token list:
 
+;; TODO Replace this with -tree-map; but beware that we map through lists!
 (defun delve-store--map-tokenized-tree (fn l)
   "Apply FN to each list element of tree L."
   (cond
    ((and (listp l) (listp (car l)))
-    (mapcar (lambda (x) (delve-store--map-tokenized-tree fn x)) l))
+    (--map (delve-store--map-tokenized-tree fn it) l))
    (t (funcall fn l))))
 
 ;; Prefetch all IDs:
@@ -121,12 +123,12 @@ Use ID-HASH to get the nodes by their ID."
   (pcase elt
     (`(delve--zettel :id ,id)     id)
     (`(delve--pile :name ,_ :zettels ,zettels)
-     (mapcar #'delve-store--parse-get-id zettels))
+     (-map #'delve-store--parse-get-id zettels))
     (_ nil)))
 
 (defun delve-store--get-all-ids (l)
   "Get all ids in the Delve storage list L."
-  (thread-last l
+  (->> l
     (delve-store--map-tokenized-tree #'delve-store--parse-get-id)
     (flatten-tree)))
 
@@ -146,10 +148,9 @@ Use ID-HASH to get the nodes by their ID."
 ;;; TODO Write tests
 (defun delve-store--create-object-list (l)
   "Create Delve objects for stored list L."
-  (let ((id-hash (delve-store--prefetch-ids l)))
-    (delve-store--map-tokenized-tree (apply-partially #'delve-store--parse-tokenized-object
-                                            id-hash)
-                           l)))
+  (delve-store--map-tokenized-tree
+   (-partial #'delve-store--parse-tokenized-object (delve-store--prefetch-ids l))
+   l))
 
 ;;; Test-DB: (delve-store--read "~/.emacs.d/delve-store/stufen.el")
 

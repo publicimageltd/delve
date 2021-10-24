@@ -92,7 +92,7 @@ non-nil, use the previously selected buffer."
 
 ;; TODO replace with delve--find-zettel-byid
 (defun delve-minor-mode--find-id (id buf)
-  "Find first ewoc node with ID in Delve buffer BUF."  
+  "Find first ewoc node with ID in Delve buffer BUF."
   (cl-labels ((match-id (z)
                          (equal (delve--zettel-id z) id)))
     (lister-first-matching (lister-get-ewoc buf) :first
@@ -159,7 +159,7 @@ before."
   "Turn on delve minor mode if current buffer is in org roam."
   (interactive)
   (when (and (buffer-file-name)
-	     (org-roam-file-p))
+             (org-roam-file-p))
     (delve-minor-mode +1)))
 
 (defun delve-minor-mode--mass-activate (&optional deactivate)
