@@ -29,6 +29,12 @@
 
 ;; * Variables
 
+(defvar delve-minor-mode-prefix-key (kbd "M-n")
+  "Prefix key for Delve minor mode commands.
+If you want to change this key in your .emacs file, set the
+variable before loading this package.  With `use-package', use
+the `:init' keyword.")
+
 (defvar delve--last-selected-buffer) ;; used in delve.el
 
 ;; * Minor Mode Functions
@@ -129,12 +135,17 @@ before."
 ;; * Minor Mode(s)
 
 (defvar delve-minor-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c d b") #'delve-minor-mode-open-collection)
-    (define-key map (kbd "C-c d +") #'delve-minor-mode-collect)
-    (define-key map (kbd "C-c d a") #'delve-minor-mode-collect-all)
-    (define-key map (kbd "C-c d .") #'delve-minor-mode-find-node)
-    map)
+  (let ((prefix (define-prefix-command 'delve-mm-prefix-map nil "Delve")))
+    ;; add space to each key description so that the key is also printed in
+    ;; the echo area when pressing the prefix key
+    (define-key prefix "b" '(" buffer list" . delve-minor-mode-open-collection))
+    (define-key prefix "c" '(" collect"     . delve-minor-mode-collect))
+    (define-key prefix "a" '(" collect all" . delve-minor-mode-collect-all))
+    (define-key prefix "f" '(" find node"   . delve-minor-mode-find-node))
+    ;;
+    (let ((map (make-sparse-keymap)))
+      (define-key map delve-minor-mode-prefix-key prefix)
+      map))
   "Local map for the delve minor mode.")
 
 (define-minor-mode delve-minor-mode
