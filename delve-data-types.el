@@ -47,7 +47,7 @@
   node preview out-of-sync info)
 
 ;; Some shortcuts to the node element of a zettel:
-(defmacro zettel--accessor-fn (name slot-name)
+(defmacro delve-data-types--zettel--accessor-fn (name slot-name)
   "Define an accessor function for the node in a Zettel item.
 SLOT-NAME must be the name of a slot of an org-roam-node.  Give
   the function the name NAME."
@@ -55,17 +55,17 @@ SLOT-NAME must be the name of a slot of an org-roam-node.  Give
      ,(format "Access the slot %s of the node object stored in a Zettel item." slot-name)
      (cl-struct-slot-value 'org-roam-node ,slot-name (delve--zettel-node z))))
 
-(zettel--accessor-fn delve--zettel-title   'title)
-(zettel--accessor-fn delve--zettel-olp     'olp)
-(zettel--accessor-fn delve--zettel-properties 'properties)
-(zettel--accessor-fn delve--zettel-point   'point)
-(zettel--accessor-fn delve--zettel-id      'id)
-(zettel--accessor-fn delve--zettel-file    'file)
-(zettel--accessor-fn delve--zettel-tags    'tags)
-(zettel--accessor-fn delve--zettel-level   'level)
-(zettel--accessor-fn delve--zettel-aliases 'aliases)
-(zettel--accessor-fn delve--zettel-mtime   'file-mtime)
-(zettel--accessor-fn delve--zettel-atime   'file-atime)
+(delve-data-types--zettel--accessor-fn delve--zettel-title   'title)
+(delve-data-types--zettel--accessor-fn delve--zettel-olp     'olp)
+(delve-data-types--zettel--accessor-fn delve--zettel-properties 'properties)
+(delve-data-types--zettel--accessor-fn delve--zettel-point   'point)
+(delve-data-types--zettel--accessor-fn delve--zettel-id      'id)
+(delve-data-types--zettel--accessor-fn delve--zettel-file    'file)
+(delve-data-types--zettel--accessor-fn delve--zettel-tags    'tags)
+(delve-data-types--zettel--accessor-fn delve--zettel-level   'level)
+(delve-data-types--zettel--accessor-fn delve--zettel-aliases 'aliases)
+(delve-data-types--zettel--accessor-fn delve--zettel-mtime   'file-mtime)
+(delve-data-types--zettel--accessor-fn delve--zettel-atime   'file-atime)
 
 (cl-defstruct (delve--pile
             (:include delve--item)
