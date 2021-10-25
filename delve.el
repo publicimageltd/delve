@@ -704,16 +704,17 @@ Optional argument PREFIX is currently not used."
 Use INFO-STRING-OR-FN to fill the info slot, either by passing a
 string value or a function which will be called with the
 respective zettel."
-  (cl-labels ((add-info (z)
-                        (when info-string-or-fn
-                          (setf (delve--zettel-info z)
-                                (if (stringp info-string-or-fn)
-                                    info-string-or-fn
+  (when nodes
+    (cl-labels ((add-info (z)
+                          (when info-string-or-fn
+                            (setf (delve--zettel-info z)
+                                  (if (stringp info-string-or-fn)
+                                      info-string-or-fn
                                   (funcall info-string-or-fn z))))
-                        z))
-    (->> nodes
-         (-map #'delve--zettel-create)
-         (-map #'add-info))))
+                          z))
+      (->> nodes
+           (-map #'delve--zettel-create)
+           (-map #'add-info)))))
 
 (defun delve--zettel-link-stub (format-string zettel)
   "Apply FORMAT-STRING on ZETTEL, buttonizing the latter."
@@ -735,7 +736,7 @@ respective zettel."
   (delve--zettel-link-stub "Link from %s" zettel))
 
 (defun delve--key--backlinks (zettel &optional prefix)
-  "Insert backlinks of current ZETTEL.
+  "Insert all backlinks of current ZETTEL.
 With PREFIX, open link list in a new buffer, else insert it as a
 sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
@@ -757,6 +758,21 @@ sublist below point."
        prefix
        :as-sublist)
     (message "No tolinks to this zettel node")))
+
+;; TODO Refactor all insert backlinks, fromlinks functions
+(defun delve--key--links (zettel &optional prefix)
+  "Insert all backlinks and fromlinks from ZETTEL.
+With PREFIX, open link list in a new buffer, else insert it as a
+sublist below point."
+  (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
+  (let* ((id      (delve--zettel-id zettel))
+         (b-zettel (-some--> (delve-query-backlinks-by-id id)
+                          (delve--verzetteln it (delve--zettel-backlink-stub zettel))))
+         (f-zettel (-some--> (delve-query-fromlinks-by-id id)
+                          (delve--verzetteln it (delve--zettel-fromlink-stub zettel)))))
+    (if-let ((all (append b-zettel f-zettel)))
+        (delve--insert-or-open-zettels all prefix :as-sublist)
+      (message "This zettel has no backlinks or fromlinks (you should change that)"))))
 
 (defun delve--key--insert-backlink (zettel)
   "Interactively insert backlinks from current ZETTEL."
@@ -830,6 +846,19 @@ Optional argument PREFIX is currently not used."
   (ignore prefix)
   (org-roam-buffer-display-dedicated (delve--zettel-node zettel)))
 
+(defun delve--key--tab (ewoc &optional prefix)
+  "In EWOC, expand item at point or toggle subtree visibility.
+With PREFIX, expand all hidden subtrees in the EWOC's buffer."
+  (interactive (list lister-local-ewoc current-prefix-arg))
+  (if (lister-sublist-below-p ewoc :point)
+      (lister-mode-cycle-sublist ewoc :point prefix)
+    (let ((item (delve--current-item)))
+      (cl-typecase item
+        (delve--query  (delve--key--insert-query-or-pile item prefix))
+        (delve--pile   (delve--key--insert-query-or-pile item prefix))
+        (delve--zettel (delve--key--links                item prefix))
+        (t             (user-error "Cannot do anything useful here"))))))
+  
 ;;; * Key commands not bound to a specific item at point
 
 (defun delve--key--sync (ewoc &optional prefix)
