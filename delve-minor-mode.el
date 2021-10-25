@@ -142,6 +142,9 @@ before."
     (define-key prefix "c" '(" collect"     . delve-minor-mode-collect))
     (define-key prefix "a" '(" collect all" . delve-minor-mode-collect-all))
     (define-key prefix "f" '(" find node"   . delve-minor-mode-find-node))
+    (define-key prefix "+" '(" add tag"     . org-roam-tag-add))
+    (define-key prefix "-" '(" remove tag"  . org-roam-tag-remove))
+    (define-key prefix "." '(" set ID"      . org-id-get-create))
     ;;
     (let ((map (make-sparse-keymap)))
       (define-key map delve-minor-mode-prefix-key prefix)
