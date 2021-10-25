@@ -382,10 +382,11 @@ Return the prepared string."
 
 ;; * Buffer and buffer-as-storage handling
 
-(defun delve--storage-files ()
+(defun delve--storage-files (&optional full-path)
   "Return all storage file names.
-Only return the file name relative to `delve-store-directory'."
-  (directory-files delve-store-directory nil (rx string-start (not "."))))
+Only return the file name relative to `delve-store-directory'.
+With optional argument FULL-PATH return the full path."
+  (directory-files delve-store-directory full-path (rx string-start (not "."))))
 
 (defun delve--create-buffer-name (name)
   "Create a name for a Delve buffer using NAME."
@@ -1029,7 +1030,6 @@ non-nil.  Offer completion of files in the directory
 ;;; TODO Write test
 (defun delve--read-storage-file (file-name)
   "Return a new Delve buffer read from FILE-NAME."
-  (interactive (list (delve--ask-storage-file-name :existing-only)))
   ;; locate file
   (unless (file-exists-p file-name)
     (let ((new-name (concat (file-name-as-directory delve-store-directory)
@@ -1059,6 +1059,19 @@ non-nil.  Offer completion of files in the directory
   (with-current-buffer buf
     (message "Collection stored in file %s" delve-local-storage-file)))
 
+(defun delve-open-buffer ()
+  "Open an existing storage file.
+If the user selects a non-storage file, pass to `find-file'."
+  (interactive)
+  (let* ((default-dir (expand-file-name (file-name-as-directory delve-store-directory)))
+         (file-name   (expand-file-name (read-file-name "Open Delve store or other file: " default-dir))))
+    (if (-contains-p (delve--storage-files :full-path) file-name)
+        (switch-to-buffer (delve--read-storage-file file-name))
+      (if (string= (file-name-directory file-name)
+                   default-dir)
+          (switch-to-buffer (delve--new-buffer (file-name-base file-name)))
+        (find-file file-name)))))
+  
 ;;; * Delve Major Mode
 
 ;; * Delve Keymap
@@ -1066,6 +1079,7 @@ non-nil.  Offer completion of files in the directory
   (let ((map (make-sparse-keymap)))
     ;; Buffer as a whole:
     (define-key map [remap save-buffer]              #'delve-save-buffer)
+    (define-key map [remap find-file]                #'delve-open-buffer)
     (define-key map (kbd "g")                        #'delve--key--sync)
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
