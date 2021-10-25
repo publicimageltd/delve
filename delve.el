@@ -1100,6 +1100,7 @@ If the user selects a non-storage file, pass to `find-file'."
     (define-key map (kbd "b")                        #'delve--key--backlinks)
     (define-key map (kbd "<C-left>")                 #'delve--key--backlinks)
     (define-key map (kbd "<RET>")                    #'delve--key--dispatch)
+    (define-key map [remap lister-mode-cycle-sublist]  #'delve--key--tab)
     ;; Insert Queries or Piles:
     (define-key map (kbd "i")                        #'delve--key--insert-query-or-pile)
     (define-key map (kbd "t")                        #'delve--key--insert-tagged)
