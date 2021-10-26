@@ -414,15 +414,17 @@ Return the buffer object."
                          :fn (lambda ()
                                (delve-query-nodes-by-tags tags)))))
 
+(defvar delve-dashboard-tags '("Dashboard")
+  "Tags for which to insert query objects in the Dashboard.
+Each element can be a tag or a list of tags.")
+
 (defun delve--new-dashboard ()
-  "Create a new Delve dashboard buffer."
+  "Return a new Delve dashboard buffer."
   (with-temp-message "Setting up dashboard..."
-    (let* ((tags (delve-query-tags))
-           (stores nil))
-      (cl-dolist (tag (nreverse tags))
-        (push (delve--create-tag-query tag) stores))
-      (delve--new-buffer delve-dashboard-name
-                         (append stores)))))
+    (let* ((tag-queries (--map (delve--create-tag-query (-list it)) delve-dashboard-tags))
+           (buf         (delve--new-buffer delve-dashboard-name (append tag-queries))))
+      (lister-goto (lister-get-ewoc buf) :first)
+      buf)))
 
 (defun delve--dashboard-p (&optional buf)
   "Check if BUF is the Delve dashboard."
