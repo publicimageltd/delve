@@ -182,7 +182,7 @@ query `delve-query--super-query' for allowed fields."
   (when tag-list
     (delve-query-do-super-query
      (concat "SELECT * FROM ( " delve-query--super-query " ) "
-             (format "WHERE tags LIKE %s"
+             (format "WHERE tags LIKE %s ORDER BY title"
                      (string-join (mapcar (lambda (s)
                                             (thread-last s
                                               ;; FIXME this does not work
