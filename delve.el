@@ -414,7 +414,7 @@ Return the buffer object."
                          :fn (lambda ()
                                (delve-query-nodes-by-tags tags)))))
 
-(defvar delve-dashboard-tags '("Dashboard")
+(defvar delve-dashboard-tags '("Dashboard" "Begriff" "Person")
   "Tags for which to insert query objects in the Dashboard.
 Each element can be a tag or a list of tags.")
 
@@ -861,6 +861,18 @@ With PREFIX, expand all hidden subtrees in the EWOC's buffer."
 
 ;;; * Key commands not bound to a specific item at point
 
+;; Edit buffer header
+
+(defun delve--key--edit-title (ewoc)
+  "Edit the title of the Delve buffer linked with EWOC."
+  (interactive (list lister-local-ewoc))
+  (with-current-buffer (ewoc-buffer ewoc)
+    (setq-local delve-local-header-info
+                (read-string "New title: " "DELVE " delve-local-header-info))
+    (lister-refresh-header-footer ewoc)))
+
+;; Force refresh
+
 (defun delve--key--sync (ewoc &optional prefix)
   "In EWOC, sync all zettel out of sync with the org roam database.
 With PREFIX, force sync the zettel at point."
@@ -875,6 +887,8 @@ With PREFIX, force sync the zettel at point."
             (lister-refresh-at ewoc :point))
         (user-error "Item at point is not a zettel, cannot sync")))))
 
+;; Insert tagged subset of all nodes
+
 (defun delve--key--insert-tagged (tags &optional prefix)
   "Insert zettel matching TAGS.
 With PREFIX, open search results in a new buffer."
@@ -888,6 +902,8 @@ With PREFIX, open search results in a new buffer."
                                        (format "Nodes matching %s" matching-string)
                                        prefix)
       (message "No zettels found matching %s" matching-string))))
+
+;; Collect marked items
 
 (defun delve--key--collect-into-buffer (ewoc &optional move)
   "In Delve EWOC, collect all marked items in a new buffer.
@@ -1113,10 +1129,12 @@ If the user selects a non-storage file, pass to `find-file'."
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
     ;; Insert node(s):
-    (define-key map (kbd "nn")                       #'delve--key--insert-node)
-    (define-key map (kbd "nt")                       #'delve--key--insert-node-by-tags)
-    (define-key map (kbd "nb")                       #'delve--key--insert-backlink)
-    (define-key map (kbd "nf")                       #'delve--key--insert-fromlink)
+    (let ((prefix (define-prefix-command 'delve--key--insert-prefix nil "Insert")))
+      (define-key prefix "n" '(" node" . delve--key--insert-node))
+      (define-key prefix "t" '(" by tag" . delve--key--insert-node-by-tags))
+      (define-key prefix "b" '(" backlink" . delve--key--insert-backlink))
+      (define-key prefix "f" '(" fromlink" . delve--key--insert-fromlink))
+      (define-key map (kbd "n") prefix))
     ;; Work with marks:
     (define-key map (kbd "c")                        #'delve--key--collect-into-buffer)
     (define-key map (kbd "p")                        #'delve--key--collect-into-pile)
