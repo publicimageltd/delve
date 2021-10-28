@@ -1016,7 +1016,6 @@ collecting."
   ;; feedback how many items have been moved
   (lister-refresh-at ewoc :point))
 
-
 ;; Delete Items
 
 (defun delve--key--multi-delete ()

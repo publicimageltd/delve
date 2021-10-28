@@ -101,17 +101,6 @@ non-nil, use the previously selected buffer."
     (delve-minor-mode--add-to-collection buf nodes)
     (message "%d zettel added to '%s'" n (buffer-name buf))))
 
-;; TODO replace with delve--find-zettel-byid
-(defun delve-minor-mode--find-id (id buf)
-  "Find first ewoc node with ID in Delve buffer BUF."
-  (cl-labels ((match-id (z)
-                         (equal (delve--zettel-id z) id)))
-    (lister-first-matching (lister-get-ewoc buf) :first
-                           (lambda (delve-object)
-                             (cl-typecase delve-object
-                               (delve--zettel (match-id delve-object))
-                               (delve--pile   (seq-find #'match-id (delve--pile-zettels delve-object))))))))
-
 (defun delve-minor-mode--find-node ()
   "Find node at point in open Delve buffers.
 Return a list with the ewoc node and the containing buffer."
