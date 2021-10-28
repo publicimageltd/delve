@@ -324,11 +324,14 @@ Return the prepared string."
   "Format STRING as a paragraph and return it as a list of strings."
   (split-string
    (with-temp-buffer
-     (insert "  " string)
-     (goto-char (point-min))
-     (fill-paragraph)
-     (buffer-string))
-    "\n"))
+     ;; (let ((org-inhibit-startup nil))
+     ;;   (org-mode)
+       (insert "  " string)
+       (goto-char (point-min))
+       (fill-paragraph)
+;;       (font-lock-ensure)
+       (buffer-string))
+     "\n"))
 
 (defun delve--note-strings (note)
   "Return a list of strings representing NOTE."
