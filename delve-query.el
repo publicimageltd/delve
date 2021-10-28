@@ -204,9 +204,10 @@ query `delve-query--super-query' for allowed fields."
 
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST."
-  (delve-query-do-super-query
-   (concat delve-query--super-query
-           (format "HAVING id IN (%s)" (delve-query--scalar-strings id-list)))))
+  (with-temp-message (format "Querying database for %d nodes..." (length id-list))
+    (delve-query-do-super-query
+     (concat delve-query--super-query
+             (format "HAVING id IN (%s) ORDER BY title" (delve-query--scalar-strings id-list))))))
 
 (defun delve-query-node-by-id (id)
   "Return node with ID."
@@ -240,8 +241,12 @@ query `delve-query--super-query' for allowed fields."
   (let ((tolinks (delve-query--ids-linking-from id)))
     (delve-query-nodes-by-id (flatten-tree tolinks))))
 
-;; (delve-query-backlinks-by-id "39f55f61-2e1a-488d-a495-a22b4e39a7e0")
-;; (delve-query-fromlinks-by-id "39f55f61-2e1a-488d-a495-a22b4e39a7e0")
+(defun delve-query-unlinked ()
+  "Get all nodes with no backlinks or tolinks."
+  (let* ((ids (delve-query "SELECT id FROM nodes WHERE id NOT IN
+  (SELECT source AS id FROM links WHERE type='\"id\"'
+   UNION SELECT dest AS id FROM links WHERE type='\"id\"')")))
+    (delve-query-nodes-by-id (flatten-tree ids))))
 
 (provide 'delve-query)
 ;;; delve-query.el  ends here
