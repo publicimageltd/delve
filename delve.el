@@ -263,7 +263,8 @@ LINK has to be a LINK element as returned by
                  (lambda ()
                    (interactive)
                    (delve--insert-by-id id)
-                   (message "Inserted node %s" label)))
+                   (message "Inserted node %s"
+                            (replace-regexp-in-string "\n" " " label))))
                map))))
 
 (defun delve--prepare-preview (s)
@@ -739,7 +740,9 @@ Replace '%s' in FORMAT-STRING with the button."
           (delve--get-button (delve--zettel-stub zettel)
             'action (lambda (_)
                       (if-let ((node (delve--find-zettel-by-id (delve--zettel-id zettel))))
-                          (lister-goto lister-local-ewoc node)
+                          (progn
+                            (push-mark)
+                            (lister-goto lister-local-ewoc node))
                         (user-error "Zettel not found in this buffer"))))))
 
 (defun delve--get-infolinks (zettel query-fn info-format)
@@ -942,8 +945,10 @@ buffer."
 
 ;; Insert node(s)
 
-(defun delve--insert-nodes (ewoc nodes)
-  "Insert NODES as zettel at point in EWOC."
+(defun delve--insert-nodes (ewoc nodes &optional always-insert-after)
+  "Insert NODES as zettel at point in EWOC.
+Insert the new items before node at point, if any.  Force
+insertion after current node if ALWAYS-INSERT-AFTER is non-nil."
   (let ((nodes (-map #'delve--zettel-create nodes)))
     (if (lister-empty-p ewoc)
         (lister-add ewoc nodes)
@@ -951,8 +956,8 @@ buffer."
         (lister-insert-list-at ewoc :point nodes
                                ;; don't indent if current item is not
                                ;; a zettel
-                               (and (not (eq 'delve--zettel item)) 0)
-                               (lister-eolp))))))
+                               (and (not (eq (type-of item) 'delve--zettel)) 0)
+                               (or always-insert-after (lister-eolp)))))))
 
 (defun delve--key--insert-node ()
   "Interactively add node(s) to current buffer's Delve list."

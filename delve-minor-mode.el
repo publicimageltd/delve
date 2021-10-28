@@ -65,7 +65,8 @@ buffer, if there is one.  Else use PROMPT to ask the user."
 NODES can be a list or a single node."
   (let ((ewoc (lister-get-ewoc buf)))
     (delve--insert-nodes (lister-get-ewoc buf)
-                         (-list nodes))
+                         (-list nodes)
+                         :force-insert-after)
     (lister-goto ewoc :next)))
 
 (defun delve-minor-mode-collect (&optional use-last-buffer)
