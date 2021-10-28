@@ -398,21 +398,27 @@ Return the buffer object."
   (let* ((name (delve--create-buffer-name name))
          (buf (generate-new-buffer name)))
     (with-current-buffer buf
-      (delve-mode)
       (setf delve-local-header-info name)
-      (lister-setup buf #'delve-mapper #'delve--header-function)
-      (lister-mode)
+      (delve-mode)
       (when initial-list
-        (lister-set-list lister-local-ewoc initial-list)))
+        (lister-set-list lister-local-ewoc initial-list))
+      ;;(lister-refresh-header-footer lister-local-ewoc))
+      (lister-set-header lister-local-ewoc #'delve--header-function)
+      )
     buf))
 
 (defun delve--create-tag-query (tags)
-  "Create a item object searching for nodes matching TAGS."
+  "Create an item searching for nodes matching TAGS."
   (let* ((tags (-list tags)))
     (delve--query-create :info (format "Query for nodes matching %s"
                                        (delve--string-join tags " and " "#"))
                          :fn (lambda ()
                                (delve-query-nodes-by-tags tags)))))
+
+(defun delve--create-unlinked-query ()
+  "Create an item searching for unlinked nodes."
+  (delve--query-create :info "Unlinked nodes"
+                       :fn #'delve-query-unlinked))
 
 (defvar delve-dashboard-tags '("Dashboard" "Begriff" "Person")
   "Tags for which to insert query objects in the Dashboard.
@@ -1160,8 +1166,7 @@ If the user selects a non-storage file, pass to `find-file'."
 (define-derived-mode delve-mode
   fundamental-mode "Delve"
   "Major mode for browsing your org roam zettelkasten."
-  (lister-setup	(current-buffer) #'delve-mapper
-                (concat "DELVE Version " delve-version))
+  (lister-setup	(current-buffer) #'delve-mapper  #'delve--header-function)
   (add-to-invisibility-spec '(org-link))
   (lister-mode))
 
