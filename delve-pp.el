@@ -92,10 +92,8 @@ If set to nil, return nil instead.")
 
 (defun delve-pp--add-face (s face-or-spec)
   "Add FACE-OR-SPEC to the face properties of S."
-  (with-temp-buffer
-    (insert s)
-    (add-face-text-property (point-min) (point-max) face-or-spec t)
-    (buffer-string)))
+  (add-face-text-property 0 (length s) face-or-spec t s)
+  s)
 
 (defun delve-pp-apply-mods (s mod arg)
   "Return S modified by applying MOD using ARG.
