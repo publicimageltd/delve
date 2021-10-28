@@ -39,6 +39,20 @@ the `:init' keyword.")
 
 ;; * Minor Mode Functions
 
+;; TODO Das benutzen, um Funktionen auch in magit buffer einzusetzen
+(defun delve-minor-mode--id-at-point ()
+  "Get node in current buffer.
+Works in Org Roam buffers as well as in Org files."
+  (or (eq major-mode 'org-roam-mode)
+      (magit-section-case
+        (org-roam-node-section (plist-get (oref it node) :id))
+        (org-roam-preview-section
+         (save-excursion
+           (magit-section-up)
+           (delve-minor-mode--id-at-point))))
+      (org-roam-file-p)
+      (org-roam-id-at-point)))
+
 (defun delve-minor-mode--maybe-select (prompt &optional prefer-last-one)
   "Maybe ask user to select a Delve collection.
 If PREFER-LAST-ONE is non-nil, directlychoose the last selected
@@ -46,14 +60,12 @@ buffer, if there is one.  Else use PROMPT to ask the user."
   (or (and prefer-last-one delve--last-selected-buffer)
       (delve--select-collection-buffer prompt)))
 
-(defun delve-minor-mode--add-to-collection (buf zettel)
-  "Insert ZETTEL at point in Delve buffer BUF.
-ZETTEL can be a list or a single zettel."
+(defun delve-minor-mode--add-to-collection (buf nodes)
+  "Insert NODES at point in Delve buffer BUF.
+NODES can be a list or a single node."
   (let ((ewoc (lister-get-ewoc buf)))
-    (lister-insert-list-at ewoc :point
-                           (if (listp zettel) zettel (list zettel))
-                           nil
-                           (lister-eolp buf))
+    (delve--insert-nodes (lister-get-ewoc buf)
+                         (-list nodes))
     (lister-goto ewoc :next)))
 
 (defun delve-minor-mode-collect (&optional use-last-buffer)
@@ -65,11 +77,11 @@ and use the one selected the last time."
   (interactive "P")
   (let* ((id     (or (org-roam-id-at-point)
                      (user-error "No org roam node with ID found at point")))
-         (zettel (delve--zettel-create (delve-query-node-by-id id)))
+         (nodes  (delve-query-node-by-id id))
          (buf    (delve-minor-mode--maybe-select
                   "Add node to buffer or collection: "
                   use-last-buffer)))
-    (delve-minor-mode--add-to-collection buf zettel)
+    (delve-minor-mode--add-to-collection buf nodes)
     (message "Zettel added to '%s'" (buffer-name buf))))
 
 (defun delve-minor-mode-collect-all (&optional use-last-buffer)
@@ -80,14 +92,13 @@ non-nil, use the previously selected buffer."
   (let* ((tree  (org-element-parse-buffer))
          (ids   (or (org-element-map tree 'headline
                      (apply-partially #'org-element-property :ID))
-                   (user-error "No headlines found")))
+                   (user-error "No headlines with ID")))
          (n     (length ids))
          (buf   (delve-minor-mode--maybe-select
                  (format "Add %d nodes to buffer or collection: " n)
                  use-last-buffer))
-         (zettel (mapcar #'delve--zettel-create
-                         (delve-query-nodes-by-id ids))))
-    (delve-minor-mode--add-to-collection buf zettel)
+         (nodes  (delve-query-nodes-by-id ids)))
+    (delve-minor-mode--add-to-collection buf nodes)
     (message "%d zettel added to '%s'" n (buffer-name buf))))
 
 ;; TODO replace with delve--find-zettel-byid

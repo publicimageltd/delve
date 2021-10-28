@@ -380,7 +380,7 @@ Return the prepared string."
          (when delve-local-storage-file
            (propertize delve-local-storage-file 'face 'font-lock-string-face)))))
 
-;; * Buffer and buffer-as-storage handling
+;; * Buffer and Dashboard
 
 (defun delve--storage-files (&optional full-path)
   "Return all storage file names.
@@ -395,17 +395,15 @@ With optional argument FULL-PATH return the full path."
 (defun delve--new-buffer (name &optional initial-list)
   "Create a new delve buffer NAME with INITIAL-LIST.
 Return the buffer object."
-  (let* ((name (delve--create-buffer-name name))
-         (buf (generate-new-buffer name)))
-    (with-current-buffer buf
-      (setf delve-local-header-info name)
+  (let* ((name (generate-new-buffer-name (delve--create-buffer-name name))))
+    (with-current-buffer (get-buffer-create name)
       (delve-mode)
       (when initial-list
         (lister-set-list lister-local-ewoc initial-list))
-      ;;(lister-refresh-header-footer lister-local-ewoc))
-      (lister-set-header lister-local-ewoc #'delve--header-function)
-      )
-    buf))
+      ;; setting a major mode clears all buffer local variables
+      (setq delve-local-header-info name)
+      (lister-refresh-header-footer lister-local-ewoc)
+      (current-buffer))))
 
 (defun delve--create-tag-query (tags)
   "Create an item searching for nodes matching TAGS."
@@ -428,7 +426,9 @@ Each element can be a tag or a list of tags.")
   "Return a new Delve dashboard buffer."
   (with-temp-message "Setting up dashboard..."
     (let* ((tag-queries (--map (delve--create-tag-query (-list it)) delve-dashboard-tags))
-           (buf         (delve--new-buffer delve-dashboard-name (append tag-queries))))
+           (items       (list  tag-queries
+                               (delve--create-unlinked-query)))
+           (buf         (delve--new-buffer delve-dashboard-name (flatten-tree items))))
       (lister-goto (lister-get-ewoc buf) :first)
       buf)))
 
@@ -478,22 +478,20 @@ to the end, in parentheses."
 (defun delve--select-collection-buffer (prompt)
   "Select Delve buffer, collection, or create a new buffer.
 Use PROMPT as a prompt to prompt the user to choose promptly."
-  (let* ((buffer-suffix     "Switch to buffer")
-         (buffer-alist      (delve--prepare-candidates  (delve-buffer-list)
-                                                        #'buffer-name
-                                                        buffer-suffix))
-         (collection-suffix "Read into new buffer")
-         (collection-alist  (delve--prepare-candidates (delve-unopened-storages)
-                                                       #'identity
-                                                       collection-suffix))
+  (let* ((buffer-suffix     "Existing buffer")
+         (collection-suffix "Open file")
          (dashboard-suffix  "Create")
-         (dashboard-alist   (delve--prepare-candidates '("New Dashboard")
-                                                       #'identity
-                                                       dashboard-suffix))
-         (alist             (append dashboard-alist buffer-alist collection-alist))
-         (new-name          (completing-read prompt alist
-                                             nil nil nil
-                                             'delve--select-history)))
+         (alist (append  (delve--prepare-candidates
+                          (delve-buffer-list) #'buffer-name buffer-suffix)
+                         ;; Dashboard, if not yet open:
+                         (unless (delve--dashboard-buf)
+                           (delve--prepare-candidates
+                            '("Dashboard") #'identity dashboard-suffix))
+                         ;; Storage files:
+                         (delve--prepare-candidates
+                          (delve-unopened-storages) #'identity collection-suffix)))
+         (new-name  (completing-read prompt alist nil nil nil 'delve--select-history)))
+    ;;
     (setq delve--last-selected-buffer
           (if-let ((result (car (alist-get new-name alist nil nil #'string=))))
               (pcase new-name
@@ -626,17 +624,20 @@ non-nil."
     (if prefix
         (switch-to-buffer (delve--add-to-buffer zettels " Insert zettels in buffer or collection: "))
       ;; TODO Warn when list is too big
-      (if as-sublist
-          (lister-insert-sublist-below lister-local-ewoc
-                                       :point
-                                       zettels)
-        (lister-insert-list-at lister-local-ewoc
-                               :point
-                               zettels
-                               nil
-                               (lister-eolp)))
-      (message "Inserted %d Zettels" (length zettels))
-      t)))
+      (let* ((n    (length zettels))
+             (msg  (format "Inserting %d zettels..." n)))
+        (with-temp-message msg
+          (if as-sublist
+              (lister-insert-sublist-below lister-local-ewoc
+                                           :point
+                                           zettels)
+            (lister-insert-list-at lister-local-ewoc
+                                   :point
+                                   zettels
+                                   nil
+                                   (lister-eolp))))
+        (message (concat msg "done"))))
+      t))
 
 (defun delve--maybe-mark-region (ewoc)
   "In EWOC, mark all items in the active region.
@@ -811,8 +812,7 @@ sublist below point."
     (cl-typecase item
       (delve--pile  (setq zettels (delve--pile-zettels item)
                           insertion-type nil))
-      (delve--query (setq zettels
-                          (-map #'delve--zettel-create (funcall (delve--query-fn item)))
+      (delve--query (setq zettels (-map #'delve--zettel-create (funcall (delve--query-fn item)))
                           insertion-type :as-sublist)))
     (if (null zettels)
         (message "No matching zettels found")
@@ -939,13 +939,23 @@ buffer."
 
 ;; Insert node(s)
 
+(defun delve--insert-nodes (ewoc nodes)
+  "Insert NODES as zettel at point in EWOC."
+  (let ((nodes (-map #'delve--zettel-create nodes)))
+    (if (lister-empty-p ewoc)
+        (lister-add ewoc nodes)
+      (let ((item (lister-get-data-at ewoc :point)))
+        (lister-insert-list-at ewoc :point nodes
+                               ;; don't indent if current item is not
+                               ;; a zettel
+                               (and (not (eq 'delve--zettel item)) 0)
+                               (lister-eolp))))))
+
 (defun delve--key--insert-node ()
   "Interactively add node(s) to current buffer's Delve list."
   (interactive)
-  (let* ((nodes (delve--select-nodes #'delve-query-node-list "Insert node:")))
-    (lister-insert-list-at lister-local-ewoc :point
-                           (-map #'delve--zettel-create nodes)
-                           nil (lister-eolp))))
+  (delve--insert-nodes lister-local-ewoc
+                       (delve--select-nodes #'delve-query-node-list "Insert node:")))
 
 (defun delve--key--insert-node-by-tags ()
   "Insert nodes matching user selected tags."
@@ -953,9 +963,7 @@ buffer."
   (let* ((tags (completing-read-multiple " Limit to nodes matching tags:"
                                          (delve-query-tags)))
          (nodes (delve--select-nodes (delve-query-nodes-by-tags tags) "Insert nodes:")))
-    (lister-insert-list-at lister-local-ewoc :point
-                           (-map #'delve--zettel-create nodes)
-                           nil (lister-eolp))))
+    (delve--insert-nodes lister-local-ewoc nodes)))
 
 ;; Collect items into a pile
 
