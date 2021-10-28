@@ -285,18 +285,18 @@ Return the prepared string."
   "Return a list of strings representing ZETTEL."
   (let ((node (delve--zettel-node zettel)))
     (list
-     ;; First line:
+     ;; -- First line:
      (concat
       ;; Maybe mark out of sync:
       (when (delve--zettel-out-of-sync zettel)
         (delve-pp--add-face "* " 'warning))
-      ;; Display node:
-      (delve-pp-fields node '((org-roam-node-title   (:add-face delve-title-face)))))
-     ;; Second line:
-     (delve-pp-fields node '((delve--tags-as-string (:add-face delve-tags-face))))
-     ;; additional Zettel slots:
+      ;; Display node title:
+      (propertize (org-roam-node-title node) 'face 'delve-title-face))
+     ;; -- Second line:
+     (propertize (delve--tags-as-string node) 'face 'delve-tags-face)
+     ;; -- additional Zettel slots:
      (delve--zettel-info zettel)
-     ;; Preview:
+     ;; -- Preview:
      (when-let ((preview (delve--zettel-preview zettel)))
        (split-string (delve--prepare-preview preview) "\n")))))
 
