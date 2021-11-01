@@ -19,23 +19,7 @@
 
 ;;; Commentary:
 
-;; Functions to edit Org Roam files without visiting them.
-
-;; This is a list of functions from v1, they all have to be rewritten
-;; now:
-;; TODO delve-edit-map-keyword
-;; TODO delve-edit-get-tags
-;; TODO delve-edit-get-unused-tags
-;; TODO delve-edit-get-tag-regions
-;; TODO delve-edit-get-new-keyword-position
-;; TODO delve-edit-pos-to-marker
-;; TODO delve-edit-set-tags
-;; TODO delve-edit-do-add-tag
-;; TODO delve-edit-do-remove-tag
-;; TODO delve-edit-add-tag
-;; TODO delve-edit-remove-tag
-;; TODO delve-edit-prompt-add-alias
-;; TODO delve-edit-prompt-remove-alias
+;; Edit Org Roam files without visiting them.
 
 (require 'org-roam)
 (require 'delve-data-types)
@@ -58,17 +42,19 @@
   "Add TAGS to the node in ZETTEL.
 If TAGS is nil, ask the user."
   (delve-edit--with-zettel-node zettel
-    (if tags
-        (org-roam-tag-add tags))
-    (call-interactively 'org-roam-tag-add)))
+    (let ((org-use-tag-inheritance nil))
+      (if tags
+          (org-roam-tag-add tags))
+      (call-interactively 'org-roam-tag-add))))
 
 (defun delve-edit--remove-tags (zettel &optional tags)
   "Remove TAGS from the node in ZETTEL.
 If TAGS is nil, ask the user."
-  (delve-edit--with-zettel-node zettel
-    (if tags
-        (org-roam-tag-remove tags)
-      (call-interactively 'org-roam-tag-remove))))
+    (delve-edit--with-zettel-node zettel
+      (let ((org-use-tag-inheritance nil))
+        (if tags
+            (org-roam-tag-remove tags)
+          (call-interactively 'org-roam-tag-remove)))))
 
 (provide 'delve-edit)
 ;;; delve-edit.el ends here

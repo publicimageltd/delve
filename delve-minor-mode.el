@@ -133,6 +133,18 @@ before."
                                              last-selection)))
     (switch-to-buffer buf)))
 
+(defun delve-minor-mode-tag-add ()
+  "Interactively add tags to the node at point."
+  (interactive)
+  (let ((org-use-tag-inheritance nil))
+    (call-interactively 'org-roam-tag-add)))
+
+(defun delve-minor-mode-tag-remove ()
+  "Interactively remove tags from the node at point."
+  (interactive)
+  (let ((org-use-tag-inheritance nil))
+    (call-interactively 'org-roam-tag-remove)))
+
 ;; * Minor Mode(s)
 
 (defvar delve-minor-mode-map
@@ -143,8 +155,8 @@ before."
     (define-key prefix "c" '(" collect"     . delve-minor-mode-collect))
     (define-key prefix "a" '(" collect all" . delve-minor-mode-collect-all))
     (define-key prefix "f" '(" find node"   . delve-minor-mode-find-node))
-    (define-key prefix "+" '(" add tag"     . org-roam-tag-add))
-    (define-key prefix "-" '(" remove tag"  . org-roam-tag-remove))
+    (define-key prefix "+" '(" add tag"     . delve-minor-mode-tag-add))
+    (define-key prefix "-" '(" remove tag"  . delve-minor-mode-tag-remove))
     (define-key prefix "." '(" set ID"      . org-id-get-create))
     ;;
     (let ((map (make-sparse-keymap)))
