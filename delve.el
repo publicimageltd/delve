@@ -50,6 +50,26 @@
 (declare-function consult-completing-read-multiple "consult")
 (defvar org-roam-node-read--cached-display-format)
 
+;;; * Customizable Variables
+
+(defgroup Delve nil
+  "A zettelkasten tool on top of Org Roam."
+  :group 'org-roam
+  :link '(url-link :tag "Github" "https://github.com/publicimageltd/delve"))
+
+(defcustom delve-dashboard-tags '("Dashboard")
+  "Tags for which to insert query objects in the Dashboard.
+Each element can be a tag or a list of tags."
+  :group 'Delve
+  :type '(repeat (choice (string :tag "Tag")
+                         (repeat (string :tag "Tags")))))
+
+(defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
+                                         "delve-store")
+  "Path to a default directory for storing Delve buffers in."
+  :group 'Delve
+  :type  'directory)
+
 ;;; * Global Variables
 
 (defvar delve-version "0.9"
@@ -67,12 +87,6 @@
 (defvar delve--last-selected-buffer nil
   "Last buffer selected with `delve--select-collection-buffer'.")
 
-(defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
-                                         "delve-store")
-  "Path to a default directory for storing Delve buffers in."
-  :group 'delve
-  :type  'directory)
-
 ;; * Buffer Local Variables
 
 (defvar-local delve-local-storage-file nil
@@ -87,75 +101,80 @@
 
 ;; * Faces
 
+(defgroup Delve-faces nil
+  "Faces used by Delve."
+  :group 'Delve
+  :group 'faces)
+
 (defface delve-header-face
   '((t (:inherit org-document-title)))
   "Face for displaying the header of a Delve list."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-note-face
   '((t (:inherit font-lock-comment-face)))
   "Face for displaying note items in a Delve list."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-info-face
   '((t (:inherit warning)))
   "Face for displaying info items in a Delve list."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-tags-face
   '((t (:inherit org-tag)))
   "Face for displaying roam tags in a Delve list."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-title-face
   '((t (:inherit org-roam-title)))
   "Face for displaying org roam page titles in a Delve list."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-pile-name-face
   '((t (:inherit org-document-title)))
   "Face for displaying the name of a Zettel pile."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-subtype-face
   '((t (:inherit font-lock-constant-face)))
   "Face for displaying the subtype of a Delve item."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-mtime-face
   '((t (:inherit org-document-info-keyword)))
   "Face for displaying the mtime of a Delve item."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-atime-face
   '((t (:inherit org-document-info-keyword)))
   "Face for displaying the atime of a Delve item."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-ctime-face
   '((t (:inherit org-document-info-keyword)))
   "Face for displaying the ctime of a Delve item."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-nbacklinks-face
   '((t (:weight bold)))
   "Face for displaying the number of backlinks to a Delve zettel."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-ntolinks-face
   '((t (:weight bold)))
   "Face for displaying the number of tolinks to a Delve zettel."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-pile-face
   '((t (:inherit org-level-1)))
   "Face for displaying the title of a Delve pile."
-  :group 'delve)
+  :group 'Delve-faces)
 
 (defface delve-query-face
   '((t (:inherit org-level-2)))
   "Face for displaying the title of a Delve query."
-  :group 'delve)
+  :group 'Delve-faces)
 
 ;;; * The Lister Mapper
 
@@ -421,10 +440,6 @@ Return the buffer object."
   "Create an item searching for unlinked nodes."
   (delve--query-create :info "Unlinked nodes"
                        :fn #'delve-query-unlinked))
-
-(defvar delve-dashboard-tags '("Dashboard" "Begriff" "Person")
-  "Tags for which to insert query objects in the Dashboard.
-Each element can be a tag or a list of tags.")
 
 (defun delve--new-dashboard ()
   "Return a new Delve dashboard buffer."
@@ -1056,8 +1071,9 @@ Also pass PREFIX to the corresponding function."
                      current-prefix-arg))
   (cl-typecase item
     (delve--zettel (delve--key--toggle-preview item prefix))
-    (delve--query  (delve--key--insert-query-or-pile item prefix))
-    (delve--pile   (delve--key--insert-query-or-pile item prefix))
+    ;; That's not useful on RET if we have the TAB key:
+;;    (delve--query  (delve--key--insert-query-or-pile item prefix))
+;;    (delve--pile   (delve--key--insert-query-or-pile item prefix))
     (t (user-error "No operation defined for items of that type"))))
 
 ;; * Storing and reading buffer lists in a file
