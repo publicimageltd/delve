@@ -1,570 +1,259 @@
 #+TITLE: delve.el
 
-* NOTE: DONT UPDATE IF YOU USE V1! - Status on Migration to org-roam v2
+=Delve= is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It provides tools to collect,
+inspect and edit Org Roam Nodes in a separate application buffer. It
+helps you to quickly establish and maintain a project-specific subset
+of Org Roam Nodes, e.g. when writing a paper or for collecting
+information on a particular topic. Those subsets (called
+'collections') can stored persistently in separate files. =Delve= also
+offers functions to 'edit' nodes in a =dired=-like manner, e.g. by
+adding or removing tags without having to open the node's file itself.
 
-9/16/21
+The present version is a complete rewrite in response to =Org Roam=
+fundamentally changing its internal structure when migrating from =v1=
+to =v2=. It has grown much more than its author has expected, and thus
+is by no means complete. Please file an issue if there are
+functionalities you miss or if you find an error. Presently,
+development is aiming at covering the complete present set of features
+with automated tests, and new features will only be added if the
+author needs them for his own work.
 
-=Delve= is going to migrate to =v2=. It will not be a perfect copy, since
-the introduction of nodes let the number of Zettel to be searched
-explode. 
+[[./screenshots/delve-intro-tour.gif][Screenshot]]
 
-There will be no smooth transition, however, The problem is that =Delve=
-is heavily dependent on =Lister=, but =Lister= now just has been
-rewritten. /Updating =Lister= will therefore cause that out-dated version
-of =Delve= to break/. As a workaround, I have copied the legacy =Lister=
-code into that repository.
+* Feature List
 
-That new variant, however, is completely untested. I couldn't even
-start it because I do not have the old version of =org-roam= installed,
-and creating a separate .emacs profile for that turned out to be too
-much of a hazzle for me. 
-
-In sum, if you keep on using =Delve= with the outdated version of
-=org-roam=, you can:
-
- - Try that 'integrated' version and hope that it works.
- - If it does not work, use the previous commit and also install the
-   =Lister= branch =archive-version-0.7.2= as a dependency.
-
-The best thing, however, is simply to not upgrade.
-
-* What is Delve?
-This is the documentation for =Delve v0.7.=
-
-Delve is a tool to delve into your [[https://github.com/org-roam/org-roam][org roam zettelkasten]]. Its main
-purpose is to find pages by following links (either backlinks or
-references made in the page itself). Thus you can quickly overview the
-network of interpage relations you have created. For this purpose, you
-can also use the predefined searches which attempt to highlight some
-focal points of this network (e.g., those pages which have the most
-links, or the last modified pages).
-
-Opening Delve the first time, you can browse your zettelkasten by
-ROAM_TAG, or use one of the predefined searches. Further functionality
-will be added.
-
-Delve inherits and extends the functionality from the now deprecated
-[[https://github.com/publicimageltd/org-roam-dashboard][org-roam-dashboard]].
-
-* Contents                                                         :noexport:
-:PROPERTIES:
-:TOC:      :include siblings
-:END:
-
-:CONTENTS:
-- [[#obligatory-screenshot-and-some-explanation][Obligatory screenshot and some explanation]]
-- [[#features][Features]]
-- [[#important-interactive-functions][Important interactive functions]]
-  - [[#main-entry-point-delve-open-or-select][Main entry point: delve-open-or-select]]
-  - [[#most-fundamental-workflows][Most fundamental workflows]]
-  - [[#remote-editing][Remote editing]]
-    - [[#typical-workflow-changing-tags][Typical workflow: Changing tags]]
-  - [[#collecting-items][Collecting items]]
-  - [[#expand-an-item-in-a-new-delve-buffer][Expand an item in a new delve buffer]]
-  - [[#further-useful-commands][Further useful commands]]
-- [[#installation][Installation]]
-  - [[#basic-installation][Basic Installation]]
-  - [[#further-configuration][Further Configuration]]
-    - [[#predefined-searches][Predefined Searches]]
-    - [[#pretty-icons][Pretty Icons]]
-    - [[#evil][Evil]]
-- [[#keybindings-and-commands][Keybindings and Commands]]
-  - [[#delve][Delve]]
-    - [[#keymaps][Keymaps]]
-    - [[#viewing-items-and-expanding-queries][Viewing items and expanding queries]]
-    - [[#navigation-and-ordering][Navigation and ordering]]
-    - [[#collecting][Collecting]]
-    - [[#marking][Marking]]
-    - [[#remote-editing][Remote Editing]]
-    - [[#restoring--refreshing][Restoring / Refreshing]]
-  - [[#delve-minor-mode][Delve minor mode]]
-- [[#customizations][Customizations]]
-- [[#changelog][Changelog]]
-- [[#testing][Testing]]
-- [[#bugs--problems--untested-stuff][Bugs / Problems / Untested Stuff]]
-:END:
-
-* Obligatory screenshot and some explanation
-[[./screenshots/screenshot_last_modified.png]]
-
-On this screenshot, you can see that the user has opened the list of
-the last ten modified pages. On the lower part of the buffer, you can
-see several tags like "Alias" (I have tagged aliased pages for
-debugging purposes), "Begriff" (German for 'concept'), "Dashboard"
-(pages of importance for the current project), "Gedanke" (free
-standing thought), etc. If I want to see the pages with these tags, I
-can move the cursor to that line and press =<TAB>= to expand it. Delve
-will present the same type of list as above.
-
-There's quite some information stuffed into each line. Let's take as
-an example the first page of the list of the last 10 modified pages:
-
-[[./screenshots/detail.png]]
-
-That page has the title *Imagination*. It has been modified on November,
-4th. The icon right beside the date shows that this page is actually
-the result of a search for pages. It is tagged as a concept
-('Begriff'). Since it is on the top of this result list, it is the
-last modified page of the whole database.
-
-As you can see, there are 17 links pointing /from/ that page to some
-other page, and 19 other pages which point /to/ that page (backlinks) on
-the topic of imagination. The type of links is visualized by using
-arrows: 19 pages point to the title, the title points to 17 other
-pages.
-
-If you would want to follow these links, you could move te cursor on the
-page item and press the right or the left cursor key, respectively. A
-sublist would be inserted showing all the links.
-
-Here's an example of such an expanded list:
-
-[[./screenshots/detail2.png]]
-
-The top item is a page with "Criticism of AI" ("Kritik der KI"). There
-are two links pointing to that page, incidentally two article
-reference pages. These page items have a an arrow pointing to the
-right on their very left side, that marks them as "links pointing to
-the top file". The last item is a page for the concept "Artificial
-Intelligence" ("Künstliche Intelligenz"). As the item on its left side
-indicates, that's a link found in the top page ("Criticism of AI")
-itself.
-
-The most important feature is that the user can now look at each of
-these linked pages again, and investigate /their/ links. So we could
-now, for example, look at what pages link to "Artificial Intelligence"
-or what references are made within this page, without leaving Delve.
-
-* Features
-
-Note that this is still a work in progress. See [[#bugs--problems--untested-stuff]] below.
-
- - Display lists of org roam pages (=Zettel) with additional
-   information on backlinks, "tolinks", and modification date.
- - Expand the Zettel item (page) to see backlinks, or links pointing
-   to the zettel, or both.
- - Interactively browse the Zettelkasten according to predefined
-   searches (Last ten modified pages; top linked pages; etc.)
- - Visit the Zettel at point to edit it. Delve provides an interactive
-   command to switch back and forth between the Delve buffers and the
-   org roam buffers.
- - Collect selected items into new buffers, with the ability to edit
-   them (i.e. for preparing outlines).
- - Remote editing: Add or remove tags without leaving the tree view.
- - Additional minor mode (delve-minor-mode) for org roam pages,
-   allowing to open a new Delve buffer with the current org roam page
-   as top item.
-
-* Important interactive functions
-** Main entry point: delve-open-or-select
-
-Bind =delve-open-or-select= to any key. If you call that function, a
-list of predefined searches (which you can customize, of course) is
-presented, along with a list of tag searches for each ROAM_TAG in your
-database. Move to an item and press <TAB>. A list of pages matching
-the search will be inserted below the item (this is called 'expansion'
-in this documentation).
-
-Press =q= to bury the delve buffer.
-
-If you then press =delve-open-or-select= again, you will be presented with a
-list of open delve buffers.
-
-** Most fundamental workflows
-
- + Use navigation keys to move to an item and =q= to bury the buffer. =X=
-   kills the buffer.
- + *Mark* items using 'm' (see also keybindings below).
- + *Move* items manually using =M-up= and =M-down=.
- + Use =<tab>= to either display the results of expanding the item at
-   point (e.g. a search query), or to remove the previously inserted
-   results. In other words, =<tab>= is a toggle.
- + Use =<return>= to visit the zettel at point.
- + Use =+= and =-= to remote edit the =#+ROAM_TAGS= of the page item at
-   point. You can also mark items and then remote edit all marked
-   pages in one rush.
- + Use =C-l= to expand an item in a new buffer, instead of inserting the
-   expansion below point (see below for more explanation).
-
-** Remote editing
-
-One main concept of =delve= is to allow remote editing of zettel pages.
-Thus it is possible to add or remove tags (ROAM_TAGS) without leaving
-the delve buffer. By pressing =+= or =-=, you can add or remove tags from
-the item at point. If there are any marked items, these commands apply
-to them instead.
-
-Pages which have been edited remotely are not immediately
-re-integrated into the org roam database. Thus, all items which have
-been modified are internally marked as being in need of redisplay.
-There is also a visual cue indicating that the item needs to be
-redisplayed:
-
-[[./screenshots/tainted-item.png]]
-
-All item informations will be updated by pressing =.= Note that this
-just updates the information retrieved from the database. If the
-database itself has not adapted the changes yet, the new display will
-present the unmodified item. This is not what you want, so you should
-wait until the database has been updated. Usually, it just takes a few
-seconds to wait until =org roam= has updated the latest changes (it is
-shown in the echo area).
-
-In order to force the redisplay of an item, press =.= on the item, or
-mark several items to redisplay them all.
-
-*** Typical workflow: Changing tags
-
-Imagine you had a lot of pages tagged with the tag '/Readme/'. Now you
-recognize that you should have rather used the tag '/Unread/'. To change
-all pages tagged '/Readme/' to '/Unread/', you can:
-
- 1. Open the tag search for '/Readme/'.
- 2. Move down on the first item and press =C-u m=.
- 3. Press =+= to add the new tag '/Unread/'.
- 4. Press =-= to remove the old tag '/Readme/'.
- 5. Press =.= to update the display of the items.
-
-** Collecting items
-
-It is often useful to collect items in a separate list. You can use
-the function =delve-collect= for this purpose (bound to =c=).
-
-If you press =c= and there are marked items, all marked items will be
-copied into a buffer of your choice. To choose this buffer, a list of
-currently available delve buffers (a.k.a collections) will be
-presented. You can either select one of those or enter the name for a
-new buffer, which will be created on the fly. In any case, Delve will
-switch to that buffer so that you can work with that new collection.
-
-Sometimes, however, it is advisable to just push the items in a new
-buffer and to continue working in the present buffer. To do this, just
-press the prefix key (=C-u=) before calling this command. Pressing =C-u=
-when calling =delve-collect= also preserves the marks on the original
-items. If you want to remove the marks, press =u=.
-
-Note that these copied items will /not/ be automatically updated if you
-edit their tags. If you want them to reflect some later changes,
-update them manually by pressing =*= and =.= in the buffer with the copied
-items.
-
-** Expand an item in a new delve buffer
-
-If you are on a searchable item (e.g. a predefined search or a tag) or
-on a zettel page, pressing =C-l= opens a new delve buffer with the
-results of expanding that item. That is, you will see the results in a
-new buffer instead of cluttering your current list.
-
-If point is on a zettel page and you press =C-u C-l=, that is, if you
-call =C-l= with a prefix arg, then the current sublist this zettel
-belongs to will be inserted in a new buffer.
-
-** Further useful commands
-
- + =M-x delve-kill-all-buffers= will kill all delve buffers. Useful if
-   you have accumulated quite some sublists.
+ - =Dashboard= with customizable queries to have quick access (and
+   overview) of nodes with a certain tags, and to see all nodes with
+   no links.
+ - Insert or delete nodes interactively from the =Delve= buffer, or from
+   any Org Roam file using =delve-minor-mode=.
+ - Re-arrange nodes manually by moving them around, or by creating
+   hierarchical trees.
+ - Preview a node in =Delve=, thus offering a first rough glance at the
+   content of a node without leaving the collection buffer.
+ - Edit the node's tags from within the =Delve= buffer without leaving it.
+ - Insert backlinks or fromlinks of a specific node.
+ - Hide away nodes by creating "piles".
+ - Move marked nodes into a new collection.
 
 * Installation
-** Basic Installation
 
-Delve depends on another tool of mine called [[https://github.com/publicimageltd/lister][lister]]. But neither
-package is available at MELPA yet. So you have to download both packes
-(=delve= and =lister=) in order to make this work. In the following
-example, [[https://github.com/quelpa/quelpa][quelpa]] is used for downloading the package. Alternatively,
-you can download it with another package manager or manually.
+=Delve= requires =lister=, which is available on Melpa. =Delve= itself,
+however, is not (yet?) on Melpa. For the time being, you will have to
+install it manually.
 
-  #+begin_src emacs-lisp
-(use-package lister
-  :quelpa (lister :fetcher git
-		  :url "https://github.com/publicimageltd/lister"))
+Here's an example using =straight.el=:
 
-(use-package delve
-  :quelpa (delve :fetcher git
-		 :url "https://github.com/publicimageltd/delve")
-  :config
-  (use-package delve-minor-mode
+#+begin_src emacs-lisp
+  (use-package delve
+    :straight (:repo "publicimageltd/delve"
+               :host github
+               :type git)
+    :bind
+    ;; the main entry point, offering a list of all stored collections
+    ;; and of all open Delve buffers:
+    (("<f12>" . delve))
     :config
-    (add-hook 'org-mode-hook #'delve-minor-mode-maybe-activate))
-  :bind
-  (("<f12>" . delve-open-or-select)))
-
-  #+end_src
-
-This snippet above also installs the =delve-minor-mode=. It is a local
-minor mode which is only activated if the org mode file visited
-belongs to the org roam database (e.g., is placed with in the org roam
-directory). See [[#delve-minor-mode]] below.
-
-** Further Configuration
-*** Predefined Searches
-
-Delve comes with a set of predefined searches. See the documentation
-of the customizable variable =delve-searches= for more details.
-Basically, you pass a list of keywords which define the search.
-
-A search is made by specialization. Delve provides a universal search
-query which would return /all/ pages, with some additional information
-such as the number of backlinks and to links. Thus to define a search,
-you basically add further constraints which defines the subset you are
-interested in. See the documentation of =delve-db-query-all-zettel= for
-the details.
-
-Here's a list of available fields available in the unconstraint query:
-
-| Field name   | Meaning                                       |
-|--------------+-----------------------------------------------|
-| titles:file  | Filename of the page                          |
-| titles:title | Title of the page                             |
-| tags:tags    | List of tags                                  |
-| files:meta   | Additional information such as mtime or atime |
-| tolinks      | Count of all links going from that page       |
-| backlinks    | Count of all links pointing to that page      |
-|--------------+-----------------------------------------------|
-
-=tags:tags= and =files:meta= are lists and have to parsed. Thus, they
-cannot be used in an SQL constraint. To use these values to produce a
-subset, you must do it with elisp by adding a =:postprocess= function.
-Searches using =:postprocess= will be relatively slow, since all pages
-have to be passed to this function.
-
-Here's an overview of keywords defining a search:
-
-| Keyword      | Meaning                                                              |
-|--------------+----------------------------------------------------------------------|
-| :name        | The display name for the seach item                                  |
-| :constraint  | SQL query (a vector) constraining the generic search                 |
-| :postprocess | Pass result objects to this function                                 |
-| :args        | Values which will be picked up in the constraint (e.g. by using $r1) |
-|--------------+----------------------------------------------------------------------|
-
-A =:constraint= clause is an SQL statement (a vector), as it is used by
-the library =emacsql=, which is used by =org-roam= under the hood. An
-example value would be e.g. =[:where tags:tags :is null]=. This would
-return all pages with no tags associated.
-
-If you want to test the results of a search query, you could use
-something like this:
-
-#+begin_src emacs-lisp
-  (delve-operate-search
-   (delve-make-page-search :constraint [:order-by (desc backlinks) :limit 3]))
+    ;; set meaningful tag names for the dashboard query
+    (setq delve-dashboard-tags '("Tag1" "Tag2"))
+   ;; turn on delve-minor-mode when org roam file is opened:
+    (delve-global-minor-mode))
 #+end_src
 
-*** Pretty Icons
-For pretty icons, install [[https://github.com/domtronn/all-the-icons.el][all-the-icons.el]]. If you also want pretty
-icons when calling =delve-open-or-select=, use the following option:
+* The notion of a 'collection'
 
-  #+begin_src emacs-lisp
-(setq delve-use-icons-in-completions t) ;; per default nil
-#+end_src
+The core idea of Delve is to allow you to add stuff to "collections".
+A collection is a list of nodes, either stored or currently visited in
+a =Delve= buffer. All commands which ask you to do something "with a
+collection", e.g. to add a node to a collection, ask you to select the
+collection to act on. In these cases, you can always choose both a
+currently open =Delve= buffer or a storage file. Selecting a storage
+file effectively causes the file to be read in a new buffer, just
+reading it 'on the fly'.
 
-*** Evil
+*Example*: Imagine you have a stored collection of nodes referring to
+the topic Artificial Intelligence. Then when visiting an Org Roam
+file, you find an interesting node which you would like to add to that
+collection. You press =M-n c= (=delve-minor-mode-collect=) and select the
+file which contains that collection. Now a new =Delve= buffer has been
+created in the background and the node at point been added to it. To
+explicitly visit that buffer, use =C-u f12= (=C-u M-x delve=).
 
-=evil-mode= users should add the following snippet to their
-configuration to use the default keybinding:
+Don't forget to save the newly changed buffer; there's no warning yet
+that the content has changed (will come).
 
-#+begin_src emacs-lisp
-(evil-set-initial-state 'delve-mode 'emacs)
-#+end_src
+* Storing collections in files
 
-There is [[https://github.com/publicimageltd/delve/issues/3][an issue thread]] where you can post, comment and discuss
-possible ways to integrate =delve= into =evil=. Eventually, it will be
-merged into the source code, but since I don't use =evil=, I won't be
-hurrying it. (Remember, that's a hobby horse!)
+You can save or load any =Delve= buffer by using =M-x delve-open-buffer=
+(or =C-x f= from within a =Delve= buffer) or =M-x delve-save-buffer= (or =C-x
+s=, respectively). 
 
-* Keybindings and Commands
+There is a default storage directory defined in the variable
+=delve-store-directory=. It defaults to the directory =delve-store= within
+the local emacs user directory.
+
+Currently, storage is only possible within this directory. It is
+planned to make storage more flexible.
+
+* How items are presented
+
+All nodes which refer to a file (and not to a subheading) look like that:
+
+[[./screenshots/file-node-no-tags.png][File node]]
+
+Here the node has been created as a backlink from the node "Künstliche
+Intelligenz (AI)". If you press RET an the button, =Delve= will look for
+that node and jump to it if it exists.
+
+The other type of nodes (i.e., headings) look like that:
+
+[[./screenshots/heading-node-tags.png][Heading node]]
+
+Also note the list of tags which are associated with that specific node.
+
+[[./screenshots/query.png][ Query]]
+
+And that's a query. Press =<TAB>= to add its contents into the current
+buffer's collection.
+
+* Keybindings / Usage
 
 ** Delve
 
-*** Keymaps
+*** Navigation / The Tab Key
 
-On standard emacs, use the usual navigation keys. Additionally, there
-are a variety of kebindings predefined in =delve-mode-map=. Change these
-bindings to your liking.
+Use the usual nagivation commands.
 
-*** Viewing items and expanding queries
+=<TAB>= does the following:
+ - If there is a sublist (indented nodes) below the node at point,
+   hide them outline-style.
+ - If the current node hides a sublist, open it.
+ - If there is no sublist, and the current item is a Zettel, insert
+   all backlinks and fromlinks as sublist.
+ - If there is no sublist, and the current item is a query, execute
+   the query and insert the results as a sublist.
+ - If there is no sublist, and the current item is a a pile, insert
+   the contents of the pile and remove the pile (!).
 
-| Key     | Function                                             |
-|---------+------------------------------------------------------|
-| ENTER   | Visit zettel at point                                |
-| TAB     | Expand on zettel or search at point, or hide it      |
-| C-l     | Open a new delve buffer expanding the item at point. |
-| C-u C-l | Open a new delve buffer with the current sublist.    |
-|---------+------------------------------------------------------|
+*** Preview of visit the node at point
 
-*** Navigation and ordering
+[[./screenshots/node-with-preview.png][Node with preview and links]]
 
-| Key                       | Function                                                   |
-|---------------------------+------------------------------------------------------------|
-| LEFT                      | Insert list with all backlinks pointing to zettel at point |
-| RIGHT                     | Insert list with all links in the zettel at point          |
-| M-up                      | Move the current item up.                                  |
-| M-down                    | Move the current item down.                                |
-| M-left, M-right           | Indent or unindent item at point.                          |
-| s                         | Sort the sublist at point                                  |
-| M-x delve-filter-by-tag   | Filter all buffer items by tag                             |
-| M-x delve-filter-by-title | Filter all buffer items by title                           |
-| M-x delve-filter-remove   | Remove any filter                                          |
-|---------------------------+------------------------------------------------------------|
+| Command / Keys | Function                                     |
+|----------------+----------------------------------------------|
+| o, C-return    | Visit the node at point  (its original file) |
+| RET            | If on a node, toggle preview                  |
 
-*** Collecting
+The preview buffer recognizes all id links in the previewed text and
+turns them into 'buttons'. Press RET or click on these buttonized
+links to visit the node they are referring to. Press =i= on the links in
+the preview to directly insert the node referred to after the node at
+point.
 
-| Key | Function                                                            |
-|-----+---------------------------------------------------------------------|
-| c   | Collect marked items or item at point into a new or existing buffer |
-|-----+---------------------------------------------------------------------|
+*** Marking / unmarking nodes
 
-*** Marking
+| Command / Keys | Function                                               |
+|----------------+--------------------------------------------------------|
+| m | Mark node at point and move to next one
+| C-u m | Mark all nodes below current nodes, if they form a "sublist"
+| u | Unmark node at point and move to next one
+| C-u u | Unmark sublist bewlow
 
-| Key   | Function                                                             |
-|-------+----------------------------------------------------------------------|
-| m     | Mark the item at point, or unmark it.                                |
-| C-u m | Mark or unmark the whole sublist to which the item at point belongs. |
-| u     | Remove all marks in the buffer.                                      |
-| *     | Mark the whole buffer.                                               |
-|-------+----------------------------------------------------------------------|
+*** Choosing and inserting nodes 
 
+Per default, offer to insert a node from a given list of nodes per
+completion. If =counsel= is installed, all of the following commands
+allow to insert multiple nodes at once. Support for other completion
+packages is lacking, contributions are welcome.
 
-*** Remote Editing
+| Command / Keys | Function                                               |
+|----------------+--------------------------------------------------------|
+| nn             | Insert new node(s)                                     |
+| nt             | Insert node(s), limit selection to a specific tag or tags |
+| nb             | Insert node(s) from all backlinks of that node below   |
+| nf             | insert node(s) from all fromlinks of that node below   |
 
-| Key | Function                                                       |
-|-----+----------------------------------------------------------------|
-| +   | Add tag to the zettel at point, or to all marked items.        |
-| -   | Remove tag from the zettel at point, or from all marked items. |
-|-----+----------------------------------------------------------------|
+*** Insert nodes directly
 
-*** Restoring / Refreshing
+| Command / Keys | Function                                                                |
+|----------------+-------------------------------------------------------------------------|
+| tab            | If current node is not hiding a sublist, insert backlinks and fromlinks |
+| f, C-right     | Insert fromlinks of current node as a sublist                           |
+| b, C-left      | Insert backlinks to current node as a sublist                           |
 
-| Key     | Function                                                                                       |
-|---------+------------------------------------------------------------------------------------------------|
-| g       | Update (redisplay) all items in the buffer (might take some time).                             |
-| .       | Update (redisplay) the item at point, all marked items and all items which are not up-to-date. |
-| r       | Revert buffer to the original list, updating it.                                               |
-|---------+------------------------------------------------------------------------------------------------|
+*** Deleting nodes
 
-For integrating =delve= into =evil=, see the [[#evil][section above]].
+| Command / Keys | Function                             |
+|----------------+--------------------------------------|
+| <delete>       | Delete marked nodes or node at point |
 
-** Delve minor mode
+*** Refresh / Update
 
-This is a local minor mode which adds some convenience key bindings to
-the org roam page buffer.
+| Command / Keys | Function                                           |
+|----------------+----------------------------------------------------|
+| g              | Update all nodes marked as "out of sync" (with a star) |
+| C-u g          | Force update node at point         |
 
-Per default, this submap is mapped to the prefix =C-c d=. This yields:
+*** Piling Zettel
 
+Like on any good real desktop, you can pile the Zettels:
 
-| Key | Function                                                                 |
-|-----+--------------------------------------------------------------------------|
-| C-c d d | Open a new delve buffer with the current page as top item, and expand it |
-| C-c d + | Add a tag.                                                               |
-| C-c d - | Remove a tag.                                                            |
-|-----+--------------------------------------------------------------------------|
+| Command / Keys | Function                                        |
+|----------------+-------------------------------------------------|
+| m, u           | Mark or unmark first the nodes you want to pils |
+| p              | Then create a pile                              |
+| i              | Insert contents of pile and remove the pile     |
 
+If you press =p= while the region is active, pile the nodes in that
+region.
 
-Using =C-c d d= in an org-roam buffer is particularly useful: It
-presents all links from the current page as a delve list. See, for
-example, the following example of a page with two backlinks (and no
-links from the page itself):
+To insert a pile, either press =<TAB>= or =i=.
 
-[[./screenshots/example-backlinks-org-roam-page.png]]
+*** Remote Editing of Org Roam Nodes 
 
-Pressing =C-c d d= creates a tree representation of that buffer:
+| Command / Keys | Function                              |
+|----------------+---------------------------------------|
+| +              | Add tag to the current node at point  |
+| -              | Remove tag from current node at point |
 
-[[./screenshots/example-backlinks.png]]
+TODO: In further versions, =+= and =-= will also apply to marked nodes.
 
-The first two items in this list are the backlinks (in the right part
-of the org roam buffer ). The other, links with an right arrow
-pointing to the left, are those links which point /from/ the current
-page to another page (i.e., a link to the page titled "Kreativität"
-("Creativity"). Each of these linked pages is displayed with /their/
-respective links, so that the user could now expand on them to dive
-deeper into the Zettelkasten.
+** Delve Minor Mode
+
+If you enable the =delve-global-minor-mode=, a =delve-minor-mode= will be
+locally enabled when visting an Org Roam file. This binds some keys
+which facilitate 'collecting' stuff. All keys are on a prefix map
+which defaults to =M-n=. You can change the bindings by just setting
+the prefix map:
+
+#+begin_src emacs-lisp
+  ;; set this /before/ loading Delve!, e.g. in the :init section of a
+  ;; use-package declaration:
+    (setq delve-minor-mode-prefix-key (kbd "C-c d"))
+#+end_src
+
+| Command / Keys | Function                                                     |
+|----------------+--------------------------------------------------------------|
+| M-n .          | Create ID link for the current heading                       |
+| M-n +          | Add tag to the heading at point                              |
+| M-n -          | Remove tag from the heading at point                         |
+| M-n c          | Add node at point to a Delve collection                      |
+| M-n a          | Add all nodes of current Org Roam file to a Delve collection |
+| M-n f          | Find the node at point in currently open Delve buffers       |
+
+It is planned to enable the collection keys also in =Org Roam Mode=
+buffers (TODO).
+
 
 * Customizations
 
-See =M-x customize-group delve= for a list of customizable variables,
-including the searches presented in the initial buffer.
+: delve-dashboard-tags 
 
+List of strings (or of lists of strings), from which the initial
+Dashboard queries are built. E.g., with the setting =(setq
+delve-dashboard-tags '("relevant"))=; the Dashboard will have a query
+for all Delve nodes tagged with the tag =relevant=.
 
 * Changelog
-:PROPERTIES:
-:TOC:      :depth 0
-:END:
 
-** Current pre-release version
-
-** 0.7
- + =Delve= is now using =Lister= v 0.7, so we upgrade =Delve= accordingly in
-   order to avoid confusion.
-
-** 0.6
-
-*** New Features
-
- + Use =M-up=, =M-down, M-left, M-right= to move items.
- + Add support for sorting (bound to =s=)..
- + Marked items can now be moved into a separate buffer (=M-x
-   delve-collect=)
- + Add basic support for filtering (not on keyboard yet, try =M-x
-   delve-filter-by-=).
-
-*** Little improvements
-
- + =delve-open-or-select= now does not offer the current buffer for
-   selection, if it is a delve buffer
- + Behavior of =C-l= is now more consistent
- + Dependency on lister 0.6
-
-** 0.5
-
-*** Under the hood
-
- + Added support of several timestamps (atime, ctime, mtime). Thanks
-   to github user @natask for the PR.
- + Rewrote the pretty printing of the line
- + Added tests
- + Switched from `makem.sh` to `Eldev`
-
-*** Enhancements
-
- + Adding and removing tags now also applies to marked list items, not
-   only to the item at point.
- + All sublists are now displayed in its own new delve buffer.
- + Actions displayed when calling =delve-open-or-select= are now
-   customizable. See the documentation string of =delve-action= for
-   more details.
- + List titles do not use icons anymore (for easier completion).
- + Predefined searches are now defined on the fly and thus can be
-   changed easier.
-
-*** Fixes
- + Include ID links.
-
-** 0.3 Initial release.
-
-* Testing
-
-If you find bugs, first test if you can replicate it in a clean
-environment. This is easy if you install [[https://github.com/doublep/eldev][Eldev]]. You can open =Delve= in
-an isolated environment with a test database (in =/tmp/=). Just call the
-script =./interactive-test.sh= from within the directory where the =Eldev=
-file is located.
-
-Delve uses =Eldev= because one is an anagram of the other.
-
-
-* Bugs / Problems / Untested Stuff
-
- - *Aliases* are not recognized. Sometimes this leads to undesireable
-   results, because you just see the Zettel with the same title listed
-   twice or even more often. An algorithm to effectively identify
-   duplicates is on the way.
- - There is a general problem with *duplicate items*, not related to
-   aliases. I could not find out its source yet.
-
-
-# Local Variables:
-# eval: (require 'org-make-toc)
-# before-save-hook: org-make-toc
-# org-export-with-properties: ()
-# org-export-with-title: t
-# End:
+ - 9.1 Complete rewrite; now based on Org Roam =v2=.
