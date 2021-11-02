@@ -102,7 +102,7 @@ planned to make storage more flexible.
 
 All nodes which refer to a file (and not to a subheading) look like that:
 
-[[./screenshots/file-node-no-tags.png][File node]]
+[[./screenshots/file-node-no-tags.png]]
 
 Here the node has been created as a backlink from the node "Künstliche
 Intelligenz (AI)". If you press RET on the button linking to that
@@ -110,11 +110,11 @@ original node, =Delve= will look for it and jump to it if it exists.
 
 The other type of nodes (i.e., headings) looks like that:
 
-[[./screenshots/heading-node-tags.png][Heading node]]
+[[./screenshots/heading-node-tags.png]]
 
 Also note the list of tags which are associated with that specific node.
 
-[[./screenshots/query.png][ Query]]
+[[./screenshots/query.png]]
 
 And that's a query. Press =<TAB>= to add its contents into the current
 buffer's collection.
