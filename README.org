@@ -21,7 +21,7 @@ only be added if the author needs them for his own work, or if it
 turns out that the intended use cases are too complicated or not
 useful.
 
-[[./screenshots/delve-intro-tour.gif]]
+[[./screenshots/delve-intro-tour.gif][Screenshot]]
 
 * Feature List
 
