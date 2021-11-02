@@ -1,22 +1,25 @@
 #+TITLE: delve.el
 
-=Delve= is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It provides tools to collect,
-inspect and edit Org Roam Nodes in a separate application buffer. It
-helps you to quickly establish and maintain a project-specific subset
-of Org Roam Nodes, e.g. when writing a paper or for collecting
-information on a particular topic. Those subsets (called
-'collections') can stored persistently in separate files. =Delve= also
-offers functions to 'edit' nodes in a =dired=-like manner, e.g. by
+=Delve= (currently version =0.9=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
+provides tools to collect, inspect and edit Org Roam Nodes in a
+separate application buffer. It helps you to quickly establish and
+maintain a project-specific subset of Org Roam Nodes, e.g. when
+writing a paper or for collecting information on a particular topic.
+Those subsets (called 'collections') can be stored persistently in
+separate files. =Delve= also offers functions to 'edit' nodes, e.g. by
 adding or removing tags without having to open the node's file itself.
 
 The present version is a complete rewrite in response to =Org Roam=
 fundamentally changing its internal structure when migrating from =v1=
-to =v2=. It has grown much more than its author has expected, and thus
-is by no means complete. Please file an issue if there are
-functionalities you miss or if you find an error. Presently,
-development is aiming at covering the complete present set of features
-with automated tests, and new features will only be added if the
-author needs them for his own work.
+to =v2=. It has grown much more than its author has expected. Please
+file an issue if there are functionalities you miss or if you find an
+error. Also feel free to discuss conceptual issues. 
+
+Upcoming changes: Presently, development is mostly aiming at covering
+the present set of features with automated tests. New features will
+only be added if the author needs them for his own work, or if it
+turns out that the intended use cases are too complicated or not
+useful.
 
 [[./screenshots/delve-intro-tour.gif][Screenshot]]
 
@@ -62,17 +65,17 @@ Here's an example using =straight.el=:
 
 * The notion of a 'collection'
 
-The core idea of Delve is to allow you to add stuff to "collections".
-A collection is a list of nodes, either stored or currently visited in
-a =Delve= buffer. All commands which ask you to do something "with a
-collection", e.g. to add a node to a collection, ask you to select the
-collection to act on. In these cases, you can always choose both a
-currently open =Delve= buffer or a storage file. Selecting a storage
-file effectively causes the file to be read in a new buffer, just
-reading it 'on the fly'.
+The core idea of Delve is to allow you to add stuff to "collections",
+and to edit those. A collection is a list of nodes, either stored in a
+file or currently visited in a =Delve= buffer. All commands which ask
+you to do something "with a collection", e.g. to add a node to a
+collection, first ask you to select the collection to act on. In these
+cases, you can always choose both an open =Delve= buffer or a
+storage file. Selecting a storage file effectively causes the file to
+be read in a new buffer, reading it 'on the fly'.
 
 *Example*: Imagine you have a stored collection of nodes referring to
-the topic Artificial Intelligence. Then when visiting an Org Roam
+the topic /Artificial Intelligence/. Then when visiting an Org Roam
 file, you find an interesting node which you would like to add to that
 collection. You press =M-n c= (=delve-minor-mode-collect=) and select the
 file which contains that collection. Now a new =Delve= buffer has been
@@ -102,10 +105,10 @@ All nodes which refer to a file (and not to a subheading) look like that:
 [[./screenshots/file-node-no-tags.png][File node]]
 
 Here the node has been created as a backlink from the node "Künstliche
-Intelligenz (AI)". If you press RET an the button, =Delve= will look for
-that node and jump to it if it exists.
+Intelligenz (AI)". If you press RET on the button linking to that
+original node, =Delve= will look for it and jump to it if it exists.
 
-The other type of nodes (i.e., headings) look like that:
+The other type of nodes (i.e., headings) looks like that:
 
 [[./screenshots/heading-node-tags.png][Heading node]]
 
@@ -152,12 +155,12 @@ point.
 
 *** Marking / unmarking nodes
 
-| Command / Keys | Function                                               |
-|----------------+--------------------------------------------------------|
-| m | Mark node at point and move to next one
-| C-u m | Mark all nodes below current nodes, if they form a "sublist"
-| u | Unmark node at point and move to next one
-| C-u u | Unmark sublist bewlow
+| Command / Keys | Function                                                     |
+|----------------+--------------------------------------------------------------|
+| m              | Mark node at point and move to next one                      |
+| C-u m          | Mark all nodes below current nodes, if they form a "sublist" |
+| u              | Unmark node at point and move to next one                    |
+| C-u u          | Unmark sublist bewlow                                        |
 
 *** Choosing and inserting nodes 
 
@@ -166,12 +169,12 @@ completion. If =counsel= is installed, all of the following commands
 allow to insert multiple nodes at once. Support for other completion
 packages is lacking, contributions are welcome.
 
-| Command / Keys | Function                                               |
-|----------------+--------------------------------------------------------|
-| nn             | Insert new node(s)                                     |
+| Command / Keys | Function                                                  |
+|----------------+-----------------------------------------------------------|
+| nn             | Insert new node(s)                                        |
 | nt             | Insert node(s), limit selection to a specific tag or tags |
-| nb             | Insert node(s) from all backlinks of that node below   |
-| nf             | insert node(s) from all fromlinks of that node below   |
+| nb             | Insert node(s) from all backlinks of that node below      |
+| nf             | insert node(s) from all fromlinks of that node below      |
 
 *** Insert nodes directly
 
@@ -256,4 +259,4 @@ for all Delve nodes tagged with the tag =relevant=.
 
 * Changelog
 
- - 9.1 Complete rewrite; now based on Org Roam =v2=.
+ - 0.9 Complete rewrite; now based on Org Roam =v2=.
