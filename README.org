@@ -143,7 +143,7 @@ Use the usual nagivation commands.
 
 *** Preview of visit the node at point
 
-[[./screenshots/node-with-preview.png][Node with preview and links]]
+[[./screenshots/node-with-preview.png]]
 
 | Command / Keys | Function                                     |
 |----------------+----------------------------------------------|
