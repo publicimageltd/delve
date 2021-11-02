@@ -247,7 +247,6 @@ the prefix map:
 It is planned to enable the collection keys also in =Org Roam Mode=
 buffers (TODO).
 
-
 * Customizations
 
 : delve-dashboard-tags 
@@ -256,6 +255,17 @@ List of strings (or of lists of strings), from which the initial
 Dashboard queries are built. E.g., with the setting =(setq
 delve-dashboard-tags '("relevant"))=; the Dashboard will have a query
 for all Delve nodes tagged with the tag =relevant=.
+
+* Upcoming 
+
+This is a list of stuff I intend to add (soonish):
+
+ - Save all stores with suffix '.delve'.
+ - Do not restrict storage to one directory; use list of directories instead.
+ - Remote editing on all marked lists.
+ - Make minor mode collection functions also work in org roam mode buffer.
+ - Add 'modified' flag and show it in the header.
+ - Add sorting according to title and mtime.
 
 * Changelog
 
