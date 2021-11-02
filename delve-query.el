@@ -203,11 +203,12 @@ query `delve-query--super-query' for allowed fields."
   (seq-sort #'string< (seq-uniq (mapcar #'car (delve-query [:select :distinct [tag] :from tags])))))
 
 (defun delve-query-nodes-by-id (id-list)
-  "Return all nodes in ID-LIST."
+  "Return all nodes in ID-LIST sorted by the node's title."
   (with-temp-message (format "Querying database for %d nodes..." (length id-list))
     (delve-query-do-super-query
      (concat delve-query--super-query
-             (format "HAVING id IN (%s) ORDER BY title" (delve-query--scalar-strings id-list))))))
+             (format "HAVING id IN (%s) ORDER BY title"
+                     (delve-query--scalar-strings id-list))))))
 
 (defun delve-query-node-by-id (id)
   "Return node with ID."

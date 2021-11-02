@@ -78,6 +78,8 @@ suffice to fully reconstruct the complete item."
                           :zettels (mapcar #'delve-store--tokenize-object
                                            (delve--pile-zettels delve-object))))
      (delve--note   (list :text  (delve--note-text delve-object)))
+     (delve--query  (list :info  (delve--query-info delve-object)
+                          :fn    (delve--query-fn   delve-object)))
      (delve--info   (list :text  (delve--info-text delve-object))))))
 
 (defun delve-store--parse-tokenized-object (id-hash elt)
@@ -87,7 +89,7 @@ Use ID-HASH to get the nodes by their ID."
     (`(delve--zettel :id ,id)
      (if-let ((node (gethash id id-hash)))
          (delve--zettel-create node)
-       (delve--info-create :text (format "Could not create zettel with ID %s" id))))
+       (delve--info-create :text (format "Could not create zettel with ID '%s'" id))))
     ;;
     (`(delve--pile :name ,name :zettels ,zettels)
      (delve--pile-create :name name
@@ -95,6 +97,9 @@ Use ID-HASH to get the nodes by their ID."
                                    (apply-partially
                                     #'delve-store--parse-tokenized-object id-hash)
                                    zettels)))
+    ;;
+    (`(delve--query :info ,info :fn ,fn)
+     (delve--query-create :info info :fn fn))
     ;;
     (`(delve--note :text ,text)
      (delve--note-create :text text))
@@ -133,14 +138,12 @@ Use ID-HASH to get the nodes by their ID."
     (flatten-tree)))
 
 (defun delve-store--prefetch-ids (l)
-  "Return all nodes referred to in L as a hash table."
-  (let* ((ids    (delve-store--get-all-ids l))
-         (nodes  (delve-query-nodes-by-id ids))
-         (table (make-hash-table :test 'equal)))
-    (while ids
-      (puthash (car ids) (car nodes) table)
-      (setq ids (cdr ids)
-            nodes (cdr nodes)))
+  "Return all nodes referred to in token list L as a hash table."
+  (let ((nodes  (delve-query-nodes-by-id (delve-store--get-all-ids l)))
+        (table  (make-hash-table :test 'equal)))
+    (while nodes
+      (puthash (org-roam-node-id (car nodes)) (car nodes) table)
+      (setq nodes (cdr nodes)))
     table))
 
 ;; Parse and create Delve objects:
