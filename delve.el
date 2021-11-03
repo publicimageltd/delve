@@ -408,7 +408,12 @@ Return the prepared string."
 (defun delve--storage-files (&optional full-path)
   "Return all storage file names.
 Only return the file name relative to `delve-store-directory'.
-With optional argument FULL-PATH return the full path."
+With optional argument FULL-PATH return the full path.
+If `delve-store-directoy' does not exist, create it."
+  (when (not (file-exists-p delve-store-directory))
+    (if (y-or-n-p (format "Storage directory %s does not exist.  Create it? " delve-store-directory))
+        (make-directory delve-store-directory t)
+      (error "Storage directory %s does not exist" delve-store-directory)))
   (directory-files delve-store-directory full-path (rx string-start (not "."))))
 
 (defun delve--create-buffer-name (name)
