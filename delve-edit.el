@@ -38,14 +38,18 @@
            (goto-char (delve--zettel-point ,zettel))
            ,@body)))))
 
-(defun delve-edit--add-tags (zettel &optional tags)
-  "Add TAGS to the node in ZETTEL.
-If TAGS is nil, ask the user."
-  (delve-edit--with-zettel-node zettel
-    (let ((org-use-tag-inheritance nil))
-      (if tags
-          (org-roam-tag-add tags))
-      (call-interactively 'org-roam-tag-add))))
+
+(defun delve-edit--add-tags (zettels &optional tags)
+  "Add TAGS to all nodes in ZETTELS.
+ZETTELS must be a zettel object or a list of zettel objects.  If
+TAGS is nil, ask the user first.  Add all TAGS to each
+zettel."
+  (let ((org-use-tag-inheritance nil)
+        (zettels (-list zettels))
+        (tags    (or tags (completing-read-multiple "Add tag(s): " (org-roam-tag-completions)))))
+    (cl-dolist (zettel zettels)
+      (delve-edit--with-zettel-node zettel
+        (org-roam-tag-add tags)))))
 
 (defun delve-edit--remove-tags (zettel &optional tags)
   "Remove TAGS from the node in ZETTEL.

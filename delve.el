@@ -635,7 +635,25 @@ EWOC or POS, if supplied.  Skip any typechecking if TYPES is nil."
       (if (or (not types)
               (apply #'delve--type-p item (-list types)))
           item
-        (error "The item at point is not of the right types for that command")))))
+        (error "The item at point is not of the right type for that command")))))
+
+(defun delve--current-item-or-marked (&optional types)
+  "Get either all marked items or the item at point, marking it.
+Always return a list.  TYPES is a type symbol or a list of type
+symbols.  If on of the items is not of type TYPES, throw an
+error."
+  (let ((ewoc lister-local-ewoc))
+    (unless ewoc
+      (error "Command must be called in a Delve buffer"))
+    (delve--maybe-mark-region ewoc)
+    (unless (lister-items-marked-p ewoc)
+      (lister-mark-unmark-at ewoc :point t))
+    (let ((items (-flatten (lister-get-marked-list ewoc))))
+      (when types
+        (cl-dolist (item items)
+          (unless (apply #'delve--type-p item (-list types))
+            (error "The item at point is not of the right type for that command"))))
+      items)))
 
 (defun delve--insert-or-open-zettels (zettels &optional prefix as-sublist)
   "Insert ZETTELS in the current Delve buffer, at point.
@@ -704,20 +722,18 @@ passed to completing read."
 ;; argument even if it is not used, so that it can be used by
 ;; delve--key--dispatch.
 
-;; TODO Write a transient for more comfy editing
-;; TODO Test function interactively
-;; TODO Handle syncing
-(defun delve--key--add-tags (zettel &optional prefix)
-  "Add the tags of the ZETTEL at point.
+(defun delve--key--add-tags (zettels &optional prefix)
+  "Add tags to all marked ZETTELS or the zettel at point.
 Optional argument PREFIX is currently not used."
-  (interactive (list (delve--current-item 'delve--zettel)))
+  (interactive (list (delve--current-item-or-marked 'delve--zettel)))
   (ignore prefix)
-  (delve-edit--add-tags zettel)
-  (setf (delve--zettel-out-of-sync zettel) t)
-  (lister-refresh-at lister-local-ewoc :point))
+  (delve-edit--add-tags zettels)
+  (lister-walk-marked-nodes lister-local-ewoc
+                            (lambda (ewoc node)
+                              (setf (delve--zettel-out-of-sync (lister-node-get-data node)) t)
+                              (lister-mark-unmark-at ewoc node nil)
+                              (lister-refresh-at ewoc node))))
 
-;; TODO Test function interactively
-;; TODO Handle syncing
 (defun delve--key--remove-tags (zettel &optional prefix)
   "Remove the tags of the ZETTEL at point.
 Optional argument PREFIX is currently not used."
