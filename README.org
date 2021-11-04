@@ -164,6 +164,9 @@ point.
 | C-u m          | Mark all nodes below current nodes, if they form a "sublist" |
 | u              | Unmark node at point and move to next one                    |
 | C-u u          | Unmark sublist bewlow                                        |
+| U              | Unmark all items                                             |
+
+Most functions which work with "marked nodes" also accept regions. 
 
 *** Choosing and inserting nodes 
 
@@ -198,7 +201,7 @@ packages is lacking, contributions are welcome.
 | Command / Keys | Function                                           |
 |----------------+----------------------------------------------------|
 | g              | Update all nodes marked as "out of sync" (with a star) |
-| C-u g          | Force update node at point         |
+| C-u g          | Force update of marked nodes or node at point |
 
 *** Piling Zettel
 
@@ -217,12 +220,20 @@ To insert a pile, either press =<TAB>= or =i=.
 
 *** Remote Editing of Org Roam Nodes 
 
-| Command / Keys | Function                              |
-|----------------+---------------------------------------|
-| +              | Add tag to the current node at point  |
-| -              | Remove tag from current node at point |
+| Command / Keys | Function               |
+|----------------+------------------------|
+| +              | Add tag(s) remotely    |
+| -              | Remove tag(s) remotely |
 
-TODO: In further versions, =+= and =-= will also apply to marked nodes.
+Remote editing either applies to all marked nodes and the nodes in the
+currently active region, or, if nothing is marked, to the node at
+point.
+
+If editing multiple nodes, you can choose between all tags which are
+present in all nodes (union of sets). Attempts to remove a tag in a node
+which does not have this tag is silently skipped.
+
+Press =g= to refresh after editing.
 
 ** Delve Minor Mode
 
@@ -265,7 +276,7 @@ This is a list of stuff I intend to add (soonish):
 
  - Save all stores with suffix '.delve'.
  - Do not restrict storage to one directory; use list of directories instead.
- - Remote editing on all marked lists.
+ - DONE +Remote editing on all marked lists.+
  - Make minor mode collection functions also work in org roam mode buffer.
  - Add 'modified' flag and show it in the header.
  - Add sorting according to title and mtime.
