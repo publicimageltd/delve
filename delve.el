@@ -552,11 +552,14 @@ anything; that's up to the calling function."
   (when-let* ((filelist (-map #'delve--zettel-file zettels)))
     (cl-dolist (file (seq-uniq filelist #'string=))
       (org-roam-db-update-file file))
-    (cl-dolist (z zettels)
-      (setf (delve--zettel-node z)       (delve-query-node-by-id (delve--zettel-id z))
-            (delve--zettel-out-of-sync z) nil)
-      (when (delve--zettel-preview z)
-        (setf (delve--zettel-preview z)  (delve--get-preview-contents z))))))
+    ;; we first prefetch all nodes in one query, then update the
+    ;; zettel objects each one by one:
+    (let ((hash (delve-store--prefetch-ids (-map #'delve--zettel-id zettels))))
+      (cl-dolist (z zettels)
+        (setf (delve--zettel-node z)       (gethash (delve--zettel-id z) hash)
+              (delve--zettel-out-of-sync z) nil)
+        (when (delve--zettel-preview z)
+          (setf (delve--zettel-preview z)  (delve--get-preview-contents z)))))))
 
 (defun delve--out-of-sync-p (node)
   "Check if NODE has a zettel item which is out of sync."
