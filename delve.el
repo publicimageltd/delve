@@ -558,26 +558,11 @@ anything; that's up to the calling function."
       (when (delve--zettel-preview z)
         (setf (delve--zettel-preview z)  (delve--get-preview-contents z))))))
 
-(defun delve--refresh-nodes (ewoc nodes)
-  "Redisplay the EWOC nodes NODES."
-  (when nodes
-    (cl-dolist (n nodes)
-      (setf (lister--item-marked (ewoc-data n)) nil))
-    (apply #'ewoc-invalidate ewoc nodes)))
-
 (defun delve--out-of-sync-p (node)
   "Check if NODE has a zettel item which is out of sync."
   (let ((data (lister-node-get-data node)))
     (and (eq (type-of data) 'delve--zettel)
          (delve--zettel-out-of-sync data))))
-
-;; TODO Give user feedback on how many items where synced
-(defun delve--sync-out-of-sync (ewoc)
-  "Sync all zettel in EWOC which are out of sync."
-  (let ((nodes (lister-collect-nodes ewoc :first :last
-                                     #'delve--out-of-sync-p)))
-    (delve--sync-zettel (-map #'lister-node-get-data nodes))
-    (delve--refresh-nodes ewoc nodes)))
 
 ;;; * Key handling / Commands
 
@@ -649,7 +634,7 @@ error."
     (delve--maybe-mark-region ewoc)
     (unless (lister-items-marked-p ewoc)
       (lister-mark-unmark-at ewoc :point t))
-    (let ((items (-flatten (lister-get-marked-list ewoc))))
+    (let ((items (lister-get-marked-list ewoc)))
       (when types
         (cl-dolist (item items)
           (unless (apply #'delve--type-p item (-list types))
@@ -726,11 +711,12 @@ passed to completing read."
 (defun delve--marked-to-tainted (ewoc)
   "Mark all marked items as out of sync and unmark them.
 EWOC is the Delve ewoc object."
-  (lister-walk-marked-nodes ewoc
-                            (lambda (ewoc node)
-                              (setf (delve--zettel-out-of-sync (lister-node-get-data node)) t)
-                              (setf (lister--item-marked (ewoc-data node)) nil)
-                              (lister-refresh-at ewoc node))))
+  (lister--finally-moving-to ewoc :point
+    (lister-walk-marked-nodes ewoc
+                              (lambda (ewoc node)
+                                (setf (delve--zettel-out-of-sync (lister-node-get-data node)) t)
+                                (lister-mark-unmark-at ewoc node nil)
+                                (lister-refresh-at ewoc node)))))
 
 (defun delve--key--add-tags (zettels &optional prefix)
   "Add tags to all marked ZETTELS or the zettel at point.
@@ -928,17 +914,24 @@ With PREFIX, expand all hidden subtrees in the EWOC's buffer."
 
 (defun delve--key--sync (ewoc &optional prefix)
   "In EWOC, sync all zettel out of sync with the org roam database.
-With PREFIX, force sync the zettel at point."
+With PREFIX, force sync all marked zettel or, if none is marked,
+the zettel at point."
   (interactive (list lister-local-ewoc current-prefix-arg))
-  (if (not prefix)
-      (delve--sync-out-of-sync ewoc)
-    (let ((z (lister-get-data-at ewoc :point)))
-      (if (eq (type-of z) 'delve--zettel)
-          (let ((file (delve--zettel-file z)))
-            (org-roam-db-update-file file)
-            (delve--sync-zettel (list z))
-            (lister-refresh-at ewoc :point))
-        (user-error "Item at point is not a zettel, cannot sync")))))
+  (when prefix
+    (delve--current-item-or-marked 'delve--zettel))
+  (let ((nodes (lister-collect-nodes ewoc
+                                     :first :last
+                                     (if prefix
+                                         #'lister-node-marked-and-visible-p
+                                       #'delve--out-of-sync-p))))
+    (delve--sync-zettel (-map #'lister-node-get-data nodes))
+    (lister--finally-moving-to ewoc :point
+      (let ((n 0))
+        (cl-dolist (node nodes)
+          (cl-incf n)
+          (lister-mark-unmark-at ewoc node nil)
+          (lister-refresh-at ewoc node))
+        (message "Redisplayed %d nodes" n)))))
 
 ;; Insert tagged subset of all nodes
 
