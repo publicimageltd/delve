@@ -132,14 +132,14 @@ Use ID-HASH to get the nodes by their ID."
     (_ nil)))
 
 (defun delve-store--get-all-ids (l)
-  "Get all ids in the Delve storage list L."
+  "Get all ids in the Delve token list L."
   (->> l
     (delve-store--map-tokenized-tree #'delve-store--parse-get-id)
     (flatten-tree)))
 
-(defun delve-store--prefetch-ids (l)
-  "Return all nodes referred to in token list L as a hash table."
-  (let ((nodes  (delve-query-nodes-by-id (delve-store--get-all-ids l)))
+(defun delve-store--prefetch-ids (ids)
+  "Return all nodes with IDS as a hash table with id as key."
+  (let ((nodes  (delve-query-nodes-by-id ids))
         (table  (make-hash-table :test 'equal)))
     (while nodes
       (puthash (org-roam-node-id (car nodes)) (car nodes) table)
@@ -151,9 +151,11 @@ Use ID-HASH to get the nodes by their ID."
 ;;; TODO Write tests
 (defun delve-store--create-object-list (l)
   "Create Delve objects for stored list L."
-  (delve-store--map-tokenized-tree
-   (-partial #'delve-store--parse-tokenized-object (delve-store--prefetch-ids l))
-   l))
+  (let* ((ids    (delve-store--get-all-ids l))
+         (table  (delve-store--prefetch-ids ids)))
+    (delve-store--map-tokenized-tree
+     (-partial #'delve-store--parse-tokenized-object table)
+     l)))
 
 ;;; Test-DB: (delve-store--read "~/.emacs.d/delve-store/stufen.el")
 
