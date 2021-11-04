@@ -1194,6 +1194,7 @@ If the user selects a non-storage file, pass to `find-file'."
   (let ((map (make-sparse-keymap)))
     ;; Buffer as a whole:
     (define-key map [remap save-buffer]              #'delve-save-buffer)
+    (define-key map [remap write-buffer]             #'delve-save-buffer)
     (define-key map [remap find-file]                #'delve-open-buffer)
     (define-key map (kbd "g")                        #'delve--key--sync)
     ;; Any item:
