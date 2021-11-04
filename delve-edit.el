@@ -23,6 +23,7 @@
 
 (require 'org-roam)
 (require 'delve-data-types)
+(require 'delve-query)
 
 ;;; Code:
 
@@ -38,7 +39,6 @@
            (goto-char (delve--zettel-point ,zettel))
            ,@body)))))
 
-
 (defun delve-edit--add-tags (zettels &optional tags)
   "Add TAGS to all nodes in ZETTELS.
 ZETTELS must be a zettel object or a list of zettel objects.  If
@@ -51,14 +51,41 @@ zettel."
       (delve-edit--with-zettel-node zettel
         (org-roam-tag-add tags)))))
 
-(defun delve-edit--remove-tags (zettel &optional tags)
-  "Remove TAGS from the node in ZETTEL.
+(defun delve-edit--file-tags ()
+  "Get all filetags from the current Org mode buffer."
+  (split-string
+   (or (cadar (org-collect-keywords '("filetags"))) "")
+   ":" :omit-nulls))
+
+(defun delve-edit--heading-tags ()
+  "Get all tags from the current Org mode heading."
+  (mapcar #'substring-no-properties (org-get-tags)))
+
+(defun delve-edit--do-remove-tags (tags)
+  "Remove TAGS from the node at point."
+  (if (= (org-outline-level) 0)
+      ;; file node
+      (let* ((file-tags (delve-edit--file-tags))
+             (new-tags  (seq-difference file-tags tags #'string=)))
+        (if new-tags
+            (org-roam-set-keyword "filetags"
+                                  (org-make-tag-string new-tags))
+          (org-roam-erase-keyword "filetags")))
+    ;; heading node
+    (let* ((current-tags (delve-edit--heading-tags))
+           (new-tags     (seq-difference current-tags tags #'string=)))
+      (org-set-tags new-tags))))
+
+(defun delve-edit--remove-tags (zettels &optional tags)
+  "Remove TAGS from all nodes in ZETTELS.
 If TAGS is nil, ask the user."
-    (delve-edit--with-zettel-node zettel
-      (let ((org-use-tag-inheritance nil))
-        (if tags
-            (org-roam-tag-remove tags)
-          (call-interactively 'org-roam-tag-remove)))))
+  (let* ((org-use-tag-inheritance nil)
+         (zettels (-list zettels))
+         (tags (or tags (completing-read-multiple "Remove tag(s): "
+                                                  (delve-query-tags (mapcar #'delve--zettel-id zettels))))))
+    (cl-dolist (zettel zettels)
+      (delve-edit--with-zettel-node zettel
+        (delve-edit--do-remove-tags tags)))))
 
 (provide 'delve-edit)
 ;;; delve-edit.el ends here

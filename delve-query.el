@@ -198,9 +198,14 @@ query `delve-query--super-query' for allowed fields."
                                           tag-list)
                                   " AND tags LIKE "))))))
 
-(defun delve-query-tags ()
-  "Return all tags as a sorted list of strings."
-  (seq-sort #'string< (seq-uniq (mapcar #'car (delve-query [:select :distinct [tag] :from tags])))))
+(defun delve-query-tags (&optional ids)
+  "Return all tags as a sorted list of strings.
+Optionally restrict to those nodes with an id in IDS."
+  (let* ((base-query [:select :distinct [tag] :from tags])
+         (query      (if (null ids)
+                         base-query
+                       (vconcat base-query `[:where (in node_id ,(seq-into ids 'vector))]))))
+    (seq-sort #'string< (seq-uniq (mapcar #'car (delve-query query))))))
 
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST sorted by the node's title."

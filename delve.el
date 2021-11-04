@@ -571,6 +571,7 @@ anything; that's up to the calling function."
     (and (eq (type-of data) 'delve--zettel)
          (delve--zettel-out-of-sync data))))
 
+;; TODO Give user feedback on how many items where synced
 (defun delve--sync-out-of-sync (ewoc)
   "Sync all zettel in EWOC which are out of sync."
   (let ((nodes (lister-collect-nodes ewoc :first :last
@@ -722,26 +723,29 @@ passed to completing read."
 ;; argument even if it is not used, so that it can be used by
 ;; delve--key--dispatch.
 
-(defun delve--key--add-tags (zettels &optional prefix)
-  "Add tags to all marked ZETTELS or the zettel at point.
-Optional argument PREFIX is currently not used."
-  (interactive (list (delve--current-item-or-marked 'delve--zettel)))
-  (ignore prefix)
-  (delve-edit--add-tags zettels)
+(defun delve--marked-to-tainted ()
+  "Mark all marked items as out of sync and unmark them."
   (lister-walk-marked-nodes lister-local-ewoc
                             (lambda (ewoc node)
                               (setf (delve--zettel-out-of-sync (lister-node-get-data node)) t)
                               (lister-mark-unmark-at ewoc node nil)
                               (lister-refresh-at ewoc node))))
 
-(defun delve--key--remove-tags (zettel &optional prefix)
-  "Remove the tags of the ZETTEL at point.
+(defun delve--key--add-tags (zettels &optional prefix)
+  "Add tags to all marked ZETTELS or the zettel at point.
 Optional argument PREFIX is currently not used."
-  (interactive (list (delve--current-item 'delve--zettel)))
+  (interactive (list (delve--current-item-or-marked 'delve--zettel)))
   (ignore prefix)
-  (delve-edit--remove-tags zettel)
-  (setf (delve--zettel-out-of-sync zettel) t)
-  (lister-refresh-at lister-local-ewoc :point))
+  (delve-edit--add-tags zettels)
+  (delve--marked-to-tainted))
+
+(defun delve--key--remove-tags (zettels &optional prefix)
+  "Remove tags from all marked ZETTELS or the zettel at point.
+Optional argument PREFIX is currently not used."
+  (interactive (list (delve--current-item-or-marked 'delve--zettel)))
+  (ignore prefix)
+  (delve-edit--remove-tags zettels)
+  (delve--marked-to-tainted))
 
 (defun delve--key--open-zettel (zettel &optional prefix)
   "Open the ZETTEL at point.
