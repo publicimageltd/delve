@@ -1193,6 +1193,7 @@ If the user selects a non-storage file, pass to `find-file'."
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
     ;; Buffer as a whole:
+    (define-key map (kbd "q")                        #'bury-buffer)
     (define-key map [remap save-buffer]              #'delve-save-buffer)
     (define-key map [remap write-buffer]             #'delve-save-buffer)
     (define-key map [remap find-file]                #'delve-open-buffer)
