@@ -567,6 +567,25 @@ anything; that's up to the calling function."
     (and (eq (type-of data) 'delve--zettel)
          (delve--zettel-out-of-sync data))))
 
+(defun delve--taint-nodes (nodes)
+  "Mark all zettel in NODES as out of sync."
+  (cl-dolist (node nodes)
+    (setf (delve--zettel-out-of-sync (lister-node-get-data node)) t)))
+
+(defun delve--refresh-nodes (ewoc nodes)
+  "Redisplay and unmark all NODES in EWOC."
+  (lister--finally-moving-to ewoc :point
+    (cl-dolist (node nodes)
+      (lister-mark-unmark-at ewoc node nil)
+      (lister-refresh-at ewoc node))))
+
+(defun delve--taint-and-refresh-marked-nodes (ewoc)
+  "Set all marked zettels in EWOC as out of sync and redisplay them.
+Also unmark the items."
+  (let ((nodes (lister-collect-nodes ewoc :first :last #'lister-node-marked-p)))
+    (delve--taint-nodes nodes)
+    (delve--refresh-nodes ewoc nodes)))
+
 ;;; * Key handling / Commands
 
 (cl-defun delve--find-zettel-by-id (id &optional (buf (current-buffer)))
@@ -711,23 +730,14 @@ passed to completing read."
 ;; argument even if it is not used, so that it can be used by
 ;; delve--key--dispatch.
 
-(defun delve--marked-to-tainted (ewoc)
-  "Mark all marked items as out of sync and unmark them.
-EWOC is the Delve ewoc object."
-  (lister--finally-moving-to ewoc :point
-    (lister-walk-marked-nodes ewoc
-                              (lambda (ewoc node)
-                                (setf (delve--zettel-out-of-sync (lister-node-get-data node)) t)
-                                (lister-mark-unmark-at ewoc node nil)
-                                (lister-refresh-at ewoc node)))))
-
 (defun delve--key--add-tags (zettels &optional prefix)
   "Add tags to all marked ZETTELS or the zettel at point.
 Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item-or-marked 'delve--zettel)))
   (ignore prefix)
   (delve-edit--add-tags zettels)
-  (delve--marked-to-tainted lister-local-ewoc))
+  (delve--taint-and-refresh-marked-nodes lister-local-ewoc)
+  (message "Edited %d nodes" (length zettels)))
 
 (defun delve--key--remove-tags (zettels &optional prefix)
   "Remove tags from all marked ZETTELS or the zettel at point.
@@ -735,7 +745,8 @@ Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item-or-marked 'delve--zettel)))
   (ignore prefix)
   (delve-edit--remove-tags zettels)
-  (delve--marked-to-tainted lister-local-ewoc))
+  (delve--taint-and-refresh-marked-nodes lister-local-ewoc)
+  (message "Edited %d nodes" (length zettels)))
 
 (defun delve--key--open-zettel (zettel &optional prefix)
   "Open the ZETTEL at point.
