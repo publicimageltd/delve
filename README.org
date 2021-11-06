@@ -95,6 +95,11 @@ You can save or load any =Delve= buffer by using =M-x delve-open-buffer=
 s=, respectively). To save the buffer to a new file, use =M-x
 delve-write-buffer= (or =C-x w=).
 
+Once a buffer is associated with a file, the file name will be
+displayed in the header. There will be an asterisk before the file
+name if the content has been modified and is thus not guaranteed to
+match the stored content anymore.
+
 There is a default storage directory defined in the variable
 =delve-store-directory=. It defaults to the directory =delve-store= within
 the local emacs user directory.
@@ -277,9 +282,9 @@ This is a list of stuff I intend to add (soonish):
 
  - Save all stores with suffix '.delve'.
  - Do not restrict storage to one directory; use list of directories instead.
- - DONE +Remote editing on all marked lists.+
+ - +Remote editing on all marked lists.+
  - Make minor mode collection functions also work in org roam mode buffer.
- - Add 'modified' flag and show it in the header.
+ - +Add 'modified' flag and show it in the header.+
  - Add sorting according to title and mtime.
 
 * Changelog
