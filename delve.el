@@ -401,7 +401,10 @@ Return the prepared string."
    (list (propertize delve-local-header-info 'face 'delve-header-face)
          (delve--db-info)
          (when delve-local-storage-file
-           (propertize delve-local-storage-file 'face 'font-lock-string-face)))))
+           (concat
+            (when lister-local-modified
+              "* ")
+            (propertize delve-local-storage-file 'face 'font-lock-string-face))))))
 
 ;; * Buffer and Dashboard
 
@@ -1111,6 +1114,16 @@ Also pass PREFIX to the corresponding function."
 
 ;; * Storing and reading buffer lists in a file
 
+(defun delve--maybe-refresh-header (sym new op buf)
+  "Watch function for refreshing the header if the value has changed.
+For the meaning of SYM, NEW, OP and BUF, see the info page for
+`add-variable-watcher'."
+  (when (and (eq op 'set)
+             (not (eq (symbol-value sym) new))
+             buf)
+    (set sym new)
+    (lister-refresh-header-footer (lister-get-ewoc buf))))
+
 (defun delve--ask-storage-file-name (&optional existing-only)
   "Ask for a file name for a Delve store.
 Limit selection to only existing files if EXISTING-ONLY is
@@ -1128,19 +1141,29 @@ non-nil.  Offer completion of files in the directory
         (user-error "Canceled")))
      (t file-name))))
 
+(defun delve--setup-file-buffer (buf file-name)
+  "Set up Delve buffer BUF as a buffer visiting FILE-NAME.
+Return BUF."
+  (with-current-buffer buf
+    (setq-local lister-local-modified nil)
+    (setq-local delve-local-storage-file file-name)
+    (add-variable-watcher 'lister-local-modified #'delve--maybe-refresh-header)
+    (add-variable-watcher 'delve-local-storage-file #'delve--maybe-refresh-header)
+    ;; this will be called twice in some cases; don't care.
+    (lister-refresh-header-footer lister-local-ewoc))
+  buf)
+
 ;;; TODO Write test
 (defun delve--do-save-buffer (buf file-name)
   "Store the Delve list of BUF in FILE-NAME."
   ;; store list:
-  (let ((l (lister-map (buffer-local-value 'lister-local-ewoc buf)
-                       #'delve-store--tokenize-object)))
+  (let ((had-file-name-p (buffer-local-value 'delve-local-storage-file buf))
+        (l (lister-map (lister-get-ewoc buf)  #'delve-store--tokenize-object)))
     (unless (file-exists-p file-name)
       (make-empty-file file-name t))
     (delve-store--write file-name l)
-    ;; refresh header:
-    (with-current-buffer buf
-      (setq-local delve-local-storage-file file-name)
-      (lister-refresh-header-footer lister-local-ewoc))))
+    ;; link buffer to file:
+    (delve--setup-file-buffer buf file-name)))
 
 ;;; TODO Write test
 (defun delve--read-storage-file (file-name)
@@ -1152,28 +1175,32 @@ non-nil.  Offer completion of files in the directory
       (if (file-exists-p new-name)
           (setq file-name new-name)
         (error "File not found %s" file-name))))
-  ;; read it:
+  ;; read it and link buffer to file:
   (let* ((l          (delve-store--read file-name))
          (delve-list (with-temp-message "Creating data objects..."
                        (delve-store--create-object-list l)))
-         (buf-name   (format "Zettel imported from '%s'" (file-name-nondirectory file-name)))
-         (buf        (delve--new-buffer buf-name delve-list)))
-    (with-current-buffer buf
-      (setq-local delve-local-storage-file file-name)
-      (lister-refresh-header-footer lister-local-ewoc))
-    buf))
+         (buf-name   (format "Zettel imported from '%s'" (file-name-nondirectory file-name))))
+    (delve--setup-file-buffer (delve--new-buffer buf-name delve-list) file-name)))
 
-(defun delve-save-buffer (buf)
-  "Store BUF in its existing storage file or create a new one."
+(defun delve-save-buffer (buf &optional file-name)
+  "Store BUF in its existing storage file or create a new one.
+If FILE-NAME is not set, use the file name BUF is linked to.  If
+BUF is not yet visiting any file, ask the user."
   (interactive (list (current-buffer)))
-  (unless (eq 'delve-mode (with-current-buffer buf major-mode))
+  (unless (eq 'delve-mode (buffer-local-value 'major-mode buf))
     (error "Buffer must be in Delve mode"))
-  (let ((name  (or (buffer-local-value 'delve-local-storage-file buf)
+  (let ((name  (or file-name
+                   (buffer-local-value 'delve-local-storage-file buf)
                    (delve--ask-storage-file-name))))
     (delve--do-save-buffer buf name))
   (with-current-buffer buf
     (message "Collection stored in file %s" delve-local-storage-file)))
 
+(defun delve-write-buffer (buf file-name)
+  "Store BUF in FILE-NAME and associate it."
+  (interactive (list (current-buffer) (delve--ask-storage-file-name)))
+  (delve-save-buffer buf file-name))
+  
 (defun delve-open-buffer ()
   "Open an existing storage file.
 If the user selects a non-storage file, pass to `find-file'."
@@ -1195,15 +1222,15 @@ If the user selects a non-storage file, pass to `find-file'."
     ;; Buffer as a whole:
     (define-key map (kbd "q")                        #'bury-buffer)
     (define-key map [remap save-buffer]              #'delve-save-buffer)
-    (define-key map [remap write-buffer]             #'delve-save-buffer)
+    (define-key map [remap write-file]               #'delve-write-buffer)
     (define-key map [remap find-file]                #'delve-open-buffer)
     (define-key map (kbd "g")                        #'delve--key--sync)
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
     ;; Insert node(s):
     (let ((prefix (define-prefix-command 'delve--key--insert-prefix nil "Insert")))
-      (define-key prefix "n" '(" node" . delve--key--insert-node))
-      (define-key prefix "t" '(" by tag" . delve--key--insert-node-by-tags))
+      (define-key prefix "n" '(" node"     . delve--key--insert-node))
+      (define-key prefix "t" '(" by tag"   . delve--key--insert-node-by-tags))
       (define-key prefix "b" '(" backlink" . delve--key--insert-backlink))
       (define-key prefix "f" '(" fromlink" . delve--key--insert-fromlink))
       (define-key map (kbd "n") prefix))
@@ -1250,8 +1277,6 @@ last selected buffer."
       (setq buf delve--last-selected-buffer))
     (switch-to-buffer
      (or buf (delve--select-collection-buffer "Visit collection: ")))))
-
-;; (bind-key (kbd "<f12>") 'delve)
 
 (provide 'delve)
 ;;; delve.el ends here
