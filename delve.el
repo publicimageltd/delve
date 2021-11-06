@@ -1151,7 +1151,7 @@ Return BUF."
 (defun delve--do-save-buffer (buf file-name)
   "Store the Delve list of BUF in FILE-NAME."
   ;; store list:
-  (let ((had-file-name-p (buffer-local-value 'delve-local-storage-file buf))
+  (let ((had-file-name-p (delve-get-storage-file buf))
         (l (lister-map (lister-get-ewoc buf)  #'delve-store--tokenize-object)))
     (unless (file-exists-p file-name)
       (make-empty-file file-name t))
