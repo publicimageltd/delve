@@ -478,16 +478,13 @@ Return the buffer object."
   (seq-filter #'delve--buffer-p (buffer-list)))
 
 (defun delve-unopened-storages ()
-  "Return all Delve storage files which are not visited yet.
-Only return the file names relative to `delve-store-directory'"
-  ;; FIXME This won't work currently as desired if the local file path
-  ;; is outside of the delve store directory.
-  (->> (delve-buffer-list)
-       (-map        #'delve-get-storage-file)
-       ;; remove nil values:
-       (-filter     #'identity)
-       (-map        #'file-name-nondirectory)
-       (-difference (delve--storage-files))))
+  "Return all Delve storage files which are not visited yet."
+  (-map #'abbreviate-file-name
+        (-difference (delve--storage-files :full-path)
+                     (-map
+                      (-compose #'expand-file-name
+                                #'delve-get-storage-file)
+                      (delve-buffer-list)))))
 
 (defun delve--prepare-candidates (cand key-fn suffix)
   "Return list CAND as an alist with a string key.
@@ -1194,7 +1191,7 @@ BUF is not yet visiting any file, ask the user."
   "Store BUF in FILE-NAME and associate it."
   (interactive (list (current-buffer) (delve--ask-storage-file-name)))
   (delve-save-buffer buf file-name))
-  
+
 (defun delve-open-buffer ()
   "Open an existing storage file.
 If the user selects a non-storage file, pass to `find-file'."
