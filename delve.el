@@ -574,7 +574,7 @@ anything; that's up to the calling function."
 
 (defun delve--refresh-nodes (ewoc nodes)
   "Redisplay and unmark all NODES in EWOC."
-  (lister--finally-moving-to ewoc :point
+  (lister-save-current-node ewoc
     (cl-dolist (node nodes)
       (lister-mark-unmark-at ewoc node nil)
       (lister-refresh-at ewoc node))))
@@ -939,7 +939,7 @@ the zettel at point."
                                          #'lister-node-marked-and-visible-p
                                        #'delve--out-of-sync-p))))
     (delve--sync-zettel (-map #'lister-node-get-data nodes))
-    (lister--finally-moving-to ewoc :point
+    (lister-save-current-node ewoc
       (let ((n 0))
         (cl-dolist (node nodes)
           (cl-incf n)
