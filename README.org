@@ -92,7 +92,8 @@ that the content has changed (will come).
 
 You can save or load any =Delve= buffer by using =M-x delve-open-buffer=
 (or =C-x f= from within a =Delve= buffer) or =M-x delve-save-buffer= (or =C-x
-s=, respectively). 
+s=, respectively). To save the buffer to a new file, use =M-x
+delve-write-buffer= (or =C-x w=).
 
 There is a default storage directory defined in the variable
 =delve-store-directory=. It defaults to the directory =delve-store= within
