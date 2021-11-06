@@ -473,12 +473,6 @@ Return the buffer object."
   (and (eq (buffer-local-value 'major-mode (or buf (current-buffer)))
            'delve-mode)))
 
-;; TODO Seems not to be needed, remove it
-(defun delve--buffer-and-not-dashboard-p (&optional buf)
-  "Check if BUF is Delve buffer and not the dashboard."
-  (and (delve--buffer-p buf)
-       (not (string= (buffer-name buf) delve-dashboard-name))))
-
 (defun delve-buffer-list ()
   "Return a list of all Delve buffers."
   (seq-filter #'delve--buffer-p (buffer-list)))
