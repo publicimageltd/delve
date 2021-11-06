@@ -1158,14 +1158,8 @@ Return BUF."
 ;;; TODO Write test
 (defun delve--read-storage-file (file-name)
   "Return a new Delve buffer read from FILE-NAME."
-  ;; locate file
   (unless (file-exists-p file-name)
-    (let ((new-name (concat (file-name-as-directory delve-store-directory)
-                            file-name)))
-      (if (file-exists-p new-name)
-          (setq file-name new-name)
-        (error "File not found %s" file-name))))
-  ;; read it and link buffer to file:
+    (error "File not found %s" file-name))
   (let* ((l          (delve-store--read file-name))
          (delve-list (with-temp-message "Creating data objects..."
                        (delve-store--create-object-list l)))
