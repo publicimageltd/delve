@@ -932,6 +932,10 @@ the zettel at point."
                                      (if prefix
                                          #'lister-node-marked-and-visible-p
                                        #'delve--out-of-sync-p))))
+    (unless nodes
+      (error (if prefix
+                 "Cannot sync items; no items marked"
+               "Cannot sync items; no items out of sync.  Maybe use prefix arg to force resyncing")))
     (delve--sync-zettel (-map #'lister-node-get-data nodes))
     (lister-save-current-node ewoc
       (let ((n 0))
