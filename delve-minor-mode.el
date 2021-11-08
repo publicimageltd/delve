@@ -99,6 +99,8 @@ non-nil, use the previously selected buffer."
                  (format "Add %d nodes to buffer or collection: " n)
                  use-last-buffer))
          (nodes  (delve-query-nodes-by-id ids)))
+    (unless (eq (length nodes) n)
+      (error "Canceled because DB did not return all nodes for the IDs; maybe it is out of sync?"))
     (delve-minor-mode--add-to-collection buf nodes)
     (message "%d zettel added to '%s'" n (buffer-name buf))))
 
