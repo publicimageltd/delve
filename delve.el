@@ -481,10 +481,9 @@ Return the buffer object."
   "Return all Delve storage files which are not visited yet."
   (-map #'abbreviate-file-name
         (-difference (delve--storage-files :full-path)
-                     (-map
-                      (-compose #'expand-file-name
-                                #'delve-get-storage-file)
-                      (delve-buffer-list)))))
+                     (-map #'expand-file-name
+                           (-keep #'delve-get-storage-file
+                                  (delve-buffer-list))))))
 
 (defun delve--prepare-candidates (cand key-fn suffix)
   "Return list CAND as an alist with a string key.
