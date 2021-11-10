@@ -312,7 +312,7 @@ Return the prepared string."
         (delve-pp--add-face "* " 'warning))
       ;; Display node title:
       (propertize (org-roam-node-title node) 'face 'delve-title-face))
-     ;; -- Second line:
+     ;; -- Tag line:
      (propertize (delve--tags-as-string node) 'face 'delve-tags-face)
      ;; -- additional Zettel slots:
      (delve--zettel-info zettel)
@@ -602,7 +602,8 @@ Searches both zettels and piles."
 (defun delve--zettel-stub (zettel)
   "Return a shortened title of ZETTEL.
 Return titel unchanged if it has less than 40 characters; else
-produce a shortened version."
+produce a shortened version with each word of the title truncated
+to 5 characters."
   (let* ((stub-width 40)
          (s          (delve--zettel-title zettel)))
     (if (> (string-width s) stub-width)
@@ -638,6 +639,7 @@ EWOC or POS, if supplied.  Skip any typechecking if TYPES is nil."
           item
         (error "The item at point is not of the right type for that command")))))
 
+;; TODO Refactor: delve--current-item nearly does the same
 (defun delve--current-item-or-marked (&optional types)
   "Get either all marked items or the item at point, marking it.
 Always return a list.  TYPES is a type symbol or a list of type
@@ -682,6 +684,7 @@ non-nil."
         (message (concat msg "done"))))
       t))
 
+;; TODO Isn't the same function used in delve-minor-mode?
 (defun delve--maybe-mark-region (ewoc)
   "In EWOC, mark all items in the active region.
 If no region is active, do nothing."
@@ -1196,6 +1199,7 @@ If the user selects a non-storage file, pass to `find-file'."
          (file-name   (expand-file-name (read-file-name "Open Delve store or other file: " default-dir))))
     (if (-contains-p (delve--storage-files :full-path) file-name)
         (switch-to-buffer (delve--read-storage-file file-name))
+      ;; TODO Replace that test with testing the file suffix
       (if (string= (file-name-directory file-name)
                    default-dir)
           (switch-to-buffer (delve--new-buffer (file-name-base file-name)))
