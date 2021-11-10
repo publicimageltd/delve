@@ -189,6 +189,7 @@ return strings."
                 ('delve--query   (list "QUERY" "search"))
                 ('delve--pile    (list "PILE"  "list-ul"))
                 ('delve--info    (list "INFO"  "info"))
+                ('delve--heading (list "HEADING" "header"))
                 ('delve--note    (list "NOTE"  "pencil"))
                 ('delve--zettel
                  (if (eq 0 (delve--zettel-level delve-item))
@@ -363,6 +364,12 @@ Return the prepared string."
   (delve--note-s-to-list
      (delve-pp--add-face (delve--note-text info) 'delve-info-face)))
 
+(defun delve--heading-strings (heading)
+  "Return a list of strings representing HEADING."
+  (list (delve-pp--add-face
+         (delve--heading-text heading)
+         'outline-1)))
+
 ;; The actual mapper
 
 (defun delve-mapper (item)
@@ -371,9 +378,11 @@ Return the prepared string."
          (datastrings (cl-typecase item
                         (delve--zettel  (delve--zettel-strings item))
                         (delve--pile    (delve--pile-strings item))
+                        (delve--query   (delve--query-strings item))
+                        ;; always check the basic type "delve--note" last!
+                        (delve--heading (delve--heading-strings item))
                         (delve--info    (delve--info-strings item))
                         (delve--note    (delve--note-strings item))
-                        (delve--query   (delve--query-strings item))
                         (t (list "no printer available for that item type")))))
     ;; hanging indent:
     (let* ((datastrings (flatten-tree datastrings))
@@ -910,6 +919,14 @@ With PREFIX, expand all hidden subtrees in the EWOC's buffer."
 
 ;;; * Key commands not bound to a specific item at point
 
+;; Add heading
+
+(defun delve--key--insert-heading (ewoc)
+  "Edit a heading at point in EWOC."
+  (interactive (list lister-local-ewoc))
+  (let ((heading (read-string "Heading: ")))
+    (lister-insert-at ewoc :point (delve--heading-create :text heading) nil (lister-eolp))))
+
 ;; Edit buffer header
 
 (defun delve--key--edit-title (ewoc)
@@ -1225,6 +1242,8 @@ If the user selects a non-storage file, pass to `find-file'."
       (define-key prefix "b" '(" backlink" . delve--key--insert-backlink))
       (define-key prefix "f" '(" fromlink" . delve--key--insert-fromlink))
       (define-key map (kbd "n") prefix))
+    ;; Insert other stuff:
+    (define-key map (kbd "h")                        #'delve--key--insert-heading)
     ;; Work with marks:
     (define-key map (kbd "c")                        #'delve--key--collect-into-buffer)
     (define-key map (kbd "p")                        #'delve--key--collect-into-pile)

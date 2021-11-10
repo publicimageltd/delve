@@ -36,6 +36,10 @@
   "A note item for free text."
   text)
 
+(cl-defstruct (delve--heading (:include delve--note)
+                              (:constructor delve--heading-create))
+  "A heading.")
+
 (cl-defstruct (delve--info (:include delve--note)
                            (:constructor delve--info-create))
   "A text item for information to the user.")

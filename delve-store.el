@@ -77,10 +77,11 @@ suffice to fully reconstruct the complete item."
      (delve--pile   (list :name    (delve--pile-name delve-object)
                           :zettels (mapcar #'delve-store--tokenize-object
                                            (delve--pile-zettels delve-object))))
-     (delve--note   (list :text  (delve--note-text delve-object)))
      (delve--query  (list :info  (delve--query-info delve-object)
                           :fn    (delve--query-fn   delve-object)))
-     (delve--info   (list :text  (delve--info-text delve-object))))))
+     (delve--heading (list :text (delve--heading-text delve-object)))
+     (delve--info   (list :text  (delve--info-text delve-object)))
+     (delve--note   (list :text  (delve--note-text delve-object))))))
 
 (defun delve-store--parse-tokenized-object (id-hash elt)
   "Create a Delve object parsing tokenized object ELT.
@@ -100,6 +101,9 @@ Use ID-HASH to get the nodes by their ID."
     ;;
     (`(delve--query :info ,info :fn ,fn)
      (delve--query-create :info info :fn fn))
+    ;;
+    (`(delve--heading :text ,text)
+     (delve--heading-create :text text))
     ;;
     (`(delve--note :text ,text)
      (delve--note-create :text text))
