@@ -221,6 +221,9 @@ region.
 
 To insert a pile, either press =<TAB>= or =i=.
 
+*** Insert headings
+Use =h= to insert a heading. A heading is just a simple text item which
+you can use to internally structure your nodes.
 *** Remote Editing of Org Roam Nodes 
 
 | Command / Keys | Function               |
@@ -286,4 +289,12 @@ This is a list of stuff I intend to add (soonish):
 
 * Changelog
 
- - 0.9 Complete rewrite; now based on Org Roam =v2=.
+** Current 
+
+ - Introduce new item type "Heading" (key =h=)
+ - Allow remote editing (add, remove tags) of multiple items.
+ - Mark list as "modified" if items are deleted, inserted or updated.
+   Storing the list removes that flag.
+
+** 0.9 
+Complete rewrite; now based on Org Roam =v2=.
