@@ -37,7 +37,7 @@
 
 ;;; * Framework for 'save' and 'verbose' querying
 
-(defconst delve-query-db-version 17
+(defconst delve-query-db-version 18
   "Org roam DB version on which delve query relies.
 Must match `org-roam-db-version'.")
 
@@ -103,13 +103,13 @@ and return nil."
 ;;; * Some queries
 
 (defvar delve-query--super-query
-  "SELECT id, file, \"level\", todo, pos, priority,
+  "SELECT id, file, filetitle, \"level\", todo, pos, priority,
            scheduled, deadline , title, properties, olp, atime,
            mtime, '(' || group_concat(tags, ' ') || ')' as tags,
            aliases, refs FROM
            -- outer from clause
            (
-           SELECT  id,  file, \"level\", todo,  pos, priority,  scheduled, deadline ,
+           SELECT  id,  file, filetitle, \"level\", todo,  pos, priority,  scheduled, deadline ,
              title, properties, olp, atime,  mtime, tags,
              '(' || group_concat(aliases, ' ') || ')' as aliases,
              refs
@@ -120,6 +120,7 @@ and return nil."
                nodes.todo as todo,   nodes.pos as pos,  nodes.priority as priority,
                nodes.scheduled as scheduled,  nodes.deadline as deadline,  nodes.title as title,
                nodes.properties as properties,  nodes.olp as olp,  files.atime as atime,
+               files.title as filetitle,
                files.mtime as mtime,  tags.tag as tags,    aliases.alias as aliases,
                '(' || group_concat(RTRIM (refs.\"type\", '\"') || ':' || LTRIM(refs.ref, '\"'), ' ') || ')' as refs
              FROM nodes
@@ -143,13 +144,14 @@ and return nil."
 QUERY must be `delve-query--super-query' or a subset.  See the
 query `delve-query--super-query' for allowed fields."
   (cl-loop for row in (delve-query query)
-           append (pcase-let* ((`(,id ,file ,level ,todo ,pos ,priority ,scheduled ,deadline
+           append (pcase-let* ((`(,id ,file ,file-title ,level ,todo ,pos ,priority ,scheduled ,deadline
                                       ,title ,properties ,olp ,atime ,mtime ,tags ,aliases ,refs)
                                 row)
                                (all-titles (cons title aliases)))
                     (mapcar (lambda (temp-title)
                               (org-roam-node-create :id id
                                                     :file file
+                                                    :file-title file-title
                                                     :file-atime atime
                                                     :file-mtime mtime
                                                     :level level
