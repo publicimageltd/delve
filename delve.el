@@ -106,6 +106,11 @@ Each element can be a tag or a list of tags."
   :group 'Delve
   :group 'faces)
 
+(defface delve-preview-face
+  '((t (:inherit variable-pitch)))
+  "Face for displaying preview (for non-monospaced display)."
+  :group 'Delve-faces)
+
 (defface delve-header-face
   '((t (:inherit org-document-title)))
   "Face for displaying the header of a Delve list."
@@ -300,7 +305,8 @@ Return the prepared string."
         (font-lock-ensure)
         (cl-dolist (link links)
           (delve--buttonize-link link)))
-      (buffer-string))))
+      (delve-pp--add-face (buffer-string)
+                  'delve-preview-face))))
 
 (defun delve--zettel-strings (zettel)
   "Return a list of strings representing ZETTEL."
