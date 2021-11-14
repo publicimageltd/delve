@@ -111,6 +111,11 @@ Each element can be a tag or a list of tags."
   "Face for displaying preview (for non-monospaced display)."
   :group 'Delve-faces)
 
+(defface delve-path-face
+  '((t (:inherit transient-inactive-value)))
+  "Face for displaying the node path."
+  :group 'Delve-faces)
+
 (defface delve-header-face
   '((t (:inherit org-document-title)))
   "Face for displaying the header of a Delve list."
@@ -312,7 +317,12 @@ Return the prepared string."
   "Return a list of strings representing ZETTEL."
   (let ((node (delve--zettel-node zettel)))
     (list
-     ;; -- First line:
+     ;; Maybe display path:
+     (unless (eq 0 (delve--zettel-level zettel))
+       (delve-pp--add-face
+        (concat (delve--zettel-filetitle zettel) "/" (string-join (delve--zettel-olp zettel) "/"))
+        'delve-path-face))
+     ;; -- Title
      (concat
       ;; Maybe mark out of sync:
       (when (delve--zettel-out-of-sync zettel)
