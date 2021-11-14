@@ -70,6 +70,14 @@ Each element can be a tag or a list of tags."
   :group 'Delve
   :type  'directory)
 
+(defcustom delve-display-path t
+  "Turn on display of paths before the node's title.
+If non-nil, insert the file title and the outline path, if they
+exist, before the node's title.  This can cause quite long
+entries."
+  :group 'Delve
+  :type 'boolean)
+
 ;;; * Global Variables
 
 (defvar delve-version "0.9"
@@ -323,7 +331,8 @@ Return the prepared string."
       (when (delve--zettel-out-of-sync zettel)
         (delve-pp--add-face "* " 'warning))
       ;; Maybe display path:
-      (unless (eq 0 (delve--zettel-level zettel))
+      (when (and delve-display-path
+                 (not (eq 0 (delve--zettel-level zettel))))
         (let ((path (delve--zettel-olp zettel)))
           (delve-pp--add-face
            (concat (delve--zettel-filetitle zettel) "/"
