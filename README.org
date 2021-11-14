@@ -125,10 +125,19 @@ The other type of nodes (i.e., headings) looks like that:
 
 Also note the list of tags which are associated with that specific node.
 
+Per default, heading notes are displayed with their outline path,
+including the file title. The variable =delve-display-path= controls
+this behaviour, set it to =nil= to turn this off. Here's two nodes first
+with path and then without:
+
+[[./screenshots/node-with-path.png]]
+[[./screenshots/node-without-path.png]]
+
+In the dashboard buffer, you'll find queries:
+
 [[./screenshots/query.png]]
 
-And that's a query. Press =<TAB>= to add its contents into the current
-buffer's collection.
+Press =<TAB>= to add its contents into the current buffer's collection.
 
 * Keybindings / Usage
 
@@ -296,6 +305,7 @@ This is a list of stuff I intend to add (soonish):
 
 ** Current 
 
+ - For non-file nodes, display the outline path.
  - Depend on Org Roam with DB 18 (merged in Nov., 10th, 21).
  - Introduce new item type "Heading" (key =h=)
  - Allow remote editing (add, remove tags) of multiple items.
