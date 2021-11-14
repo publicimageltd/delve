@@ -318,6 +318,9 @@ Return the prepared string."
         (font-lock-ensure)
         (cl-dolist (link links)
           (delve--buttonize-link link)))
+      ;; FIXME This wipes out any different variable/monospace fonts,
+      ;;       replacing it by one single font. It also ignores
+      ;;       buffer specific face remappings, such as variable-pitch-mode.
       (delve-pp--add-face (buffer-string)
                           'delve-preview-face))))
 
