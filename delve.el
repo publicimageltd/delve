@@ -319,7 +319,7 @@ Return the prepared string."
         (cl-dolist (link links)
           (delve--buttonize-link link)))
       (delve-pp--add-face (buffer-string)
-                  'delve-preview-face))))
+                          'delve-preview-face))))
 
 (defun delve--zettel-strings (zettel)
   "Return a list of strings representing ZETTEL."
