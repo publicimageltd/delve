@@ -68,6 +68,7 @@ SLOT-NAME must be the name of a slot of an org-roam-node.  Give
 (delve-data-types--zettel--accessor-fn delve--zettel-tags    'tags)
 (delve-data-types--zettel--accessor-fn delve--zettel-level   'level)
 (delve-data-types--zettel--accessor-fn delve--zettel-aliases 'aliases)
+(delve-data-types--zettel--accessor-fn delve--zettel-filetitle   'file-title)
 (delve-data-types--zettel--accessor-fn delve--zettel-mtime   'file-mtime)
 (delve-data-types--zettel--accessor-fn delve--zettel-atime   'file-atime)
 
