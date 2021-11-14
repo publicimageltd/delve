@@ -209,7 +209,7 @@ return strings."
     (if (and (featurep 'all-the-icons)
              (not delve--no-icons))
         (concat (all-the-icons-faicon icon-name) " ")
-      (delve-pp--set-width s 6))))
+      (delve-pp--set-width s 8))))
 
 ;; Printing Zettel
 
