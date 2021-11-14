@@ -130,8 +130,7 @@ including the file title. The variable =delve-display-path= controls
 this behaviour, set it to =nil= to turn this off. Here's two nodes first
 with path and then without:
 
-[[./screenshots/node-with-path.png]]
-[[./screenshots/node-without-path.png]]
+[[./screenshots/node-with-and-without-path.png]]
 
 In the dashboard buffer, you'll find queries:
 
