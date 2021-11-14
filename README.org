@@ -45,6 +45,11 @@ useful.
 however, is not (yet?) on Melpa. For the time being, you will have to
 install it manually.
 
+=Delve= is currently following the =org-roam= source without taking care
+of the releases. If there is a DB error or something similar, consider
+updating =org-roam= from source even if there is not a new official
+release yet.
+
 =Delve= profits from =all-the-icons=. If it is installed, items will be
 displayed with nice icons. Install it from [[https://github.com/domtronn/all-the-icons.el][there]].
 
@@ -291,6 +296,7 @@ This is a list of stuff I intend to add (soonish):
 
 ** Current 
 
+ - Depend on Org Roam with DB 18 (merged in Nov., 10th, 21).
  - Introduce new item type "Heading" (key =h=)
  - Allow remote editing (add, remove tags) of multiple items.
  - Mark list as "modified" if items are deleted, inserted or updated.
