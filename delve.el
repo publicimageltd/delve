@@ -317,16 +317,19 @@ Return the prepared string."
   "Return a list of strings representing ZETTEL."
   (let ((node (delve--zettel-node zettel)))
     (list
-     ;; Maybe display path:
-     (unless (eq 0 (delve--zettel-level zettel))
-       (delve-pp--add-face
-        (concat (delve--zettel-filetitle zettel) "/" (string-join (delve--zettel-olp zettel) "/"))
-        'delve-path-face))
      ;; -- Title
      (concat
       ;; Maybe mark out of sync:
       (when (delve--zettel-out-of-sync zettel)
         (delve-pp--add-face "* " 'warning))
+      ;; Maybe display path:
+      (unless (eq 0 (delve--zettel-level zettel))
+        (let ((path (delve--zettel-olp zettel)))
+          (delve-pp--add-face
+           (concat (delve--zettel-filetitle zettel) "/"
+                   (string-join path "/")
+                   (when path "/"))
+           'delve-path-face)))
       ;; Display node title:
       (propertize (org-roam-node-title node) 'face 'delve-title-face))
      ;; -- Tag line:
