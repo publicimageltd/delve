@@ -316,13 +316,13 @@ Return the prepared string."
              (links (org-element-map tree 'link
                       #'delve--collect-link)))
         (font-lock-ensure)
+        ;; FIXME This wipes out any different variable/monospace fonts,
+        ;;       replacing it by one single font. It also ignores
+        ;;       buffer specific face remappings, such as variable-pitch-mode.
+        (add-face-text-property (point-min) (point-max) 'delve-preview-face)
         (cl-dolist (link links)
           (delve--buttonize-link link)))
-      ;; FIXME This wipes out any different variable/monospace fonts,
-      ;;       replacing it by one single font. It also ignores
-      ;;       buffer specific face remappings, such as variable-pitch-mode.
-      (delve-pp--add-face (buffer-string)
-                          'delve-preview-face))))
+      (buffer-string))))
 
 (defun delve--zettel-strings (zettel)
   "Return a list of strings representing ZETTEL."
