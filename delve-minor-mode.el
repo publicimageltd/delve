@@ -63,7 +63,8 @@ buffer, if there is one.  Else use PROMPT to ask the user."
 (defun delve-minor-mode--add-to-collection (buf ids)
   "Insert nodes IDS in Delve buffer BUF.
 IDS can be a list or a single ID."
-  (let ((nodes  (delve-query-nodes-by-id (-list ids))))
+  (let* ((ids    (-list ids))
+         (nodes  (delve-query-nodes-by-id ids)))
     (unless (eq (length nodes) (length ids))
       (error "Canceled because DB did not return all nodes for the IDs; maybe it is out of sync?"))
     (let ((ewoc (lister-get-ewoc buf)))
