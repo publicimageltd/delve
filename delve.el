@@ -1257,7 +1257,7 @@ BUF is not yet visiting any file, ask the user."
   (interactive (list (current-buffer) (delve--ask-storage-file-name)))
   (delve-save-buffer buf file-name))
 
-(defun delve-open-buffer ()
+(defun delve-open-storage-file ()
   "Open an existing storage file.
 If the user selects a non-storage file, pass to `find-file'."
   (interactive)
@@ -1279,7 +1279,7 @@ If the user selects a non-storage file, pass to `find-file'."
     (define-key map (kbd "q")                        #'bury-buffer)
     (define-key map [remap save-buffer]              #'delve-save-buffer)
     (define-key map [remap write-file]               #'delve-write-buffer)
-    (define-key map [remap find-file]                #'delve-open-buffer)
+    (define-key map [remap find-file]                #'delve-open-storage-file)
     (define-key map (kbd "g")                        #'delve--key--sync)
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
