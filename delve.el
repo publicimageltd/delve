@@ -459,6 +459,12 @@ If `delve-store-directoy' does not exist, create it."
       (error "Storage directory %s does not exist" delve-store-directory)))
   (directory-files delve-store-directory full-path (rx string-start (not "."))))
 
+(defun delve--storage-p (file-name)
+  "Check if FILE-NAME represents an existing Delve storage file.
+Just check the existence of the file, don't look at the contents."
+  (-contains-p (delve--storage-files :full-path)
+               (expand-file-name file-name)))
+
 (defun delve--create-buffer-name (name)
   "Create a name for a Delve buffer using NAME."
   (concat "DELVE " name))
@@ -528,41 +534,53 @@ Return the buffer object."
 (defun delve--prepare-candidates (cand key-fn suffix)
   "Return list CAND as an alist with a string key.
 Use KEY-FN to create the string key.  It will have SUFFIX added
-to the end, in parentheses."
+to the end, in parentheses.  To remove SUFFIX, use
+`delve--remove-candidate-suffix'."
   (--group-by (format "%s (%s)" (funcall key-fn it) suffix)
               cand))
+
+(defun delve--remove-candidate-suffix (cand)
+  "Remove suffix in parentheses from CAND."
+  (replace-regexp-in-string (rx string-start
+                                (zero-or-more space)
+                                (group (*? nonl))
+                                (zero-or-more space)
+                                "(" (one-or-more nonl) ")")
+                            "\\1"
+                            cand))
+
+(defun delve--get-collection-buffer (name)
+  "Get a buffer containing the collection NAME.
+The string NAME might be either a buffer name, a file name (with
+an extension) or the title for a new collection.  If it is a file
+name, first check if it designates an existing file or else use
+the base name as a title for a new collection."
+  (or (get-buffer name)
+      (if (delve--storage-p name)
+          (delve--read-storage-file name)
+        (when (file-name-extension name)
+          (setq name (file-name-sans-extension (file-name-base name))))
+        (delve--new-buffer name))))
 
 (defun delve--select-collection-buffer (prompt)
   "Select Delve buffer, collection, or create a new buffer.
 Use PROMPT as a prompt to prompt the user to choose promptly."
-  (let* ((buffer-suffix     "Existing buffer")
-         (collection-suffix "Open file")
-         (dashboard-suffix  "Create")
-         (alist (append  (delve--prepare-candidates
-                          (delve-buffer-list) #'buffer-name buffer-suffix)
-                         ;; Dashboard, if not yet open:
-                         (unless (delve--dashboard-buf)
-                           (delve--prepare-candidates
-                            '("Dashboard") #'identity dashboard-suffix))
-                         ;; Storage files:
-                         (delve--prepare-candidates
-                          (delve-unopened-storages) #'identity collection-suffix)))
-         (new-name  (completing-read prompt alist nil nil nil 'delve--select-history)))
+  (let* ((alist (append
+                 ;; Existing buffers:
+                 (delve--prepare-candidates (delve-buffer-list) #'buffer-name "Existing buffer")
+                 ;; Dashboard, if not yet open:
+                 (unless (delve--dashboard-buf)
+                   (delve--prepare-candidates '("Dashboard") #'identity "Create"))
+                 ;; Storage files:
+                 (delve--prepare-candidates (delve-unopened-storages) #'identity "Open file")))
+         (new-name (delve--remove-candidate-suffix
+                    (completing-read prompt alist nil nil nil 'delve--select-history))))
     ;;
     (setq delve--last-selected-buffer
-          (if-let ((result (car (alist-get new-name alist nil nil #'string=))))
-              (pcase new-name
-                ;; We could also extract the string and then compare,
-                ;; but I had always wanted to use the rx matcher!
-                ((rx "(" (literal buffer-suffix) ")" string-end)
-                 result)
-                ((rx "(" (literal collection-suffix) ")" string-end)
-                 (delve--read-storage-file result))
-                ((rx "(" (literal dashboard-suffix) ")" string-end)
-                 (delve--new-dashboard))
-                (_                   (error "Something went wrong")))
-            (delve--new-buffer new-name)))))
-
+          (if (string= new-name "Dashboard")
+              (delve--new-dashboard)
+            (delve--get-collection-buffer new-name)))))
+  
 (defun delve--add-prompting-for-buffer (l prompt)
   "Add L to a Delve buffer and return that buffer object.
 Use PROMPT when asking the user to select or create a buffer."
@@ -1245,11 +1263,10 @@ If the user selects a non-storage file, pass to `find-file'."
   (interactive)
   (let* ((default-dir (expand-file-name (file-name-as-directory delve-store-directory)))
          (file-name   (expand-file-name (read-file-name "Open Delve store or other file: " default-dir))))
-    (if (-contains-p (delve--storage-files :full-path) file-name)
+    (if (delve--storage-p file-name)
         (switch-to-buffer (delve--read-storage-file file-name))
       ;; TODO Replace that test with testing the file suffix
-      (if (string= (file-name-directory file-name)
-                   default-dir)
+      (if (string= (file-name-directory file-name) default-dir)
           (switch-to-buffer (delve--new-buffer (file-name-base file-name)))
         (find-file file-name)))))
 
