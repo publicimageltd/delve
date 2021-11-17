@@ -582,8 +582,9 @@ Use PROMPT as a prompt to prompt the user to choose promptly."
             (delve--get-collection-buffer new-name)))))
   
 (defun delve--add-prompting-for-buffer (l prompt)
-  "Add L to a Delve buffer and return that buffer object.
-Use PROMPT when asking the user to select or create a buffer."
+  "Add list L to a Delve buffer and return that buffer object.
+L is a list of Delve objects.  Use PROMPT when asking the user to
+select or create a buffer."
   (let ((buf (delve--select-collection-buffer prompt)))
     (lister-add-list (with-current-buffer buf lister-local-ewoc)
                      l)
