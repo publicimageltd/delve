@@ -563,7 +563,7 @@ Use PROMPT as a prompt to prompt the user to choose promptly."
                 (_                   (error "Something went wrong")))
             (delve--new-buffer new-name)))))
 
-(defun delve--add-to-buffer (l prompt)
+(defun delve--add-prompting-for-buffer (l prompt)
   "Add L to a Delve buffer and return that buffer object.
 Use PROMPT when asking the user to select or create a buffer."
   (let ((buf (delve--select-collection-buffer prompt)))
@@ -707,7 +707,7 @@ message on how many zettels have been inserted and return
 non-nil."
   (when zettels
     (if prefix
-        (switch-to-buffer (delve--add-to-buffer zettels " Insert zettels in buffer or collection: "))
+        (switch-to-buffer (delve--add-prompting-for-buffer zettels " Insert zettels in buffer or collection: "))
       ;; TODO Warn when list is too big
       (let* ((n    (length zettels))
              (msg  (format "Inserting %d zettels..." n)))
@@ -1032,7 +1032,7 @@ buffer."
     (when move
       (lister-delete-marked-list ewoc))
     (switch-to-buffer
-     (delve--add-to-buffer (nreverse acc)
+     (delve--add-prompting-for-buffer (nreverse acc)
                            (format "%s items to buffer: "
                                    (if move "Move" "Add"))))
     (message "%s %d items to this buffer"
