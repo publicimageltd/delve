@@ -72,7 +72,7 @@ and use the one selected the last time."
          (buf    (delve-minor-mode--maybe-select
                   "Add node to buffer or collection: "
                   use-last-buffer)))
-    (delve-insert buf id)
+    (delve-insert-nodes-by-id buf id)
     (message "Zettel added to '%s'" (buffer-name buf))))
 
 (defun delve-minor-mode-collect-all (&optional use-last-buffer)
@@ -88,7 +88,7 @@ non-nil, use the previously selected buffer."
          (buf   (delve-minor-mode--maybe-select
                  (format "Add %d nodes to buffer or collection: " n)
                  use-last-buffer)))
-    (delve-insert buf ids)
+    (delve-insert-nodes-by-id buf ids)
     (message "%d zettel added to '%s'" n (buffer-name buf))))
 
 (defun delve-minor-mode--find-node ()
