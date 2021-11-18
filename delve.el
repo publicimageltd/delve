@@ -611,10 +611,10 @@ ALWAYS-INSERT-AFTER is non-nil."
                                (or always-insert-after (lister-eolp)))))))
 
 (defun delve-insert (collection ids)
-  "Insert nodes with IDS to COLLECTION, returning its buffer.
-Insert at point.  IDS can be either a single ID string or a list
-  of IDs.  For possible values for COLLECTION, see
-  `delve--get-collection-buffer'."
+  "Insert nodes with IDS to COLLECTION after point.
+IDS can be either a single ID string or a list of IDs.  For
+  possible values for COLLECTION, see
+  `delve--get-collection-buffer'.  Return the collection buffer."
   (let* ((ids    (-list ids))
          (nodes  (delve-query-nodes-by-id ids)))
     (unless (eq (length nodes) (length ids))
