@@ -15,11 +15,11 @@ to =v2=. It has grown much more than its author has expected. Please
 file an issue if there are functionalities you miss or if you find an
 error. Also feel free to discuss conceptual issues. 
 
-Upcoming changes: Presently, development is mostly aiming at covering
-the present set of features with automated tests. New features will
-only be added if the author needs them for his own work, or if it
-turns out that the intended use cases are too complicated or not
-useful.
+Upcoming changes: Presently, development is mostly aiming at
+stabilizing the current basic set of features and covering the present
+functionality with automated tests. There are also plans for a closer
+integration with [[https://github.com/org-roam/org-roam-ui][org-roam-ui]]. Further plans are to add sorting and
+some export options.
 
 [[./screenshots/delve-intro-tour.gif]]
 
@@ -304,6 +304,7 @@ This is a list of stuff I intend to add (soonish):
 
 ** Current 
 
+ - Refactor collecting nodes from outside Delve.
  - For non-file nodes, display the outline path.
  - Depend on Org Roam with DB 18 (merged in Nov., 10th, 21).
  - Introduce new item type "Heading" (key =h=)
