@@ -60,19 +60,6 @@ buffer, if there is one.  Else use PROMPT to ask the user."
   (or (and prefer-last-one delve--last-selected-buffer)
       (delve--select-collection-buffer prompt)))
 
-(defun delve-minor-mode--add-to-collection (buf ids)
-  "Insert nodes IDS in Delve buffer BUF.
-IDS can be a list or a single ID."
-  (let* ((ids    (-list ids))
-         (nodes  (delve-query-nodes-by-id ids)))
-    (unless (eq (length nodes) (length ids))
-      (error "Canceled because DB did not return all nodes for the IDs; maybe it is out of sync?"))
-    (let ((ewoc (lister-get-ewoc buf)))
-      (delve--insert-nodes (lister-get-ewoc buf)
-                           nodes
-                           :force-insert-after)
-      (lister-goto ewoc :next))))
-
 (defun delve-minor-mode-collect (&optional use-last-buffer)
   "Add node at point to a Delve buffer.
 Use the ID property of the containing org entry or refer to the
@@ -85,7 +72,7 @@ and use the one selected the last time."
          (buf    (delve-minor-mode--maybe-select
                   "Add node to buffer or collection: "
                   use-last-buffer)))
-    (delve-minor-mode--add-to-collection buf id)
+    (delve-insert buf id)
     (message "Zettel added to '%s'" (buffer-name buf))))
 
 (defun delve-minor-mode-collect-all (&optional use-last-buffer)
@@ -101,7 +88,7 @@ non-nil, use the previously selected buffer."
          (buf   (delve-minor-mode--maybe-select
                  (format "Add %d nodes to buffer or collection: " n)
                  use-last-buffer)))
-    (delve-minor-mode--add-to-collection buf ids)
+    (delve-insert buf ids)
     (message "%d zettel added to '%s'" n (buffer-name buf))))
 
 (defun delve-minor-mode--find-node ()

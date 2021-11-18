@@ -549,18 +549,25 @@ to the end, in parentheses.  To remove SUFFIX, use
                             "\\1"
                             cand))
 
-(defun delve--get-collection-buffer (name)
-  "Get a buffer containing the collection NAME.
-The string NAME might be either a buffer name, a file name (with
-an extension) or the title for a new collection.  If it is a file
-name, first check if it designates an existing file or else use
-the base name as a title for a new collection."
-  (or (get-buffer name)
-      (if (delve--storage-p name)
-          (delve--read-storage-file name)
-        (when (file-name-extension name)
-          (setq name (file-name-sans-extension (file-name-base name))))
-        (delve--new-buffer name))))
+(defun delve--get-collection-buffer (buf-or-name)
+  "Get a buffer containing the collection BUF-OR-NAME.
+BUF-OR-NAME may be either nil, a string or a buffer object.  If
+it is nil, let the user select a collection.  If it is a buffer
+object, return it unchanged.  The string is either a buffer name,
+a file name (with an extension) or the title for a new
+collection.  If it is a file name, first check if it designates
+an existing file or else use the base name as title for a new
+collection."
+  (if buf-or-name
+      (if (bufferp buf-or-name)
+          buf-or-name
+        (or (get-buffer buf-or-name)
+            (if (delve--storage-p buf-or-name)
+                (delve--read-storage-file buf-or-name)
+              (when (file-name-extension buf-or-name)
+                (setq buf-or-name (file-name-sans-extension (file-name-base buf-or-name))))
+              (delve--new-buffer buf-or-name))))
+    (delve--select-collection-buffer "Visit collection: ")))
 
 (defun delve--select-collection-buffer (prompt)
   "Select Delve buffer, collection, or create a new buffer.
@@ -580,20 +587,54 @@ Use PROMPT as a prompt to prompt the user to choose promptly."
           (if (string= new-name "Dashboard")
               (delve--new-dashboard)
             (delve--get-collection-buffer new-name)))))
-  
-(defun delve--add-prompting-for-buffer (l prompt)
-  "Add list L to a Delve buffer and return that buffer object.
-L is a list of Delve objects.  Use PROMPT when asking the user to
-select or create a buffer."
-  (let ((buf (delve--select-collection-buffer prompt)))
-    (lister-add-list (with-current-buffer buf lister-local-ewoc)
-                     l)
-    buf))
 
 (defun delve-kill-all-delve-buffers ()
   "Kill all Delve buffers."
   (interactive)
   (seq-do #'kill-buffer (delve-buffer-list)))
+
+;;; * Insert
+ 
+(defun delve--insert-nodes (ewoc nodes &optional always-insert-after)
+  "In current buffer, insert NODES as zettel at point in EWOC.
+NODES is a list of Org Roam nodes.  Insert the new items before
+node at point, if any.  Force insertion after current item if
+ALWAYS-INSERT-AFTER is non-nil."
+  (let ((nodes (-map #'delve--zettel-create nodes)))
+    (if (lister-empty-p ewoc)
+        (lister-add ewoc nodes)
+      (let ((item (lister-get-data-at ewoc :point)))
+        (lister-insert-list-at ewoc :point nodes
+                               ;; don't indent if current item is not
+                               ;; a zettel
+                               (and (not (eq (type-of item) 'delve--zettel)) 0)
+                               (or always-insert-after (lister-eolp)))))))
+
+(defun delve-insert (collection ids)
+  "Insert nodes with IDS to COLLECTION, returning its buffer.
+Insert at point.  IDS can be either a single ID string or a list
+  of IDs.  For possible values for COLLECTION, see
+  `delve--get-collection-buffer'."
+  (let* ((ids    (-list ids))
+         (nodes  (delve-query-nodes-by-id ids)))
+    (unless (eq (length nodes) (length ids))
+      (error "Could not get all nodes; maybe the DB is out of sync?"))
+    (let* ((buf (delve--get-collection-buffer collection))
+           (ewoc (lister-get-ewoc buf)))
+      (delve--insert-nodes ewoc nodes :force-insert-after)
+      (unless (lister-eolp buf)
+        ;; don't know why the window has to be selected, but it works:
+        (with-selected-window (get-buffer-window buf)
+          (ewoc-goto-next ewoc (length ids))))
+      buf)))
+
+(defun delve--add-prompting-for-buffer (l prompt)
+  "Add list L to a Delve buffer and return that buffer object.
+L is a list of Delve objects.  Use PROMPT when asking the user to
+select or create a buffer."
+  (let ((buf (delve--select-collection-buffer prompt)))
+    (lister-add-list (lister-get-ewoc buf) l)
+    buf))
 
 ;;; * Remote Editing - Background Utilites
 
@@ -1060,19 +1101,6 @@ buffer."
 
 ;; Insert node(s)
 
-(defun delve--insert-nodes (ewoc nodes &optional always-insert-after)
-  "Insert NODES as zettel at point in EWOC.
-Insert the new items before node at point, if any.  Force
-insertion after current node if ALWAYS-INSERT-AFTER is non-nil."
-  (let ((nodes (-map #'delve--zettel-create nodes)))
-    (if (lister-empty-p ewoc)
-        (lister-add ewoc nodes)
-      (let ((item (lister-get-data-at ewoc :point)))
-        (lister-insert-list-at ewoc :point nodes
-                               ;; don't indent if current item is not
-                               ;; a zettel
-                               (and (not (eq (type-of item) 'delve--zettel)) 0)
-                               (or always-insert-after (lister-eolp)))))))
 
 (defun delve--key--insert-node ()
   "Interactively add node(s) to current buffer's Delve list."
