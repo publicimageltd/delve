@@ -624,7 +624,8 @@ Insert at point.  IDS can be either a single ID string or a list
       (delve--insert-nodes ewoc nodes :force-insert-after)
       (unless (lister-eolp buf)
         ;; don't know why the window has to be selected, but it works:
-        (with-selected-window (get-buffer-window buf)
+        (save-window-excursion
+          (switch-to-buffer buf)
           (ewoc-goto-next ewoc (length ids))))
       buf)))
 
