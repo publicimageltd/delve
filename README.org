@@ -92,7 +92,7 @@ explicitly visit that buffer, use =C-u f12= (=C-u M-x delve=).
 
 * Storing collections in files
 
-You can save or load any =Delve= buffer by using =M-x delve-open-buffer=
+You can save or load any =Delve= buffer by using =M-x delve-open-storage-file
 (or =C-x f= from within a =Delve= buffer) or =M-x delve-save-buffer= (or =C-x
 s=, respectively). To save the buffer to a new file, use =M-x
 delve-write-buffer= (or =C-x w=).
