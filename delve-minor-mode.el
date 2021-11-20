@@ -29,11 +29,13 @@
 
 ;; * Variables
 
-(defvar delve-minor-mode-prefix-key (kbd "M-n")
+(defcustom delve-minor-mode-prefix-key (kbd "M-n")
   "Prefix key for Delve minor mode commands.
 If you want to change this key in your .emacs file, set the
 variable before loading this package.  With `use-package', use
-the `:init' keyword.")
+the `:init' keyword."
+  :group 'delve
+  :type 'key-sequence)
 
 (defvar delve--last-selected-buffer) ;; used in delve.el
 

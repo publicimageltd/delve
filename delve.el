@@ -52,7 +52,7 @@
 
 ;;; * Customizable Variables
 
-(defgroup Delve nil
+(defgroup delve nil
   "A zettelkasten tool on top of Org Roam."
   :group 'org-roam
   :link '(url-link :tag "Github" "https://github.com/publicimageltd/delve"))
@@ -60,14 +60,14 @@
 (defcustom delve-dashboard-tags '("Dashboard")
   "Tags for which to insert query objects in the Dashboard.
 Each element can be a tag or a list of tags."
-  :group 'Delve
+  :group 'delve
   :type '(repeat (choice (string :tag "Tag")
                          (repeat (string :tag "Tags")))))
 
 (defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
                                          "delve-store")
-  "Path to a default directory for storing Delve buffers in."
-  :group 'Delve
+  "Path to a default directory for storing delve buffers in."
+  :group 'delve
   :type  'directory)
 
 (defcustom delve-display-path t
@@ -75,7 +75,7 @@ Each element can be a tag or a list of tags."
 If non-nil, insert the file title and the outline path, if they
 exist, before the node's title.  This can cause quite long
 entries."
-  :group 'Delve
+  :group 'delve
   :type 'boolean)
 
 ;;; * Global Variables
