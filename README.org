@@ -157,6 +157,9 @@ Use the usual nagivation commands.
  - If there is no sublist, and the current item is a a pile, insert
    the contents of the pile and remove the pile (!).
 
+As with most commands inserting stuff, pressing =C-u= before executing
+the command offers you to add that result into another collection.
+
 *** Preview of visit the node at point
 
 [[./screenshots/node-with-preview.png]]
