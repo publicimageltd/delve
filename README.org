@@ -1,6 +1,6 @@
 #+TITLE: delve.el
 
-=Delve= (currently version =0.9=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
+=Delve= (currently version =0.9.3=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
 provides tools to collect, inspect and edit Org Roam Nodes in a
 separate application buffer. It helps you to quickly establish and
 maintain a project-specific subset of Org Roam Nodes, e.g. when
@@ -304,13 +304,17 @@ This is a list of stuff I intend to add (soonish):
 
 ** Current 
 
+** 0.9.3
+
  - Refactor collecting nodes from outside Delve.
- - For non-file nodes, display the outline path.
- - Depend on Org Roam with DB 18 (merged in Nov., 10th, 21).
+ - For non-file nodes, display the outline path. Depends now on Org
+   Roam with DB 18 (merged in Nov., 10th, 21).
  - Introduce new item type "Heading" (key =h=)
  - Allow remote editing (add, remove tags) of multiple items.
  - Mark list as "modified" if items are deleted, inserted or updated.
    Storing the list removes that flag.
+ - Somewhere in between is 0.9.2, I forgot to update all version
+   numbers in all files. 
 
 ** 0.9 
 Complete rewrite; now based on Org Roam =v2=.
