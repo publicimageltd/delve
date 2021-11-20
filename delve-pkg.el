@@ -1,6 +1,6 @@
-(define-package "delve" "0.9.2"
+(define-package "delve" "0.9.3"
   "Delve into your org roam zettelkasten."
-  '((emacs "27.1")
+  '((emacs "27.2")
     ;; Lister tries to avoid dash, but since Org Roam uses it anyway:
     (dash "2.13")
     (org-roam "2.1")
