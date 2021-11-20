@@ -109,7 +109,7 @@ entries."
 
 ;; * Faces
 
-(defgroup Delve-faces nil
+(defgroup delve-faces nil
   "Faces used by Delve."
   :group 'Delve
   :group 'faces)
@@ -117,82 +117,82 @@ entries."
 (defface delve-preview-face
   '((t (:inherit variable-pitch)))
   "Face for displaying preview (for non-monospaced display)."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-path-face
   '((t (:inherit transient-inactive-value)))
   "Face for displaying the node path."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-header-face
   '((t (:inherit org-document-title)))
   "Face for displaying the header of a Delve list."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-note-face
   '((t (:inherit font-lock-comment-face)))
   "Face for displaying note items in a Delve list."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-info-face
   '((t (:inherit warning)))
   "Face for displaying info items in a Delve list."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-tags-face
   '((t (:inherit org-tag)))
   "Face for displaying roam tags in a Delve list."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-title-face
   '((t (:inherit org-roam-title)))
   "Face for displaying org roam page titles in a Delve list."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-pile-name-face
   '((t (:inherit org-document-title)))
   "Face for displaying the name of a Zettel pile."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-subtype-face
   '((t (:inherit font-lock-constant-face)))
   "Face for displaying the subtype of a Delve item."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-mtime-face
   '((t (:inherit org-document-info-keyword)))
   "Face for displaying the mtime of a Delve item."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-atime-face
   '((t (:inherit org-document-info-keyword)))
   "Face for displaying the atime of a Delve item."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-ctime-face
   '((t (:inherit org-document-info-keyword)))
   "Face for displaying the ctime of a Delve item."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-nbacklinks-face
   '((t (:weight bold)))
   "Face for displaying the number of backlinks to a Delve zettel."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-ntolinks-face
   '((t (:weight bold)))
   "Face for displaying the number of tolinks to a Delve zettel."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-pile-face
   '((t (:inherit org-level-1)))
   "Face for displaying the title of a Delve pile."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 (defface delve-query-face
   '((t (:inherit org-level-2)))
   "Face for displaying the title of a Delve query."
-  :group 'Delve-faces)
+  :group 'delve-faces)
 
 ;;; * The Lister Mapper
 
