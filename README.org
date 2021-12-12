@@ -139,9 +139,7 @@ In the dashboard buffer, you'll find queries:
 Press =<TAB>= to add its contents into the current buffer's collection.
 
 * Keybindings / Usage
-
 ** Delve
-
 *** Navigation / The Tab Key
 
 Use the usual nagivation commands.
@@ -256,6 +254,12 @@ present in all nodes (union of sets). Attempts to remove a tag in a node
 which does not have this tag is silently skipped.
 
 Press =g= to refresh after editing.
+
+*** Sorting
+The key =s= gives access to some sorting commands, which are presented
+as a transient menu. Sorting (or reversing) applies to the current
+sublist at point. If there is no sublist, the whole list is sorted.
+
 
 ** Delve Minor Mode
 

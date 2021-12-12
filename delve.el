@@ -37,6 +37,8 @@
 (require 'lister)
 (require 'lister-mode)
 (require 'button)
+(require 'transient)
+
 (require 'delve-data-types)
 (require 'delve-query)
 (require 'delve-pp)
@@ -630,7 +632,244 @@ ITEMS is a list of Delve objects.  Use PROMPT when asking the
 user to select or create a buffer."
   (delve-insert-items (delve--select-collection-buffer prompt) items))
 
-;;; * Remote Editing - Background Utilites
+;; * Sort
+
+(defun delve--cmp-fn (sort-fn slot-fn &optional map-fn)
+  "Return a function for sorting Zettels by SLOT-FN.
+SORT-FN must be a binary predicate.  Optionally pass the slot
+value through MAP-FN before using it for sorting."
+  (-on sort-fn (-compose (or map-fn #'identity) slot-fn)))
+
+;; FIXME Currently unused, will be useful for joining different cmps
+(defun delve--cmp-list (&rest args)
+  "Return a list of single sorting comparators built using ARGS.
+Each arg in ARGS is a list specifying a sorting function, a slot
+accessor function and optionally a mapping function.  See
+`delve--cmp-fn'."
+  (let (acc)
+    (pcase-dolist (`(,a ,b ,c) args)
+      (push (delve--cmp-fn a b c) acc))
+    (nreverse acc)))
+
+(cl-defstruct (delve-dual-cmp (:constructor delve-dual-cmp--create))
+  "Structure holding two comparator functions for sorting in
+  ascending and descending order, and a description for user
+  selection."
+  comp-asc comp-desc desc)
+
+(defmacro delve--build-dual-cmp (name desc sort-fn-asc sort-fn-desc slot-fn &optional map-fn)
+  "Define a dual comperator NAME and DESC.
+Use SORT-FN-ASC to sort in ascending order and SORT-FN-DESC for
+comparing in the other direction.  For the meaning of SLOT-FN and
+MAP-FN, see `delve--cmp-fn'."
+  (declare (indent 1))
+  `(defvar ,name
+     (delve-dual-cmp--create :comp-asc (delve--cmp-fn ,sort-fn-asc ,slot-fn ,map-fn)
+                             :comp-desc (delve--cmp-fn ,sort-fn-desc ,slot-fn ,map-fn)
+                             :desc ,desc)
+     ,(concat "Structure holding a dual comporator to sorty by " (downcase desc))))
+
+(delve--build-dual-cmp delve-2cmp--title
+  "title"
+  #'string< #'string> #'delve--zettel-title)
+
+(delve--build-dual-cmp delve-2cmp--tag-n
+  "number of tags"
+  #'< #'> #'delve--zettel-tags #'length)
+
+(delve--build-dual-cmp delve-2cmp--level
+  "nesting level"
+  #'< #'> #'delve--zettel-level)
+
+(delve--build-dual-cmp delve-2cmp--file-title
+  "file title"
+  #'string< #'string> #'delve--zettel-filetitle)
+
+(defvar delve--all-2cmps-symbols
+  '(delve-2cmp--title
+    delve-2cmp--file-title
+    delve-2cmp--level
+    delve-2cmp--tag-n)
+  "*Internal* All comperator names, as symbols.")
+
+(defvar delve--all-2cmps
+  (-map #'eval delve--all-2cmps-symbols)
+  "*Internal* All comparators for sorting.")
+
+;;; * Transient
+
+;; * Define infix delve--transient-switches for switching between options.
+
+(defclass delve--transient-switches (transient-option)
+  ((choices        :initarg :choices)        ;; return value
+   (pretty-choices :initarg :pretty-choices) ;; display value
+   (allow-nil      :initarg :allow-nil :initform t) ;; allow unsetting?
+   (always-read    :initform t)
+   (reader         :initform delve--transient-toggle-reader))
+  "Transient switch for mutually exclusive values.
+The transient returns the value from `choices', but presents to
+the user the corresponding value (same index) from
+`pretty-choices'.")
+
+(defun transient--initial-switch-value (obj)
+  "Return the initial value for switch OBJ.
+OBJ must be an instance of `delve--transient-switches'."
+  (and (not (oref obj allow-nil)) (elt (oref obj choices) 0)))
+
+(cl-defmethod transient-init-value ((obj delve--transient-switches))
+  "Set initial value for switch OBJ."
+  (oset obj value (transient--initial-switch-value obj)))
+
+(cl-defmethod transient-format-value ((obj delve--transient-switches))
+  "Format the value list of OBJ."
+  (let* ((value (oref obj value))
+         (choices (oref obj choices))
+         (n 0))
+    (mapconcat (lambda (pretty-choice)
+                 (cl-incf n)
+                 (propertize pretty-choice
+                             'face (if (equal value (elt choices (1- n)))
+                                       'transient-value
+                                     'transient-inactive-value)))
+               (oref obj pretty-choices)
+               "|")))
+
+(defun delve--transient-toggle-reader (&rest _)
+  "Shift value to the next value.
+Move forward to the next element in slot `choices', wrapping
+around if the end of the list is reached.  If slot `allow-nil' is
+non-nil, return nil after the last choice and move to the first
+choice after nil."
+  (let* ((obj      (transient-suffix-object))
+         (value    (oref obj value))
+         (choices  (oref obj choices)))
+    ;; move from nil -> first value
+    (if (not value)
+        (elt choices 0)
+      ;; move from any value -> next value
+      (let ((n (1+ (-elem-index value choices))))
+        (if (< n (length choices))
+            (elt choices n)
+          ;; end of list? either unset or go back to first value
+          (transient--initial-switch-value obj))))))
+
+;; Switches with default values
+
+(defclass delve--transient-cmp-switches (delve--transient-switches)
+  ((choices        :initform (-map #'symbol-name delve--all-2cmps-symbols))
+   (pretty-choices :initform (-map #'delve-dual-cmp-desc delve--all-2cmps)))
+  "Transient switch with preset values for choosing a comparator.")
+
+(defclass delve--transient-cmp-order (delve--transient-switches)
+  ((choices        :initform '("comp-asc" "comp-desc")) ;; slots in delve-dual-cmp
+   (pretty-choices :initform '("A → Z" "Z → A"))))
+
+;; * The actual sorting function (and its constituents)
+
+(defun delve--transient-split-switch (s)
+  "Return S `--val=key' as a list with value-key-pair."
+  (let* ((re (rx (*? blank)
+                 "--" (group-n 1 (+? (not "=")))
+                 "="  (group-n 2 (* (not blank)))
+                 (*? blank))))
+    (when (string-match re s)
+      (list (intern (concat ":" (match-string 1 s)))
+            (match-string 2 s)))))
+
+(defun delve--transient-get-dual-cmp (cmp-string)
+  "Return dual comparator using CMP-STRING.
+CMP-STRING must be the name of a symbol, the value of which is an
+instance of a `delve-dual-cmp' object and is listed in the
+variable `delve--all-2cmps-symbols'."
+  (when cmp-string
+    (let* ((cmp-sym (intern cmp-string)))
+      (unless (-contains? delve--all-2cmps-symbols cmp-sym)
+        (error "No dual comparator object %s" cmp-string))
+      ;; don't do this at home, guys, it's ev(i|a)l:
+      (eval cmp-sym))))
+
+(defun delve--transient-cmp-info (dual-cmp order-string)
+  "Return informative string about the comparator in DUAL-CMP.
+ORDER-STRING.  ORDER-STRING must be either \"comp-asc\" or
+\"comp-desc\", designating the respective slot in the dual
+comperator object. Return nil if one of the
+args is nil."
+  (when (and dual-cmp order-string)
+    (format "by %s (%s)" (delve-dual-cmp-desc dual-cmp)
+            (if (equal order-string "comp-desc")
+                "from Z to A"
+              "from A to Z"))))
+
+(defun delve--transient-get-cmp (dual-cmp order-string)
+  "Return comparator fn of DUAL-CMP using ORDER-STRING.
+DUAL-CMP must be a dual comparator object.  ORDER-STRING must be
+either \"comp-asc\" or \"comp-desc\", designating the respective
+slot in the dual comperator object.  Return nil if one of the
+args is nil."
+  (when (and dual-cmp order-string)
+    (let ((order-sym (intern order-string)))
+      (unless (-contains? '(comp-desc comp-asc) order-sym)
+        (error "Wrong slot name: %s" order-string))
+      (cl-struct-slot-value 'delve-dual-cmp order-sym dual-cmp))))
+
+(transient-define-suffix delve--do-sort (&rest args)
+  "Do the actual sorting with ARGS defined in transient `delve-sort'."
+  (interactive (list (transient-args transient-current-command)))
+  (when (equal args '(nil))
+    (error "No arguments defined for sorting?"))
+  (let ((plist (-flatten (-map #'delve--transient-split-switch (-flatten args)))))
+    ;; Assert that second sorting criterion is consistent
+    (when (or (plist-get plist :sort2) (plist-get plist :order2))
+      (unless (and (plist-get plist :sort2) (plist-get plist :order2))
+        (user-error "Second sorting criterion not fully defined: %s missing"
+                    (if (plist-get plist :sort2)
+                        "order (ascending or descending)"
+                      "criterion"))))
+    ;; Do it:
+    (let* ((cmp1 (delve--transient-get-dual-cmp (plist-get plist :sort1)))
+           (cmp2 (delve--transient-get-dual-cmp (plist-get plist :sort2)))
+           (fn1  (delve--transient-get-cmp cmp1 (plist-get plist :order1)))
+           (fn2  (delve--transient-get-cmp cmp2 (plist-get plist :order2)))
+           (s1   (delve--transient-cmp-info cmp1 (plist-get plist :order1)))
+           (s2   (delve--transient-cmp-info cmp2 (plist-get plist :order2)))
+           (msg  (concat "Sorting "
+                         (when (and s1 s2) "first ")
+                         s1
+                         (when s2 (concat ", then " s2))
+                         ".")))
+      (lister-sort-sublist-at lister-local-ewoc :point
+                              (-non-nil (list fn1 fn2)))
+      (message msg))))
+
+(transient-define-suffix delve--echo-transient-value (&rest _)
+  "Echo the current value of the current transient for debugging purposes."
+  (interactive)
+  (message "Value: %S" (transient-get-value)))
+
+;; Build the transient
+
+(transient-define-prefix delve--key--another-sort ()
+  "Sort"
+  [["First sorting criterion"
+    ("s" "Sort by" "--sort1="  :class delve--transient-cmp-switches
+     :allow-nil nil)
+    ("o" "Order"   "--order1=" :class delve--transient-cmp-order
+     :allow-nil nil)]]
+   [["Second sorting criterion"
+     ("S" "Sort by" "--sort2="  :class delve--transient-cmp-switches)
+     ("O" "Order" "--order2=" :class delve--transient-cmp-order)]]
+  [["Actions on (sub-)list"
+    ("r" "Reverse" delve--key--reverse)
+    ("x" "Sort" delve--do-sort)]
+   ;; fake column
+   ["        "
+    ""]
+   ["Quit"
+    ("q" "Quit" transient-quit-one)
+    ;;("v" "Value" delve--echo-transient-value :transient t)
+    ]])
+
+;; * Remote Editing - Background Utilites
 
 (defun delve--sync-zettel (zettels)
   "Force sync of all ZETTELS with the org roam db.
@@ -1010,6 +1249,13 @@ With PREFIX, expand all hidden subtrees in the EWOC's buffer."
         (delve--zettel (delve--key--links        item prefix))
         (t             (user-error "Cannot do anything useful here"))))))
 
+(defun delve--key--reverse (ewoc)
+  "In EWOC, reverse the order of all items in current (sub-) list."
+  (interactive (list lister-local-ewoc))
+  (lister-with-sublist-at ewoc :point beg end
+    (lister-reverse-list ewoc beg end))
+  (message "Reversed order of list items"))
+
 ;;; * Key commands not bound to a specific item at point
 
 ;; Add heading
@@ -1326,6 +1572,8 @@ If the user selects a non-storage file, pass to `find-file'."
     ;; Insert Queries or Piles:
     (define-key map (kbd "i")                        #'delve--key--insert-query-or-pile)
     (define-key map (kbd "t")                        #'delve--key--insert-tagged)
+    ;; Sorting / Reordering:
+    (define-key map (kbd "s")                        #'delve--key--another-sort)
     ;; Remote Editing:
     (define-key map (kbd "+")                        #'delve--key--add-tags)
     (define-key map (kbd "-")                        #'delve--key--remove-tags)
