@@ -18,8 +18,8 @@ error. Also feel free to discuss conceptual issues.
 Upcoming changes: Presently, development is mostly aiming at
 stabilizing the current basic set of features and covering the present
 functionality with automated tests. There are also plans for a closer
-integration with [[https://github.com/org-roam/org-roam-ui][org-roam-ui]]. Further plans are to add sorting and
-some export options.
+integration with [[https://github.com/org-roam/org-roam-ui][org-roam-ui]]. Further plans are to add some export
+options.
 
 [[./screenshots/delve-intro-tour.gif]]
 
@@ -28,6 +28,7 @@ some export options.
  - =Dashboard= with customizable queries to have quick access (and
    overview) of nodes with a certain tags, and to see all nodes with
    no links.
+ - Sort any list with a spiffy interactive transient menu.
  - Insert or delete nodes interactively from the =Delve= buffer, or from
    any Org Roam file using =delve-minor-mode=.
  - Re-arrange nodes manually by moving them around, or by creating
@@ -310,6 +311,7 @@ This is a list of stuff I intend to add (soonish):
 * Changelog
 
 ** Current 
+  - Sorting
 
 ** 0.9.3
 
