@@ -2,6 +2,10 @@
 
 (setq org-roam-v2-ack t)
 
+;; Add with-simulated-input as development tool
+(push '(with-simulated-input :archive melpa) eldev-known-tool-packages)
+(eldev-add-extra-dependencies 'test 'with-simulated-input)
+
 ;; Uncomment some calls below as needed for your project.
 ;(eldev-use-package-archive 'gnu)
 (eldev-use-package-archive '("org" . "https://orgmode.org/elpa/"))
