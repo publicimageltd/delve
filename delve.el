@@ -749,7 +749,7 @@ one of the args is nil."
          (sort2  (plist-get plist :sort2))
          (order1 (plist-get plist :order1))
          (order2 (plist-get plist :order2)))
-  
+
     ;; Assert that second sorting criterion is consistent
     (when (or (plist-get plist :sort2) (plist-get plist :order2))
       (unless (and (plist-get plist :sort2) (plist-get plist :order2))
@@ -1016,7 +1016,74 @@ Optional argument PREFIX is currently not used."
     (switch-to-buffer buf)
     (when (org-invisible-p) (org-show-context))))
 
-;; Insert backlinks and fromlinks
+
+;; * Copy / Paste
+
+(defun delve--lister-node-at-pos (ewoc pos)
+  "Return lister node at POS in Delve EWOC."
+  (with-current-buffer (ewoc-buffer ewoc)
+    (save-excursion
+      (goto-char pos)
+      (lister-get-node-at ewoc :point))))
+
+(defun delve--tokenize-filter (beg end &optional delete)
+  "In current buffer, return the region BEG END as a tokenized string.
+Optionally also DELETE the items.  This function is intended to
+be used as a value for `filter-buffer-substring-function'."
+  (unless lister-local-ewoc
+    (error "Filter function has to be called in a Delve buffer"))
+
+  (let* (acc verb
+         (ewoc     lister-local-ewoc)
+         (node-beg (delve--lister-node-at-pos ewoc beg))
+         (node-end (delve--lister-node-at-pos ewoc (1- end))))
+
+    (unless (and node-beg node-end)
+      (error "Could not find any list items in region %s - %s"
+             beg end))
+
+    (lister-dolist (ewoc delve-object node-beg node-end)
+      (push (delve-store--tokenize-object delve-object) acc))
+
+    (setq verb "Copied")
+    (when delete
+      (lister-delete-list ewoc node-beg node-end)
+      (setq verb "Killed"))
+
+    (message "%s %d items" verb (length acc))
+
+    (propertize
+     (concat "("
+             (string-join (--map (format "%S" it) (nreverse acc)))
+             ")")
+     'yank-handler
+     'delve--yank-handler)))
+
+(defun delve--yank-handler (s)
+  "Insert tokenized string S as a Delve object at point."
+  (unless lister-local-ewoc
+    (error "This yank handler only works in Delve buffers"))
+  (when-let* ((tokenized-list (read (substring-no-properties s)))
+              (objects (delve-store--create-object-list tokenized-list)))
+    (lister-insert-list-at lister-local-ewoc :point objects)
+    (message "Inserted %d items" (length objects))))
+
+(defun delve--yank (&optional arg)
+  "Yank last kill, if it is a Delve token string.
+Option ARG is currently ignored."
+  (interactive)
+  (ignore arg)
+  (unless lister-local-ewoc
+    (error "This yank function has to be called in a Delve buffer"))
+  (let* ((yank (current-kill 0)))
+    (if (eq (get-text-property 0 'yank-handler yank)
+            'delve--yank-handler)
+        (delve--yank-handler yank)
+      (user-error "Current kill is not a Delve object; cannot yank"))))
+
+;; (current-kill 0)
+
+;; * Insert backlinks and fromlinks
 
 (defvar delve--backlink-info "Backlink to %s"
   "Info format string for backlinks.")
@@ -1479,6 +1546,7 @@ If the user selects a non-storage file, pass to `find-file'."
     (define-key map (kbd "g")                        #'delve--key--sync)
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
+    (define-key map [remap yank]                     #'delve--yank)
     ;; Insert node(s):
     (let ((prefix (define-prefix-command 'delve--key--insert-prefix nil "Insert")))
       (define-key prefix "n" '(" node"     . delve--key--insert-node))
@@ -1517,7 +1585,8 @@ If the user selects a non-storage file, pass to `find-file'."
   "Major mode for browsing your org roam zettelkasten."
   (lister-setup	(current-buffer) #'delve-mapper  #'delve--header-function)
   (add-to-invisibility-spec '(org-link))
-  (lister-mode))
+  (lister-mode)
+  (setq-local filter-buffer-substring-function #'delve--tokenize-filter))
 
 ;;; * Main Entry Point
 
