@@ -761,9 +761,10 @@ one of the args is nil."
     (let* ((cmp1 (delve--get-dual-cmp-by-string sort1))
            (cmp2 (delve--get-dual-cmp-by-string sort2)))
       ;;
-      (lister-sort-sublist-at lister-local-ewoc :point
-                              (-non-nil (list (delve--get-cmp-fn cmp1 order1)
-                                              (delve--get-cmp-fn cmp2 order2))))
+      (lister-save-current-node lister-local-ewoc
+          (lister-sort-sublist-at lister-local-ewoc :point
+                                  (-non-nil (list (delve--get-cmp-fn cmp1 order1)
+                                                  (delve--get-cmp-fn cmp2 order2)))))
       ;;. ..and talk about it:
       (let ((s1   (delve--cmp-info cmp1 order1))
             (s2   (delve--cmp-info cmp2 order2)))
