@@ -37,8 +37,8 @@
 (require 'lister)
 (require 'lister-mode)
 (require 'button)
-(require 'transient)
 
+(require 'delve-transient)
 (require 'delve-data-types)
 (require 'delve-query)
 (require 'delve-pp)
@@ -636,38 +636,31 @@ user to select or create a buffer."
 
 (defun delve--cmp-fn (sort-fn slot-fn &optional map-fn)
   "Return a function for sorting Zettels by SLOT-FN.
-SORT-FN must be a binary predicate.  Optionally pass the slot
-value through MAP-FN before using it for sorting."
+SORT-FN must be a binary predicate.  Access the value using
+SLOT-FN.  Optionally pass the slot value through MAP-FN before
+using it for sorting."
   (-on sort-fn (-compose (or map-fn #'identity) slot-fn)))
-
-;; FIXME Currently unused, will be useful for joining different cmps
-(defun delve--cmp-list (&rest args)
-  "Return a list of single sorting comparators built using ARGS.
-Each arg in ARGS is a list specifying a sorting function, a slot
-accessor function and optionally a mapping function.  See
-`delve--cmp-fn'."
-  (let (acc)
-    (pcase-dolist (`(,a ,b ,c) args)
-      (push (delve--cmp-fn a b c) acc))
-    (nreverse acc)))
 
 (cl-defstruct (delve-dual-cmp (:constructor delve-dual-cmp--create))
   "Structure holding two comparator functions for sorting in
-  ascending and descending order, and a description for user
-  selection."
+ascending and descending order, and a description for user
+selection."
   comp-asc comp-desc desc)
 
 (defmacro delve--build-dual-cmp (name desc sort-fn-asc sort-fn-desc slot-fn &optional map-fn)
-  "Define a dual comperator NAME and DESC.
-Use SORT-FN-ASC to sort in ascending order and SORT-FN-DESC for
-comparing in the other direction.  For the meaning of SLOT-FN and
-MAP-FN, see `delve--cmp-fn'."
+  "Define a dual comperator object NAME with DESC.
+A dual comperator object holds two comparator functions.
+SORT-FN-ASC sort is responsible for sorting in ascending order
+and SORT-FN-DESC for the other direction.  For the meaning of
+SLOT-FN and MAP-FN, see `delve--cmp-fn'."
   (declare (indent 1))
   `(defvar ,name
      (delve-dual-cmp--create :comp-asc (delve--cmp-fn ,sort-fn-asc ,slot-fn ,map-fn)
                              :comp-desc (delve--cmp-fn ,sort-fn-desc ,slot-fn ,map-fn)
                              :desc ,desc)
      ,(concat "Structure holding a dual comporator to sorty by " (downcase desc))))
+
+;; * Define the comparators for sorting
 
 (delve--build-dual-cmp delve-2cmp--title
   "title"
@@ -685,6 +678,8 @@ MAP-FN, see `delve--cmp-fn'."
   "file title"
   #'string< #'string> #'delve--zettel-filetitle)
 
+;; * Utilities to use comparators in transients
+
 (defvar delve--all-2cmps-symbols
   '(delve-2cmp--title
     delve-2cmp--file-title
@@ -696,88 +691,20 @@ MAP-FN, see `delve--cmp-fn'."
   (-map #'eval delve--all-2cmps-symbols)
   "*Internal* All comparators for sorting.")
 
-;;; * Transient
+(defun delve--cmp-info (dual-cmp slot-name)
+  "Return informative string about the comparator DUAL-CMP.
+SLOT-NAME.  SLOT-NAME must be either \"comp-asc\" or
+\"comp-desc\", designating the respective slot in the dual
+comperator object. Return nil if one of the
+args is nil."
+  (when (and dual-cmp slot-name)
+    (format "by %s (%s)" (delve-dual-cmp-desc dual-cmp)
+            (if (equal slot-name "comp-desc")
+                "from Z to A"
+              "from A to Z"))))
 
-;; * Define infix delve--transient-switches for switching between options.
-
-(defclass delve--transient-switches (transient-option)
-  ((choices        :initarg :choices)        ;; return value
-   (pretty-choices :initarg :pretty-choices) ;; display value
-   (allow-nil      :initarg :allow-nil :initform t) ;; allow unsetting?
-   (always-read    :initform t)
-   (reader         :initform delve--transient-toggle-reader))
-  "Transient switch for mutually exclusive values.
-The transient returns the value from `choices', but presents to
-the user the corresponding value (same index) from
-`pretty-choices'.")
-
-(defun transient--initial-switch-value (obj)
-  "Return the initial value for switch OBJ.
-OBJ must be an instance of `delve--transient-switches'."
-  (and (not (oref obj allow-nil)) (elt (oref obj choices) 0)))
-
-(cl-defmethod transient-init-value ((obj delve--transient-switches))
-  "Set initial value for switch OBJ."
-  (oset obj value (transient--initial-switch-value obj)))
-
-(cl-defmethod transient-format-value ((obj delve--transient-switches))
-  "Format the value list of OBJ."
-  (let* ((value (oref obj value))
-         (choices (oref obj choices))
-         (n 0))
-    (mapconcat (lambda (pretty-choice)
-                 (cl-incf n)
-                 (propertize pretty-choice
-                             'face (if (equal value (elt choices (1- n)))
-                                       'transient-value
-                                     'transient-inactive-value)))
-               (oref obj pretty-choices)
-               "|")))
-
-(defun delve--transient-toggle-reader (&rest _)
-  "Shift value to the next value.
-Move forward to the next element in slot `choices', wrapping
-around if the end of the list is reached.  If slot `allow-nil' is
-non-nil, return nil after the last choice and move to the first
-choice after nil."
-  (let* ((obj      (transient-suffix-object))
-         (value    (oref obj value))
-         (choices  (oref obj choices)))
-    ;; move from nil -> first value
-    (if (not value)
-        (elt choices 0)
-      ;; move from any value -> next value
-      (let ((n (1+ (-elem-index value choices))))
-        (if (< n (length choices))
-            (elt choices n)
-          ;; end of list? either unset or go back to first value
-          (transient--initial-switch-value obj))))))
-
-;; Switches with default values
-
-(defclass delve--transient-cmp-switches (delve--transient-switches)
-  ((choices        :initform (-map #'symbol-name delve--all-2cmps-symbols))
-   (pretty-choices :initform (-map #'delve-dual-cmp-desc delve--all-2cmps)))
-  "Transient switch with preset values for choosing a comparator.")
-
-(defclass delve--transient-cmp-order (delve--transient-switches)
-  ((choices        :initform '("comp-asc" "comp-desc")) ;; slots in delve-dual-cmp
-   (pretty-choices :initform '("A → Z" "Z → A"))))
-
-;; * The actual sorting function (and its constituents)
-
-(defun delve--transient-split-switch (s)
-  "Return S `--val=key' as a list with value-key-pair."
-  (let* ((re (rx (*? blank)
-                 "--" (group-n 1 (+? (not "=")))
-                 "="  (group-n 2 (* (not blank)))
-                 (*? blank))))
-    (when (string-match re s)
-      (list (intern (concat ":" (match-string 1 s)))
-            (match-string 2 s)))))
-
-(defun delve--transient-get-dual-cmp (cmp-string)
-  "Return dual comparator using CMP-STRING.
+(defun delve--get-dual-cmp-by-string (cmp-string)
+  "Return a dual comparator object using CMP-STRING.
 CMP-STRING must be the name of a symbol, the value of which is an
 instance of a `delve-dual-cmp' object and is listed in the
 variable `delve--all-2cmps-symbols'."
@@ -788,36 +715,41 @@ variable `delve--all-2cmps-symbols'."
       ;; don't do this at home, guys, it's ev(i|a)l:
       (eval cmp-sym))))
 
-(defun delve--transient-cmp-info (dual-cmp order-string)
-  "Return informative string about the comparator in DUAL-CMP.
-ORDER-STRING.  ORDER-STRING must be either \"comp-asc\" or
-\"comp-desc\", designating the respective slot in the dual
-comperator object. Return nil if one of the
-args is nil."
-  (when (and dual-cmp order-string)
-    (format "by %s (%s)" (delve-dual-cmp-desc dual-cmp)
-            (if (equal order-string "comp-desc")
-                "from Z to A"
-              "from A to Z"))))
-
-(defun delve--transient-get-cmp (dual-cmp order-string)
-  "Return comparator fn of DUAL-CMP using ORDER-STRING.
-DUAL-CMP must be a dual comparator object.  ORDER-STRING must be
-either \"comp-asc\" or \"comp-desc\", designating the respective
-slot in the dual comperator object.  Return nil if one of the
-args is nil."
-  (when (and dual-cmp order-string)
-    (let ((order-sym (intern order-string)))
+(defun delve--get-cmp-fn (dual-cmp slot-name)
+  "Return comparator fn of DUAL-CMP using SLOT-NAME.
+DUAL-CMP must be a dual comparator object.  SLOT-NAME must be the
+string (not symbol!) \"comp-asc\" or \"comp-desc\", designating
+the respective slot in the dual comperator object.  Return nil if
+one of the args is nil."
+  (when (and dual-cmp slot-name)
+    (let ((order-sym (intern slot-name)))
       (unless (-contains? '(comp-desc comp-asc) order-sym)
-        (error "Wrong slot name: %s" order-string))
+        (error "Wrong slot name: %s" slot-name))
       (cl-struct-slot-value 'delve-dual-cmp order-sym dual-cmp))))
+
+;;; * Define Sort Transient
+
+(defclass delve--transient-cmp-switches (delve-transient-switches)
+  ((choices        :initform (-map #'symbol-name delve--all-2cmps-symbols))
+   (pretty-choices :initform (-map #'delve-dual-cmp-desc delve--all-2cmps)))
+  "Transient switch with preset values for choosing a comparator.")
+
+(defclass delve--transient-cmp-order (delve-transient-switches)
+  ((choices        :initform '("comp-asc" "comp-desc")) ;; slots in delve-dual-cmp
+   (pretty-choices :initform '("A → Z" "Z → A"))))
 
 (transient-define-suffix delve--do-sort (&rest args)
   "Do the actual sorting with ARGS defined in transient `delve-sort'."
   (interactive (list (transient-args transient-current-command)))
   (when (equal args '(nil))
     (error "No arguments defined for sorting?"))
-  (let ((plist (-flatten (-map #'delve--transient-split-switch (-flatten args)))))
+
+  (let* ((plist (delve-transient--args-to-plist args))
+         (sort1  (plist-get plist :sort1))
+         (sort2  (plist-get plist :sort2))
+         (order1 (plist-get plist :order1))
+         (order2 (plist-get plist :order2)))
+  
     ;; Assert that second sorting criterion is consistent
     (when (or (plist-get plist :sort2) (plist-get plist :order2))
       (unless (and (plist-get plist :sort2) (plist-get plist :order2))
@@ -825,28 +757,26 @@ args is nil."
                     (if (plist-get plist :sort2)
                         "order (ascending or descending)"
                       "criterion"))))
-    ;; Do it:
-    (let* ((cmp1 (delve--transient-get-dual-cmp (plist-get plist :sort1)))
-           (cmp2 (delve--transient-get-dual-cmp (plist-get plist :sort2)))
-           (fn1  (delve--transient-get-cmp cmp1 (plist-get plist :order1)))
-           (fn2  (delve--transient-get-cmp cmp2 (plist-get plist :order2)))
-           (s1   (delve--transient-cmp-info cmp1 (plist-get plist :order1)))
-           (s2   (delve--transient-cmp-info cmp2 (plist-get plist :order2)))
-           (msg  (concat "Sorting "
+    ;; Do it
+    (let* ((cmp1 (delve--get-dual-cmp-by-string sort1))
+           (cmp2 (delve--get-dual-cmp-by-string sort2)))
+      ;;
+      (lister-sort-sublist-at lister-local-ewoc :point
+                              (-non-nil (list (delve--get-cmp-fn cmp1 order1)
+                                              (delve--get-cmp-fn cmp2 order2))))
+      ;;. ..and talk about it:
+      (let ((s1   (delve--cmp-info cmp1 order1))
+            (s2   (delve--cmp-info cmp2 order2)))
+        (message (concat "Sorting "
                          (when (and s1 s2) "first ")
                          s1
                          (when s2 (concat ", then " s2))
-                         ".")))
-      (lister-sort-sublist-at lister-local-ewoc :point
-                              (-non-nil (list fn1 fn2)))
-      (message msg))))
+                         "."))))))
 
 (transient-define-suffix delve--echo-transient-value (&rest _)
   "Echo the current value of the current transient for debugging purposes."
   (interactive)
   (message "Value: %S" (transient-get-value)))
-
-;; Build the transient
 
 (transient-define-prefix delve--key--another-sort ()
   "Sort"
