@@ -778,7 +778,7 @@ one of the args is nil."
   (interactive)
   (message "Value: %S" (transient-get-value)))
 
-(transient-define-prefix delve--key--another-sort ()
+(transient-define-prefix delve--key--sort ()
   "Sort"
   [["First sorting criterion"
     ("s" "Sort by" "--sort1="  :class delve--transient-cmp-switches
@@ -1504,7 +1504,7 @@ If the user selects a non-storage file, pass to `find-file'."
     (define-key map (kbd "i")                        #'delve--key--insert-query-or-pile)
     (define-key map (kbd "t")                        #'delve--key--insert-tagged)
     ;; Sorting / Reordering:
-    (define-key map (kbd "s")                        #'delve--key--another-sort)
+    (define-key map (kbd "s")                        #'delve--key--sort)
     ;; Remote Editing:
     (define-key map (kbd "+")                        #'delve--key--add-tags)
     (define-key map (kbd "-")                        #'delve--key--remove-tags)
