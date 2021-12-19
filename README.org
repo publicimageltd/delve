@@ -32,7 +32,8 @@ options.
  - Insert or delete nodes interactively from the =Delve= buffer, or from
    any Org Roam file using =delve-minor-mode=.
  - Re-arrange nodes manually by moving them around, or by creating
-   hierarchical trees.
+   hierarchical trees. You can also use copy or kill regions, and
+   reinsert them by pasting.
  - Preview a node in =Delve=, thus offering a first rough glance at the
    content of a node without leaving the collection buffer.
  - Edit the node's tags from within the =Delve= buffer without leaving it.
@@ -214,6 +215,17 @@ packages is lacking, contributions are welcome.
 |----------------+--------------------------------------|
 | <delete>       | Delete marked nodes or node at point |
 
+*** Copy and Paste
+
+There is a rudimentary support of copy/paste. Use the usual commands
+to copy the items within the active region into the kill ring, such as
+=M-w=, or to copy and kill them (=C-w=). A string representing the
+selected items is pushed onto the kill ring. The =yank= command (=M-y=) is
+remapped to an internal function which interprets this string data and
+inserts it at point.
+
+There is currently no replacement for =yank-pop=.
+
 *** Refresh / Update
 
 | Command / Keys | Function                                           |
@@ -311,6 +323,8 @@ This is a list of stuff I intend to add (soonish):
 * Changelog
 
 ** Current 
+
+  - Rudimentary copy/paste
   - Sorting
 
 ** 0.9.3
