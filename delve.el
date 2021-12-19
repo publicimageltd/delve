@@ -1034,6 +1034,7 @@ be used as a value for `filter-buffer-substring-function'."
     (error "Filter function has to be called in a Delve buffer"))
 
   (let* (acc verb
+         (move-counter 0)
          (ewoc     lister-local-ewoc)
          (node-beg (delve--lister-node-at-pos ewoc beg))
          (node-end (delve--lister-node-at-pos ewoc (1- end))))
@@ -1047,10 +1048,21 @@ be used as a value for `filter-buffer-substring-function'."
 
     (setq verb "Copied")
     (when delete
+      ;; Decrease any sublists:
+      (lister-walk-nodes ewoc
+                         (lambda (ewoc node)
+                           (lister-with-sublist-below ewoc node beg end
+                             (cl-incf move-counter)
+                             (lister-walk-nodes ewoc #'lister-move-item-left beg end)))
+                         node-beg node-end)
+      ;; and delete the items
       (lister-delete-list ewoc node-beg node-end)
       (setq verb "Killed"))
 
-    (message "%s %d items" verb (length acc))
+    (message "%s %d items%s" verb (length acc)
+             (if (> move-counter 0)
+                 (format ", realigning %d sublists" move-counter)
+               ""))
 
     (propertize
      (concat "("
