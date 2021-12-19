@@ -1183,7 +1183,8 @@ With PREFIX, expand all hidden subtrees in the EWOC's buffer."
   "In EWOC, reverse the order of all items in current (sub-) list."
   (interactive (list lister-local-ewoc))
   (lister-with-sublist-at ewoc :point beg end
-    (lister-reverse-list ewoc beg end))
+    (lister-save-current-node ewoc
+        (lister-reverse-list ewoc beg end)))
   (message "Reversed order of list items"))
 
 ;;; * Key commands not bound to a specific item at point
