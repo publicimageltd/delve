@@ -1363,7 +1363,7 @@ collection."
                               (lambda (_ node)
                                 (push (lister-node-get-data node) acc)))
     (let* ((counted-items (format "%d items" (length acc)))
-           (prompt        (format "%s %s to collection:"
+           (prompt        (format "%s %s to collection: "
                                   (if move "Move" "Add")
                                   counted-items))
            (target      (delve--add-to-buffer (nreverse acc) prompt)))
