@@ -1082,17 +1082,21 @@ be used as a value for `filter-buffer-substring-function'."
       (lister-delete-list ewoc node-beg node-end)
       (setq verb "Killed"))
 
-    (message "%s %d items%s" verb (length acc)
-             (if (> move-counter 0)
-                 (format ", realigning %d sublists" move-counter)
-               ""))
+    (when (or delete
+              (case this-command
+                ('kill-region t)
+                ('kill-ring-save t)))
+      (message "%s %d items%s" verb (length acc)
+               (if (> move-counter 0)
+                   (format ", realigning %d sublists" move-counter)
+                 "")))
 
     (propertize
      (concat "("
              (string-join (--map (format "%S" it) (nreverse acc)))
              ")")
      'yank-handler
-     'delve--yank-handler)))
+     '(delve--yank-handler))))
 
 (defun delve--yank-handler (s)
   "Insert tokenized string S as a Delve object at point."
