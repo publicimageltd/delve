@@ -1111,9 +1111,9 @@ be used as a value for `filter-buffer-substring-function'."
 Option ARG is currently ignored."
   (interactive)
   (ignore arg)
-  (delve--assert-buf "This yank function has to be called in a Delve buffer")
+  (delve--assert-buf nil "This yank function has to be called in a Delve buffer")
   (let* ((yank (current-kill 0)))
-    (if (eq (get-text-property 0 'yank-handler yank)
+    (if (eq (car (get-text-property 0 'yank-handler yank))
             'delve--yank-handler)
         (delve--yank-handler yank)
       (user-error "Current kill is not a Delve object; cannot yank"))))
