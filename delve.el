@@ -195,6 +195,26 @@ entries."
   "Face for displaying the title of a Delve query."
   :group 'delve-faces)
 
+;;; * Assertions
+
+(defun delve--assert-buf (&optional buf-or-ewoc error-msg)
+  "Cancel if BUF-OR-EWOC does not belong to a Delve buffer with an Ewoc.
+Check if the buffer belonging to BUF-OR-EWOC is a Delve buffer
+and has a local Ewoc object.  BUF-OR-EWOC can be nil, a buffer
+object or an ewoc object.  If BUF-OR-EWOC is nil, check the
+current buffer.  When canceling, display standard error or
+optionally use ERROR-MSG."
+  (let ((buf (if (not buf-or-ewoc)
+                 (current-buffer)
+               (cl-etypecase buf-or-ewoc
+                 (buffer buf-or-ewoc)
+                 (ewoc   (ewoc-buffer buf-or-ewoc))))))
+    (or (and (delve--buffer-p buf)
+             ;; don't pass the ewoc object around too much
+             (not (null (buffer-local-value 'lister-local-ewoc buf))))
+        (error (or error-msg "Function has to be called in a Delve buffer")))))
+
+
 ;;; * The Lister Mapper
 
 ;; Type icon
@@ -891,12 +911,12 @@ to 5 characters."
 
 (defun delve--current-item (&optional types ewoc pos)
   "Get the item bound to the current Lister node.
-TYPES is a type symbol or a list of type symbols.  If the item is
-not of type TYPES, throw an error.  Use the position at point in
-EWOC or POS, if supplied.  Skip any typechecking if TYPES is nil."
+Use the current buffer or the buffer of EWOC, if non-nil.  TYPES
+is a type symbol or a list of type symbols.  If the item is not
+of type TYPES, throw an error.  Use the position at point in EWOC
+or POS, if supplied.  Skip any typechecking if TYPES is nil."
   (let ((ewoc (or ewoc lister-local-ewoc)))
-    (unless ewoc
-      (error "Command must be called in a Delve buffer"))
+    (delve--assert-buf ewoc "Command must be called in a Delve buffer")
     (let ((item (lister-get-data-at ewoc (or pos :point))))
       (if (or (not types)
               (apply #'delve--type-p item (-list types)))
@@ -906,12 +926,11 @@ EWOC or POS, if supplied.  Skip any typechecking if TYPES is nil."
 ;; TODO Refactor: delve--current-item nearly does the same
 (defun delve--current-item-or-marked (&optional types)
   "Get either all marked items or the item at point, marking it.
-Always return a list.  TYPES is a type symbol or a list of type
-symbols.  If on of the items is not of type TYPES, throw an
-error."
+Use the current buffer.  Always return a list.  TYPES is a type
+symbol or a list of type symbols.  If on of the items is not of
+type TYPES, throw an error."
   (let ((ewoc lister-local-ewoc))
-    (unless ewoc
-      (error "Command must be called in a Delve buffer"))
+    (delve--assert-buf ewoc "Command must be called in a Delve buffer")
     (delve--maybe-mark-region ewoc)
     (unless (lister-items-marked-p ewoc)
       (lister-mark-unmark-at ewoc :point t))
@@ -1030,8 +1049,7 @@ Optional argument PREFIX is currently not used."
   "In current buffer, return the region BEG END as a tokenized string.
 Optionally also DELETE the items.  This function is intended to
 be used as a value for `filter-buffer-substring-function'."
-  (unless lister-local-ewoc
-    (error "Filter function has to be called in a Delve buffer"))
+  (delve--assert-buf nil "Filter function has to be called in a Delve buffer")
 
   (let* (acc verb
          (move-counter 0)
@@ -1073,8 +1091,7 @@ be used as a value for `filter-buffer-substring-function'."
 
 (defun delve--yank-handler (s)
   "Insert tokenized string S as a Delve object at point."
-  (unless lister-local-ewoc
-    (error "This yank handler only works in Delve buffers"))
+  (delve--assert-buf nil "This yank handler only works in Delve buffers")
   (when-let* ((tokenized-list (read (substring-no-properties s)))
               (objects (delve-store--create-object-list tokenized-list)))
     (lister-insert-list-at lister-local-ewoc :point objects)
@@ -1085,8 +1102,7 @@ be used as a value for `filter-buffer-substring-function'."
 Option ARG is currently ignored."
   (interactive)
   (ignore arg)
-  (unless lister-local-ewoc
-    (error "This yank function has to be called in a Delve buffer"))
+  (delve--assert-buf "This yank function has to be called in a Delve buffer")
   (let* ((yank (current-kill 0)))
     (if (eq (get-text-property 0 'yank-handler yank)
             'delve--yank-handler)
@@ -1518,8 +1534,7 @@ Return BUF."
 If FILE-NAME is not set, use the file name BUF is linked to.  If
 BUF is not yet visiting any file, ask the user."
   (interactive (list (current-buffer)))
-  (unless (eq 'delve-mode (buffer-local-value 'major-mode buf))
-    (error "Buffer must be in Delve mode"))
+  (delve--assert-buf buf "Buffer to save must be in Delve mode")
   (let ((name  (or file-name
                    (buffer-local-value 'delve-local-storage-file buf)
                    (delve--ask-storage-file-name))))
