@@ -115,6 +115,11 @@ entries."
   :group 'Delve
   :group 'faces)
 
+(defface delve-mark-face
+  '((t (:inherit highlight)))
+  "Face for highlighting manually marked items."
+  :group 'delve-faces)
+
 (defface delve-preview-face
   '((t (:inherit variable-pitch)))
   "Face for displaying preview (for non-monospaced display)."
@@ -1613,6 +1618,7 @@ If the user selects a non-storage file, pass to `find-file'."
   (lister-setup	(current-buffer) #'delve-mapper  #'delve--header-function)
   (add-to-invisibility-spec '(org-link))
   (lister-mode)
+  (setq-local lister-mark-face-or-property 'delve-mark-face)
   (setq-local filter-buffer-substring-function #'delve--tokenize-filter))
 
 ;;; * Main Entry Point
