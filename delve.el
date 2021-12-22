@@ -44,6 +44,7 @@
 (require 'delve-pp)
 (require 'delve-store)
 (require 'delve-edit)
+(require 'delve-export)
 
 ;; * Silence Byte Compiler
 
@@ -1101,11 +1102,20 @@ be used as a value for `filter-buffer-substring-function'."
 
 (defun delve--yank-handler (s)
   "Insert tokenized string S as a Delve object at point."
-  (delve--assert-buf nil "This yank handler only works in Delve buffers")
-  (when-let* ((tokenized-list (read (substring-no-properties s)))
-              (objects (delve-store--create-object-list tokenized-list)))
-    (lister-insert-list-at lister-local-ewoc :point objects)
-    (message "Inserted %d items" (length objects))))
+  (if (derived-mode-p 'org-mode 'delve-mode)
+      (when-let* ((tokenized-list (read (substring-no-properties s)))
+                  (objects (delve-store--create-object-list tokenized-list)))
+        (if (derived-mode-p 'delve-mode)
+            ;; insert in Delve buffer
+            (progn
+              (lister-insert-list-at lister-local-ewoc :point objects)
+              (message "Inserted %d items" (length objects)))
+          ;; insert into Org mode buffer
+          (delve-export--insert (current-buffer)
+                                delve-export--backend-for-org-links
+                                objects)))
+     ;; insert in any other buffer
+    (insert s)))
 
 (defun delve--yank (&optional arg)
   "Yank last kill, if it is a Delve token string.
