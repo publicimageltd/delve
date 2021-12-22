@@ -1083,9 +1083,10 @@ be used as a value for `filter-buffer-substring-function'."
       (setq verb "Killed"))
 
     (when (or delete
-              (case this-command
+              (pcase this-command
                 ('kill-region t)
-                ('kill-ring-save t)))
+                ('kill-ring-save t)
+                (_ nil)))
       (message "%s %d items%s" verb (length acc)
                (if (> move-counter 0)
                    (format ", realigning %d sublists" move-counter)
