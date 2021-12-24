@@ -1112,7 +1112,7 @@ be used as a value for `filter-buffer-substring-function'."
               (message "Inserted %d items" (length objects)))
           ;; insert into Org mode buffer
           (delve-export--insert (current-buffer)
-                                delve-export--backend-for-org-links
+                                delve-export--backend-for-yanking
                                 objects)))
      ;; insert in any other buffer
     (insert s)))

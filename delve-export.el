@@ -24,6 +24,8 @@
 ;;; Code:
 (require 'delve-data-types)
 
+;; TODO We don't need to pass around "the whole list of objects";
+;; change that
 (cl-defstruct (delve-export-backend (:constructor delve-export-backend-create))
   "A backend for exporting Delve objects.
 Slot NAME is a name (symbol) for the backend.
@@ -35,27 +37,29 @@ inserted as is, or functions returning a value to be
 inserted. The functions are called with two arguments, the whole
 list of objects to be exported and an extra list of options.
 
-If NEWLINE returns a value, it will be inserted after printing
-each item, including the header and the footer.
+SEPARATOR can be nil, a string or a function with two
+arguments (object and options) returning a string. If SEPARATOR is
+non-nil, it will be inserted between each item (including
+the header and the footer).
 
 Slot PRINTERS is an alist, associating each Delve object
 type with a printer function (which is called with the object and
 a list of options)."
-  name printers header footer newline options)
+  name printers header footer separator options)
 
 ;; TODO Allow recursion (for piles)
 ;; Current implementation can't recurse because of the argument
 ;; BACKEND. Maybe recurse if return value is a list (instead of a
 ;; string or nil)? Then recurse over the list.
-;; TODO Change newline logic: Omit newline if n=1 (pass n as option)
+
 (defun delve-export--insert-item (backend object options)
   "Print OBJECT using the printer defined in BACKEND.
 The printer function returns a string representation of the item
 to be inserted the current buffer.  It is called with two
 arguments, the Delve OBJECT and a property list of OPTIONS.
 After printing the item, insert the value of the options property
-:newline if non-nil.  Do not add a newline for the last item if
-there is no header.
+:separator if it is non-nil.  Do not add a newline for the last
+item if there is no header.
 
 Do nothing if no printer is found or if the printer function
 returns nil."
@@ -63,7 +67,7 @@ returns nil."
                                  (delve-export-backend-printers backend))))
     (when-let ((item (funcall printer object options)))
       (insert (format "%S" (plist-get options :index)) item)
-      (when-let ((newline (plist-get options :newline)))
+      (when-let ((newline (plist-get options :separator)))
         (unless (and (plist-get options :last)
                      (not (plist-get options :header)))
           (insert newline))))))
@@ -104,9 +108,13 @@ keywords :header or :footer)."
                                                    delve-objects options))
            (footer  (delve-export--get-slot-option backend 'footer :footer
                                                    delve-objects options))
-           (newline (delve-export--get-slot-option backend 'newline :newline
+           (newline (delve-export--get-slot-option backend 'newline :separator
                                                    delve-objects options))
-           (options (append (list :newline newline :header header :footer footer)
+           (options (append (list
+                             :n-total (length delve-objects)
+                             :separator newline
+                             :header header
+                             :footer footer)
                             options)))
       ;;
       (when header (insert (concat header newline)))
@@ -121,13 +129,13 @@ keywords :header or :footer)."
 
 ;; * Export to Org Links
 
-(defvar delve-export--backend-for-org-links
+(defvar delve-export--backend-for-yanking
   (delve-export-backend-create
-   :name 'org-links
+   :name 'yank-into-org
    :header nil
    :footer nil
    :options nil
-   :newline "\n"
+   :separator "\n"
    :printers `((delve--note    . ,(lambda (n _) (delve--note-text n)))
                (delve--heading . ,(lambda (h _) (concat "*" (delve--heading-text h))))
                (delve--info    . ,(lambda (i _) (delve--info-text i)))
