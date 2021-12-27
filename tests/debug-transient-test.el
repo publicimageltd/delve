@@ -1,4 +1,4 @@
-;;; debug-test-transient.el --- debug non-interactive testing of transients  -*- lexical-binding: t; -*-
+;;; debug-transient-test.el --- debug non-interactive testing of transients  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021
 
@@ -54,5 +54,5 @@
   (execute-kbd-macro (kbd "ttpq"))
   (message "Result:%S" return-value))
 
-(provide 'debug-test-transient)
-;;; debug-test-transient.el ends here
+(provide 'debug-transient-test)
+;;; debug-transient-test.el ends here

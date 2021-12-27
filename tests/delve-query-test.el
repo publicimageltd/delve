@@ -1,4 +1,4 @@
-;;; delve-tests-query.el --- Test delve query functions  -*- lexical-binding: t; -*-
+;;; delve-query-test.el --- Test delve query functions  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021
 
@@ -272,5 +272,5 @@
 
 
 
-(provide 'delve-tests-query)
-;;; delve-tests-query.el ends here
+(provide 'delve-query-test)
+;;; delve-query-test.el ends here

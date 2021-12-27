@@ -1,4 +1,4 @@
-;;; delve-tests-transient.el --- Test delve transient stuff  -*- lexical-binding: t; -*-
+;;; delve-transient-test.el --- Test delve transient stuff  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021
 
@@ -30,7 +30,7 @@
 
 ;; * Ease testing of transients
 
-(cl-defun delve-tests--do-transient (transient-name keys &optional (meta-prefix "."))
+(cl-defun delve-transient-test--do-transient (transient-name keys &optional (meta-prefix "."))
   "Execute kbd string sequence KEYS with TRANSIENT-NAME.
 Before executing KEYS, rebuild the transient so that its results
 can be inspected after execution.  For this, insert two special
@@ -62,9 +62,9 @@ transient on the return value, META-PREFIX-q quits the transient."
     ;;
     return-value))
 
-(cl-defun delve-tests--transient-and-quit (transient-name keys &optional (meta-prefix "."))
+(cl-defun delve-transient-test--transient-and-quit (transient-name keys &optional (meta-prefix "."))
   "Execute kbd KEYS on TRANSIENT-NAME and return its value."
-  (delve-tests--do-transient transient-name (concat keys meta-prefix "p" meta-prefix "q") meta-prefix))
+  (delve-transient-test--do-transient transient-name (concat keys meta-prefix "p" meta-prefix "q") meta-prefix))
 
 ;; * The actual tests
 
@@ -92,7 +92,7 @@ transient on the return value, META-PREFIX-q quits the transient."
 ;; TODO Before each test, we redefine the layout of this specific
 ;; transient, so that it can be modified without altering the
 ;; transient itself:
-(transient-define-prefix test-transient ()
+(transient-define-prefix delve-transient-test-transient ()
   "Test"
   ["Groupname"
    ("t" "Toggle" "--toggle-key=" :class delve-transient-switches :choices ("A" "B") :pretty-choices ("prettyA" "prettyB"))
@@ -102,20 +102,20 @@ transient on the return value, META-PREFIX-q quits the transient."
   
   (describe "return value"
     (it "is nil per default"
-      (expect (delve-tests--transient-and-quit 'test-transient "")
+      (expect (delve-transient-test--transient-and-quit 'delve-transient-test-transient "")
               :to-be nil))
     (it "is first value of :choice when toggling once"
-      (expect (delve-tests--transient-and-quit 'test-transient "t")
+      (expect (delve-transient-test--transient-and-quit 'delve-transient-test-transient "t")
               :to-equal '(("--toggle-key="A""))))
     (it "is nil when toggling choice times"
-      (expect (delve-tests--transient-and-quit 'test-transient "tt")
+      (expect (delve-transient-test--transient-and-quit 'delve-transient-test-transient "tt")
               :to-be nil))
     (it "is first value of :choice when toggling choice+1 times"
-      (expect (delve-tests--transient-and-quit 'test-transient "ttt")
+      (expect (delve-transient-test--transient-and-quit 'delve-transient-test-transient "ttt")
               :to-equal '(("--toggle-key="A""))))))
 
-;; (delve-tests--transient-and-quit 'test-transient "t")
-;; (delve-tests--do-transient 'test-transient "t.p.p.q")
+;; (delve-transient-test--transient-and-quit 'delve-transient-test-transient "t")
+;; (delve-transient-test--do-transient 'delve-transient-test-transient "t.p.p.q")
 
-(provide 'delve-tests-transient)
-;;; delve-tests-transient.el ends here
+(provide 'delve-transient-test)
+;;; delve-transient-test.el ends here
