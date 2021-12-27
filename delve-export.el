@@ -104,12 +104,13 @@ OPTIONS as its argument."
                  options
                  keys))
 
-;; This is the main workhorse for exporting.  Its design is rather
-;; inconsequential: The printer return string values, but recursion is
-;; impossible since everything is inserted directly (instead of
-;; accumulating it).
-(defun delve-export--insert-item (backend object options)
-  "Print OBJECT in current buffer using the printer defined in BACKEND.
+;; This is the main workhorse for exporting.
+
+;; FIXME Current design is rather inconsequential: The printer return
+;; string values, but recursion is impossible since everything is
+;; inserted directly (instead of accumulating it).
+(defun delve-export--insert-item (object options)
+  "Print OBJECT in current buffer using the printer defined in OPTIONS.
 Insert the results of calling the printer function with two
 arguments, the Delve OBJECT to be printed and a property list of
 OPTIONS.  If the options property `:separator' is non-nil,
@@ -118,7 +119,7 @@ additionally also insert its associated value between items.
 Do nothing if no printer is found or if the printer function
 returns nil."
   (when-let ((printer (alist-get (type-of object)
-                                 (delve-export-backend-printers backend))))
+                                 (plist-get options :printers))))
     (when-let ((item (funcall printer object options)))
       (insert item)
       (when-let ((newline (plist-get options :separator)))
@@ -131,13 +132,14 @@ returns nil."
                                  &optional extra-options)
   "Insert DELVE-OBJECTS into BUF using BACKEND.
 Use the options and slot values defined in BACKEND.  Optionally
-also use EXTRA-OPTIONS, which override the backend options."
+also use EXTRA-OPTIONS, which override the backend options.  If
+BACKEND is nil, assume that EXTRA-OPTIONS has all slot values."
   (with-current-buffer buf
     (let* ((n       (length delve-objects))
            ;; merge everything into a big plist:
            (options  (delve-export--merge-plists
                       (delve-export--struct-to-plist backend)
-                      (delve-export-backend-options backend)
+                      (when backend (delve-export-backend-options backend))
                       extra-options
                       (list :n-total n))))
       (if (not (delve-export--value-or-fn (plist-get options :assert) options))
@@ -154,7 +156,7 @@ also use EXTRA-OPTIONS, which override the backend options."
             (when delve-objects
               (let ((last-n (1- n)))
                 (--each-indexed delve-objects
-                  (delve-export--insert-item backend it
+                  (delve-export--insert-item it
                                              (delve-export--merge-plists options
                                                                          (list :index it-index
                                                                                :last (eq it-index last-n)))))))
@@ -178,12 +180,13 @@ Optional argument ARGS is ignored."
    :options nil
    :separator "\n"
    :printers `((delve--pile    . ,(lambda (p o)
-                                    (let ((sep (plist-get o :separator)))
-                                      (concat "* " (delve--pile-name p) sep
-                                              (string-join
-                                               (mapcar #'delve-export--zettel-to-link
-                                                       (delve--pile-zettels p))
-                                               sep)))))
+                                    (delve-export--insert (current-buffer)
+                                                          nil
+                                                          (cons (delve--heading-create :text
+                                                                                       (delve--pile-name p))
+                                                                (delve--pile-zettels p))
+                                                          o)
+                                    nil))
                (delve--note    . ,(lambda (n _) (delve--note-text n)))
                (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
                (delve--info    . ,(lambda (i _) (delve--info-text i)))
