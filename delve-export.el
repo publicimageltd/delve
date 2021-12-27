@@ -24,12 +24,15 @@
 ;;; Code:
 (require 'delve-data-types)
 
+;;; * Define backend type and associated functions
+
 (cl-defstruct (delve-export-backend (:constructor delve-export-backend-create))
   "A backend for exporting Delve objects.
 Slot NAME is a name (symbol) for the backend.
 
 OPTIONS holds a property list of options, which are passed to
-each exporting function.
+each exporting function in addition to the values of the backend
+instance.
 
 Slots HEADER, FOOTER and SEPARATOR are either strings, which are
 inserted as is, or functions returning a value to be
@@ -41,11 +44,64 @@ non-nil, it will be inserted between each item (including
 the header and the footer).
 
 Slot PRINTERS is an alist, associating each Delve object type
-with a printer function.  The printer function is called with the
-object and a list of options. Those options also include the
-computed value of the other slots, e.g. the final value of the
-slot separator is associated with the property `:separator'."
+with a printer function.  Each printer function is called with
+the object and a property list of options. Apart from extra
+options which can be passed programmatically and the values from
+the slot OPTIONS, this property list also contains a complete
+copy of the backend's slots, each slot name corresponding to a
+keyword.  E.g. the property `:separator' contains the value of
+the slot `separator'.  Special slots which accept both a
+value and a function are finalized before passing them to the
+printer function."
   assert name printers header footer separator options)
+
+(defun delve-export--struct-to-plist (instance &optional exclude)
+  "Return all slot-value-pairs of struct INSTANCE as a plist.
+Exlude all slots from EXCLUDE."
+  (let* ((type  (type-of instance))
+         (slots (-difference (cl-struct-slot-info type) exclude))
+         (res   nil))
+    (pcase-dolist (`(,slot . _) (cdr slots))
+      (setq res (plist-put res
+                           (intern (format ":%s" slot))
+                           (cl-struct-slot-value type slot instance))))
+    res))
+
+(defun delve-export--merge-plist (plist1 plist2)
+  "Merge PLIST2 into PLIST1, overwriting the latter's values."
+  (unless (eq 0 (mod (length plist2) 2))
+    (error "Malformed property list: %S" plist2))
+  (let ((res (copy-sequence plist1)))
+    (while plist2
+      (pcase-let ((`(,key ,val _) plist2))
+        (setq res (plist-put res key val)
+              plist2 (cdr (cdr plist2)))))
+    res))
+
+(defun delve-export--merge-plists (plist1 &rest plists)
+  "Merge all PLISTS into PLIST1, overriding PLIST1's values."
+  (-reduce-from #'delve-export--merge-plist plist1 plists))
+
+(defun delve-export--value-or-fn (value &rest args)
+  "Return VALUE unchanged or call it as a function with ARGS."
+  (when value
+    (pcase value
+      ((or (pred functionp)
+           (and (pred consp)
+                (app car 'closure)))
+       (apply value args))
+      (_    value))))
+
+(defun delve-export--process-special-values (options &rest keys)
+  "Return OPTIONS with the values for KEYS processed in a special way.
+Leave the associated values unchanged unless they hold a function
+object or a symbol pointing to a function.  In that latter case,
+replace the value with the result of calling this function with
+OPTIONS as its argument."
+  (--reduce-from (plist-put acc it
+                            (delve-export--value-or-fn (plist-get options it) acc))
+                 options
+                 keys))
 
 ;; This is the main workhorse for exporting.  Its design is rather
 ;; inconsequential: The printer return string values, but recursion is
@@ -69,65 +125,39 @@ returns nil."
                      (not (plist-get options :header))
                      (not (eq (type-of object) 'delve--pile)))
           (insert newline))))))
-
-(defun delve-export--get-string-or-fn-value (value &rest args)
-  "Return VALUE if it is a string or call it with ARGS."
-  (when value
-    (pcase value
-      ((pred stringp)    value)
-      ((or (pred functionp)
-           (and (pred consp)
-                (app car 'closure)))
-       (apply value args))
-      (_ (error "Cannot determine object type of %S" value)))))
-
-(defun delve-export--get-slot-option (instance slot key options)
-  "For an INSTANCE of a struct, determine the value of SLOT.
-Get the final value of SLOT by returning the first non-nil result
-of checking first the property KEY in OPTIONS, then the SLOT in
-INSTANCE.  Return nil if no value is found.  If the value is a
-string, return it directly.  Else if it is a function name or a
-function object, return the result of calling that function with
-the property list OPTIONS as its sole argument."
-  (delve-export--get-string-or-fn-value
-   (or (plist-get options key)
-       (cl-struct-slot-value 'delve-export-backend slot instance))
-   options))
-
+  
 (defun delve-export--insert (buf backend delve-objects
                                  &optional extra-options)
   "Insert DELVE-OBJECTS into BUF using BACKEND.
-Use the options defined in BACKEND.  Optionally also use
-EXTRA-OPTIONS, which override the backend options.  You can also
-pass overriding values for the backend slots."
+Use the options and slot values defined in BACKEND.  Optionally
+also use EXTRA-OPTIONS, which override the backend options."
   (with-current-buffer buf
     (let* ((n       (length delve-objects))
-           (options (append extra-options
-                            (list :n-total n)
-                            (delve-export-backend-options backend))))
-      ;; test slot or option :assert
-      (if (delve-export--get-slot-option backend 'assert :assert options)
-          ;; assertion succeeded:
-          (let* ((header  (delve-export--get-slot-option backend 'header    :header    options))
-                 (footer  (delve-export--get-slot-option backend 'footer    :footer    options))
-                 (sep     (delve-export--get-slot-option backend 'separator :separator options))
-                 (options (append (list
-                                   :separator sep
-                                   :header header
-                                   :footer footer)
-                                  options)))
-            ;;
+           ;; merge everything into a big plist:
+           (options  (delve-export--merge-plists
+                      (delve-export--struct-to-plist backend)
+                      (delve-export-backend-options backend)
+                      extra-options
+                      (list :n-total n))))
+      (if (not (delve-export--value-or-fn (plist-get options :assert) options))
+          (error "Backend %s: assertion failed, cannot export" (delve-export-backend-name backend))
+
+        ;; process special slots where fns might produce the final value:
+        (let* ((options (delve-export--process-special-values options :header :footer :separator))
+               (header  (plist-get options :header))
+               (footer  (plist-get options :footer))
+               (sep     (plist-get options :separator)))
+          
+            ;; print it:
             (when header (insert (concat header sep)))
             (when delve-objects
               (let ((last-n (1- n)))
                 (--each-indexed delve-objects
                   (delve-export--insert-item backend it
-                                             (-> options
-                                                 (plist-put :index it-index)
-                                                 (plist-put :last  (eq it-index last-n)))))))
-            (when footer (insert (concat footer sep))))
-        ;; assertion failed:
-        (error "Backend %s: assertion failed, cannot export" (delve-export-backend-name backend))))))
+                                             (delve-export--merge-plists options
+                                                                         (list :index it-index
+                                                                               :last (eq it-index last-n)))))))
+            (when footer (insert (concat footer sep))))))))
 
 ;; * Export to Org Links
 
