@@ -58,14 +58,15 @@ printer function."
 (defun delve-export--struct-to-plist (instance &optional exclude)
   "Return all slot-value-pairs of struct INSTANCE as a plist.
 Exlude all slots from EXCLUDE."
-  (let* ((type  (type-of instance))
-         (slots (-difference (cl-struct-slot-info type) exclude))
-         (res   nil))
-    (pcase-dolist (`(,slot . _) (cdr slots))
-      (setq res (plist-put res
-                           (intern (format ":%s" slot))
-                           (cl-struct-slot-value type slot instance))))
-    res))
+  (when instance
+    (let* ((type  (type-of instance))
+           (slots (-difference (cl-struct-slot-info type) exclude))
+           (res   nil))
+      (pcase-dolist (`(,slot . _) (cdr slots))
+        (setq res (plist-put res
+                             (intern (format ":%s" slot))
+                             (cl-struct-slot-value type slot instance))))
+      res)))
 
 (defun delve-export--merge-plist (plist1 plist2)
   "Merge PLIST2 into PLIST1, overwriting the latter's values."
