@@ -172,7 +172,7 @@
     (expect (delve-export--insert buf nil nil `(:assert ,#'ignore))
             :to-throw))
   (it "assertion is executed with buf set current"
-    (delve-export--insert buf nil nil `(:assert ,(lambda (_) (insert "test") t)))
+    (delve-export--insert buf nil nil `(:assert ,(lambda () (insert "test") t)))
     (expect (buffer-string) :to-equal "test"))
   (it "inserts header string"
     (delve-export--insert buf nil nil `(:header "header"))

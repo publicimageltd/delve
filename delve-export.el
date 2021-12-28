@@ -130,20 +130,19 @@ also use EXTRA-OPTIONS, which override any other options.  If
 BACKEND is nil, assume that EXTRA-OPTIONS has all slot values.
 
 Before inserting anything, call the function of the slot
-`assert', if defined (symbol or lambda).  Throw an error if that
-function returns a non-nil value.  Call that function with a
-property list as its sole argument which contains all options and
-all values from the backend, with slot names converted to
-property keys (e.g. slot `name' is mapped to the property
-`:name').  Thus, the whole backend is available by that list.
+`assert', if defined (symbol or lambda; no arguments).  Throw an
+error if that function returns a non-nil value.
 
 Insert header first, then the items, then the footer.  Print
 items using the function defined in the backend slot `:printers'.
 This slot holds an alist associating the item type with a
-function accepting two arguments, the object itself and the full
-option property list (which also contains the backend slot
-values, as explained above).  If the printer function returns a
-string value, insert it, else ignore this item.
+function accepting two arguments, the object itself and a
+property list.  For that property list, merge the backend slot
+values and any additional options, with slot names converted to
+property keys (e.g. slot `name' is mapped to the property
+`:name').  Thus, the whole backend is available by that list.  If
+the printer function returns a string value, insert it, else
+ignore the item.
 
 Add separator in between any items or between items and header or
 footer, if defined.
@@ -162,7 +161,7 @@ the values for the backend slots."
                       (list :n-total n))))
 
       (if (and (plist-get options :assert)
-               (not (funcall (plist-get options :assert) options)))
+               (not (funcall (plist-get options :assert))))
           (error "Backend %s: assertion failed, cannot export" (plist-get options :name))
 
         ;; process special slots where fns might produce the final value:
@@ -196,9 +195,10 @@ Optional argument ARGS is ignored."
 
 (defvar delve-export--backend-for-yanking
   (delve-export-backend-create
-   :assert (lambda (_) (derived-mode-p 'org-mode))
+   :assert (lambda () (derived-mode-p 'org-mode))
    :name 'yank-into-org
    :header nil
+   ;; this is still a yank handler:
    :footer (lambda (o) (when (> (plist-get o :n-total) 1) ""))
    :options nil
    :separator "\n"
@@ -220,8 +220,37 @@ Optional argument ARGS is ignored."
                (delve--note    . ,(lambda (n _) (delve--note-text n)))
                (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
                (delve--info    . ,(lambda (i _) (delve--info-text i)))
+               (delve--zettel  . ,(lambda (z _) (format "#+transclude: [[%s][%s]]"
+                                                        (delve--zettel-id z)
+                                                        (delve--zettel-title z))))))
+  "Backend for exporting Delve items to simple Org mode links.")
+
+(defvar delve-export--backend-transclusion
+  (delve-export-backend-create
+   :assert (lambda () (derived-mode-p 'org-mode))
+   :name 'transclusion
+   :header nil
+   :footer (lambda (o) (when (> (plist-get o :n-total) 1) ""))
+   :options nil
+   :separator "\n"
+   :printers `((delve--pile    . ,(lambda (p o)
+                                    (concat
+                                     (string-join (--map (delve-export--item-string it o)
+                                                         (cons (delve--heading-create
+                                                                :text (delve--pile-name p))
+                                                               (delve--pile-zettels p)))
+                                                  (plist-get o :separator))
+                                     (plist-get o :separator))))
+               (delve--note    . ,(lambda (n _) (delve--note-text n)))
+               (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
+               (delve--info    . ,(lambda (i _) (delve--info-text i)))
                (delve--zettel  . ,#'delve-export--zettel-to-link)))
-    "Backend for exporting Delve items to simple Org mode links.")
+   "Backend for integration with org-transclusion.")
+
+(defvar delve-export--yank-handlers
+  (list delve-export--backend-for-yanking
+        delve-export--backend-transclusion)
+  "List of available handlers for yanking.")
 
 (provide 'delve-export)
 ;;; delve-export.el ends here
