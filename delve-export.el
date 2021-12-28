@@ -220,9 +220,7 @@ Optional argument ARGS is ignored."
                (delve--note    . ,(lambda (n _) (delve--note-text n)))
                (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
                (delve--info    . ,(lambda (i _) (delve--info-text i)))
-               (delve--zettel  . ,(lambda (z _) (format "#+transclude: [[%s][%s]]"
-                                                        (delve--zettel-id z)
-                                                        (delve--zettel-title z))))))
+               (delve--zettel  . ,#'delve-export--zettel-to-link)))
   "Backend for exporting Delve items to simple Org mode links.")
 
 (defvar delve-export--backend-transclusion
@@ -244,13 +242,28 @@ Optional argument ARGS is ignored."
                (delve--note    . ,(lambda (n _) (delve--note-text n)))
                (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
                (delve--info    . ,(lambda (i _) (delve--info-text i)))
-               (delve--zettel  . ,#'delve-export--zettel-to-link)))
+               (delve--zettel  . ,(lambda (z _) (format "#+transclude:  [[id:%s][%s]]"
+                                                        (delve--zettel-id z)
+                                                        (delve--zettel-title z))))))
    "Backend for integration with org-transclusion.")
 
 (defvar delve-export--yank-handlers
   (list delve-export--backend-for-yanking
         delve-export--backend-transclusion)
   "List of available handlers for yanking.")
+
+(defun delve-export--available-backends (backend-list)
+  "Get all backends from BACKEND-LIST for current buffer."
+  (--filter (if-let ((assert-fn (delve-export-backend-assert it)))
+                (funcall assert-fn)
+              t)
+            backend-list))
+
+(defun delve-export--select-backend (backends)
+  "Let the user select a backend from BACKENDS."
+  (let* ((candidates (-group-by #'delve-export-backend-name backends))
+         (selection  (completing-read "Select insertion format: " candidates)))
+    (car (alist-get (intern selection) candidates))))
 
 (provide 'delve-export)
 ;;; delve-export.el ends here

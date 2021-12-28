@@ -1102,20 +1102,23 @@ be used as a value for `filter-buffer-substring-function'."
 
 (defun delve--yank-handler (s)
   "Insert tokenized string S as a Delve object at point."
-  (if (derived-mode-p 'org-mode 'delve-mode)
-      (when-let* ((tokenized-list (read (substring-no-properties s)))
-                  (objects (delve-store--create-object-list tokenized-list)))
-        (if (derived-mode-p 'delve-mode)
-            ;; insert in Delve buffer
-            (progn
-              (lister-insert-list-at lister-local-ewoc :point objects)
-              (message "Inserted %d items" (length objects)))
-          ;; insert into Org mode buffer
-          (delve-export--insert (current-buffer)
-                                delve-export--backend-for-yanking
-                                objects)))
+  (let* ((backends (delve-export--available-backends delve-export--yank-handlers))
+         (objects (delve-store--create-object-list (ignore-errors (read (substring-no-properties s))))))
+    (cond
+     ;; insert in Delve buffer
+     ((derived-mode-p 'delve-mode)
+      (if (not objects)
+          (error "Invalid kill value; could not insert object(s)")
+        (lister-insert-list-at lister-local-ewoc :point objects)
+        (message "Inserted %d items" (length objects))))
+     ;; insert according to export backend
+     (backends
+      (if (not objects)
+          (error "Invalid kill value; could not insert object(s)")
+        (delve-export--insert (current-buffer) (delve-export--select-backend backends) objects)))
      ;; insert in any other buffer
-    (insert s)))
+     (t
+      (insert s)))))
 
 (defun delve--yank (&optional arg)
   "Yank last kill, if it is a Delve token string.
