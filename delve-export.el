@@ -106,29 +106,19 @@ OPTIONS as its argument."
    options
    keys))
 
-;; This is the main workhorse for exporting.
-
-;; NOTE Current design is rather inconsequential: The printer return
-;; string values, but recursion is impossible since everything is
-;; inserted directly (instead of accumulating it).
-(defun delve-export--insert-item (object options)
-  "Print OBJECT in current buffer using the printer defined in OPTIONS.
-Insert the results of calling the printer function with two
+(defun delve-export--item-string (object options)
+  "Return the printed representation for OBJECT in backend OPTIONS.
+Return the results of calling the printer function with two
 arguments, the Delve OBJECT to be printed and a property list of
-OPTIONS.  If the options property `:separator' is non-nil,
-additionally also insert its associated value between items.
+OPTIONS.  Look up the printer function in the alist associated
+with the property `:printers', using the object's type.
 
 Do nothing if no printer is found or if the printer function
 returns nil."
   (when object
     (when-let ((printer (alist-get (type-of object)
                                    (plist-get options :printers))))
-      (when-let ((item (funcall printer object options)))
-        (insert item)
-        (when-let ((newline (plist-get options :separator)))
-          (unless (and (plist-get options :last)
-                       (not (plist-get options :footer)))
-            (insert newline)))))))
+      (funcall printer object options))))
 
 (defun delve-export--insert (buf backend delve-objects
                                  &optional extra-options)
@@ -182,15 +172,13 @@ the values for the backend slots."
                (sep     (plist-get options :separator)))
 
           ;; print it:
-          (when header (insert (concat header sep)))
+          (when header (insert (concat header
+                                       (when (or delve-objects footer) sep))))
           (when delve-objects
-            (let ((last-n (1- n)))
-              (--each-indexed delve-objects
-                (delve-export--insert-item it
-                                           (delve-export--merge-plists options
-                                                                       (list :index it-index
-                                                                             :last (eq it-index last-n)))))))
-          (when footer (insert (concat footer))))))))
+            (insert (string-join (--map (delve-export--item-string it options) delve-objects)
+                                 sep)))
+          (when footer (insert (concat (when (or delve-objects footer) sep)
+                                       footer))))))))
 
 ;; * Export to Org Links
 
@@ -210,6 +198,8 @@ Optional argument ARGS is ignored."
    :options nil
    :separator "\n"
    :printers `((delve--pile    . ,(lambda (p o)
+                                    ;; TODO Return a list, which is
+                                    ;; then recursed.
                                     (delve-export--insert (current-buffer)
                                                           nil
                                                           (cons (delve--heading-create :text

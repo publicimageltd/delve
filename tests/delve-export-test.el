@@ -123,41 +123,27 @@
       (expect (plist-get new-options :fn)    :to-equal "name"))))
 
 
-(describe "delve-export--insert-item"
-  :var (buf)
-  (before-each
-    (setq buf (get-buffer-create "NEWBUF"))
-    (switch-to-buffer buf))
-  (after-each
-    (kill-buffer buf))
-
+(describe "delve-export--item-string"
   (it "ignores nil object"
-    (delve-export--insert-item nil nil)
-    (expect (buffer-string) :to-equal ""))
+    (expect (delve-export--item-string nil nil)
+            :to-be nil))
   (it "calls printer associated with object type"
-    (delve-export--insert-item "string" `(:printers ((string . ,(lambda (obj _) obj)))))
-    (expect (buffer-string) :to-equal "string"))
+    (expect (delve-export--item-string "string"
+                                       `(:printers ((string . ,(lambda (obj _) obj)))))
+            :to-equal "string"))
   (it "passes options to printer"
-    (delve-export--insert-item "string" `(:result "result"
-                                                  :printers ((string . ,(lambda (_ opt) (plist-get opt :result))))))
-    (expect (buffer-string) :to-equal "result"))
+    (expect (delve-export--item-string "string" `(:result "result"
+                                                          :printers ((string . ,(lambda (_ opt) (plist-get opt :result))))))
+            :to-equal "result"))
   (it "ignores object with no associated printer"
-    (delve-export--insert-item "string" `(:printers ((integer . ,(lambda (_ __) "should not happen!")))))
-    (expect (buffer-string) :to-equal ""))
+    (expect (delve-export--item-string "string" `(:printers ((integer . ,(lambda (_ __) "should not happen!")))))
+            :to-be nil))
   (it "ignores printer returning nil value"
-    (delve-export--insert-item "string" `(:printers ((string . ,(lambda (_ __) nil)))))
-    (expect (buffer-string) :to-equal ""))
-  (it "adds separator"
-    (delve-export--insert-item "string" `(:separator "\n" :printers ((string . ,(lambda (obj _) obj)))))
-    (expect (buffer-string) :to-equal "string\n"))
-  (it "ignores separator if key :last is non-nil"
-    (delve-export--insert-item "string" `(:separator "\n" :last t
-                                                     :printers ((string . ,(lambda (obj _) obj)))))
-    (expect (buffer-string) :to-equal "string"))
-  (it "ignores value of :last if :footer is non-nil"
-    (delve-export--insert-item "string" `(:separator "\n" :last t :footer "footer"
-                                                     :printers ((string . ,(lambda (obj _) obj)))))
-    (expect (buffer-string) :to-equal "string\n")))
+    (expect (delve-export--item-string "string" `(:printers ((string . ,(lambda (_ __) nil)))))
+            :to-be nil))
+  (it "ignores separator"
+    (expect (delve-export--item-string "string" `(:separator "\n" :printers ((string . ,(lambda (obj _) obj)))))
+            :to-equal "string")))
 
 (describe "delve-export--insert"
   :var (buf)
@@ -211,12 +197,6 @@
                                                        :printers ((string . ,(lambda (obj _) obj)))
                                                        :separator "-"))
     (expect (buffer-string) :to-equal "header-a-b-footer"))
-  (it "passes :index to each item's options list"
-    (delve-export--insert buf nil '("a" "b" "c") `(:printers ((string . ,(lambda (_ opt) (format "%s" (plist-get opt :index)))))))
-    (expect (buffer-string) :to-equal "012"))
-  (it "passes 't' value for :last only to last item"
-    (delve-export--insert buf nil '("a" "b" "c") `(:printers ((string . ,(lambda (_ opt) (format "%s" (plist-get opt :last)))))))
-    (expect (buffer-string) :to-equal "nilnilt"))
   (it "passes # of items to options value :n-total"
     (delve-export--insert buf nil '("a" "b" "c") `(:printers ((string . ,(lambda (_ opt) (format "%s" (plist-get opt :n-total)))))))
     (expect (buffer-string) :to-equal "333"))
