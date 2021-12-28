@@ -60,9 +60,9 @@ printer function."
 Exlude all slots from EXCLUDE."
   (when instance
     (let* ((type  (type-of instance))
-           (slots (-difference (cl-struct-slot-info type) exclude))
+           (slots (-difference (mapcar #'car (cdr (cl-struct-slot-info type))) exclude))
            (res   nil))
-      (pcase-dolist (`(,slot . _) (cdr slots))
+      (cl-dolist (slot slots)
         (setq res (plist-put res
                              (intern (format ":%s" slot))
                              (cl-struct-slot-value type slot instance))))
@@ -99,14 +99,16 @@ Leave the associated values unchanged unless they hold a function
 object or a symbol pointing to a function.  In that latter case,
 replace the value with the result of calling this function with
 OPTIONS as its argument."
-  (--reduce-from (plist-put acc it
-                            (delve-export--value-or-fn (plist-get options it) acc))
-                 options
-                 keys))
+  (--reduce-from
+   (if-let ((val (plist-get options it)))
+       (plist-put acc it (delve-export--value-or-fn (plist-get options it) acc))
+     acc)
+   options
+   keys))
 
 ;; This is the main workhorse for exporting.
 
-;; FIXME Current design is rather inconsequential: The printer return
+;; NOTE Current design is rather inconsequential: The printer return
 ;; string values, but recursion is impossible since everything is
 ;; inserted directly (instead of accumulating it).
 (defun delve-export--insert-item (object options)
@@ -118,22 +120,49 @@ additionally also insert its associated value between items.
 
 Do nothing if no printer is found or if the printer function
 returns nil."
-  (when-let ((printer (alist-get (type-of object)
-                                 (plist-get options :printers))))
-    (when-let ((item (funcall printer object options)))
-      (insert item)
-      (when-let ((newline (plist-get options :separator)))
-        (unless (and (plist-get options :last)
-                     (not (plist-get options :header))
-                     (not (eq (type-of object) 'delve--pile)))
-          (insert newline))))))
-  
+  (when object
+    (when-let ((printer (alist-get (type-of object)
+                                   (plist-get options :printers))))
+      (when-let ((item (funcall printer object options)))
+        (insert item)
+        (when-let ((newline (plist-get options :separator)))
+          (unless (and (plist-get options :last)
+                       (not (plist-get options :footer))
+                       (not (eq (type-of object) 'delve--pile)))
+            (insert newline)))))))
+
 (defun delve-export--insert (buf backend delve-objects
                                  &optional extra-options)
   "Insert DELVE-OBJECTS into BUF using BACKEND.
-Use the options and slot values defined in BACKEND.  Optionally
-also use EXTRA-OPTIONS, which override the backend options.  If
-BACKEND is nil, assume that EXTRA-OPTIONS has all slot values."
+Use the slot values defined in BACKEND for printing.  Override
+these values if a key in the property list stored in `options'
+matches a slot name (e.g. `:name' for slot `name').  Optionally
+also use EXTRA-OPTIONS, which override any other options.  If
+BACKEND is nil, assume that EXTRA-OPTIONS has all slot values.
+
+Before inserting anything, call the function of the slot
+`assert', if defined (symbol or lambda).  Throw an error if that
+function returns a non-nil value.  Call that function with a
+property list as its sole argument which contains all options and
+all values from the backend, with slot names converted to
+property keys (e.g. slot `name' is mapped to the property
+`:name').  Thus, the whole backend is available by that list.
+
+Insert header first, then the items, then the footer.  Print
+items using the function defined in the backend slot `:printers'.
+This slot holds an alist associating the item type with a
+function accepting two arguments, the object itself and the full
+option property list (which also contains the backend slot
+values, as explained above).  If the printer function returns a
+string value, insert it, else ignore this item.
+
+Add separator in between any items or between items and header or
+footer, if defined.
+
+If the values for header, footer and separator hold a function
+name or object, use the value returned by that function.  This
+function, too, is called with the full list of options, including
+the values for the backend slots."
   (with-current-buffer buf
     (let* ((n       (length delve-objects))
            ;; merge everything into a big plist:
@@ -142,25 +171,27 @@ BACKEND is nil, assume that EXTRA-OPTIONS has all slot values."
                       (when backend (delve-export-backend-options backend))
                       extra-options
                       (list :n-total n))))
-      (if (not (delve-export--value-or-fn (plist-get options :assert) options))
-          (error "Backend %s: assertion failed, cannot export" (delve-export-backend-name backend))
+
+      (if (and (plist-get options :assert)
+               (not (funcall (plist-get options :assert) options)))
+          (error "Backend %s: assertion failed, cannot export" (plist-get options :name))
 
         ;; process special slots where fns might produce the final value:
         (let* ((options (delve-export--process-special-values options :header :footer :separator))
                (header  (plist-get options :header))
                (footer  (plist-get options :footer))
                (sep     (plist-get options :separator)))
-          
-            ;; print it:
-            (when header (insert (concat header sep)))
-            (when delve-objects
-              (let ((last-n (1- n)))
-                (--each-indexed delve-objects
-                  (delve-export--insert-item it
-                                             (delve-export--merge-plists options
-                                                                         (list :index it-index
-                                                                               :last (eq it-index last-n)))))))
-            (when footer (insert (concat footer sep))))))))
+
+          ;; print it:
+          (when header (insert (concat header sep)))
+          (when delve-objects
+            (let ((last-n (1- n)))
+              (--each-indexed delve-objects
+                (delve-export--insert-item it
+                                           (delve-export--merge-plists options
+                                                                       (list :index it-index
+                                                                             :last (eq it-index last-n)))))))
+          (when footer (insert (concat footer))))))))
 
 ;; * Export to Org Links
 
