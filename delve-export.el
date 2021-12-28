@@ -127,8 +127,7 @@ returns nil."
         (insert item)
         (when-let ((newline (plist-get options :separator)))
           (unless (and (plist-get options :last)
-                       (not (plist-get options :footer))
-                       (not (eq (type-of object) 'delve--pile)))
+                       (not (plist-get options :footer)))
             (insert newline)))))))
 
 (defun delve-export--insert (buf backend delve-objects
@@ -216,7 +215,8 @@ Optional argument ARGS is ignored."
                                                           (cons (delve--heading-create :text
                                                                                        (delve--pile-name p))
                                                                 (delve--pile-zettels p))
-                                                          o)
+                                                          (delve-export--merge-plists o
+                                                                                      '(:footer "")))
                                     nil))
                (delve--note    . ,(lambda (n _) (delve--note-text n)))
                (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
