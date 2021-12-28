@@ -175,8 +175,13 @@ the values for the backend slots."
           (when header (insert (concat header
                                        (when (or delve-objects footer) sep))))
           (when delve-objects
-            (insert (string-join (--map (delve-export--item-string it options) delve-objects)
-                                 sep)))
+            ;; NOTE this should be faster than calling string-join
+            ;; cf. https://nullprogram.com/blog/2014/05/27/
+            (let ((counter 1))
+              (cl-dolist (obj delve-objects)
+                (insert (concat (delve-export--item-string obj options)
+                                (unless (eq counter n) sep)))
+                (cl-incf counter))))
           (when footer (insert (concat (when (or delve-objects footer) sep)
                                        footer))))))))
 
