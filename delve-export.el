@@ -203,16 +203,20 @@ Optional argument ARGS is ignored."
    :options nil
    :separator "\n"
    :printers `((delve--pile    . ,(lambda (p o)
-                                    ;; TODO Return a list, which is
-                                    ;; then recursed.
-                                    (delve-export--insert (current-buffer)
-                                                          nil
-                                                          (cons (delve--heading-create :text
-                                                                                       (delve--pile-name p))
-                                                                (delve--pile-zettels p))
-                                                          (delve-export--merge-plists o
-                                                                                      '(:footer "")))
-                                    nil))
+                                    ;; NOTE This is not so elegant,
+                                    ;; but it works.  Alternatively,
+                                    ;; we could check the return value
+                                    ;; of `delve-export--item-string'
+                                    ;; and recursively postprocess
+                                    ;; returned lists as further
+                                    ;; items. But, well....
+                                    (concat
+                                     (string-join (--map (delve-export--item-string it o)
+                                                         (cons (delve--heading-create
+                                                                :text (delve--pile-name p))
+                                                               (delve--pile-zettels p)))
+                                                  (plist-get o :separator))
+                                     (plist-get o :separator))))
                (delve--note    . ,(lambda (n _) (delve--note-text n)))
                (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
                (delve--info    . ,(lambda (i _) (delve--info-text i)))
