@@ -55,6 +55,12 @@ value and a function are finalized before passing them to the
 printer function."
   assert parent name printers header footer separator options)
 
+;; * Global Variables
+
+(defvar delve-export--backends)
+
+;; * Utilities to mimic some kind of inheritance
+
 (defun delve-export--merge-plist (plist1 plist2 &optional merge-alist)
   "Merge PLIST2 into PLIST1, overwriting the latter's values.
 Instead of overwriting the value, optionally use the fn
@@ -81,8 +87,7 @@ overriding the value) by associating the merging function with a
 key in MERGE-ALIST, e.g. `((:key . append))'."
   (--reduce-from (delve-export--merge-plist acc it merge-alist) plist1 plists))
 
-;; TODO Add tests
-(defun delve-export--merge-alists (alist1 alist2)
+(defun delve-export--merge-alist (alist1 alist2)
   "Merge ALIST2 into ALIST1, overriding the latter's values.
 Key comparison is done with `eq'."
   (let ((keys (-map #'car alist2)))
@@ -103,21 +108,19 @@ Exlude all slots from EXCLUDE."
                              (cl-struct-slot-value type slot instance))))
       res)))
 
-;; TODO Add tests
 (defun delve-export--get-backend-by-name (name all-backends)
   "Return instance with name matching NAME.
 Search for instances in the list ALL-BACKENDS."
   (--find (eq (delve-export-backend-name it) name) all-backends))
 
-;; TODO Add tests
 (defun delve-export--get-parent (instance all-backends)
   "Return parent backend of INSTANCE, or nil.
 Search for parent instances in the list ALL-BACKENDS (using the
   name)."
-  (when-let* ((parent (delve-export-backend-parent instance)))
-    (delve-export--get-backend-by-name parent all-backends)))
+  (and instance
+       (when-let* ((parent (delve-export-backend-parent instance)))
+         (delve-export--get-backend-by-name parent all-backends))))
     
-;; TODO Add tests
 (defun delve-export--get-parent-backends (instance all-backends)
   "Return a list of all parents of INSTANCE.
 Search for parent instances in the list ALL-BACKENDS (using the
@@ -127,14 +130,14 @@ Search for parent instances in the list ALL-BACKENDS (using the
       (push child res))
     res))
 
-;; TODO Add tests
 (defun delve-export--backend-as-plist (instance all-backends)
   "Return backend INSTANCE as plist using inheritance.
 Search for parent instances in the list ALL-BACKENDS (using the
-name)."
+name).  When ALL-BACKENDS is nil, return INSTANCE as a property
+list without any modifications."
   (let* ((trail  (cons instance (delve-export--get-parent-backends instance all-backends)))
          (plists (-map #'delve-export--struct-to-plist (reverse trail)))
-         (merge-alist `((:printers . ,#'delve-export--merge-alists))))
+         (merge-alist `((:printers . ,#'delve-export--merge-alist))))
     (--reduce-from (delve-export--merge-plist acc it merge-alist)
                    (car plists)
                    (cdr plists))))
@@ -176,6 +179,7 @@ returns nil."
                                    (plist-get options :printers))))
       (funcall printer object options))))
 
+;; TODO Remove slot "option", since inheritance makes it unnecessary
 (defun delve-export--insert (buf backend delve-objects
                                  &optional extra-options)
   "Insert DELVE-OBJECTS into BUF using BACKEND.
@@ -211,10 +215,15 @@ the values for the backend slots."
     (let* ((n       (length delve-objects))
            ;; merge everything into a big plist:
            (options  (delve-export--merge-plists
-                      '(:printers . ,#'delve-export--merge-alists)
-                      (delve-export--struct-to-plist backend)
+                      ;; merge, don't override values in slot :printers
+                      '(:printers . ,#'delve-export--merge-alist)
+                      ;; begin with the backend (with its inherited values)
+                      (delve-export--backend-as-plist backend delve-export--backends)
+                      ;; then merge in the options
                       (when backend (delve-export-backend-options backend))
+                      ;; now pass extra-options from this function call
                       extra-options
+                      ;; and finally some values for printing
                       (list :n-total n))))
 
       (if (and (plist-get options :assert)

@@ -99,6 +99,26 @@
     (expect (delve-export--merge-plists '((:eins . concat)) plist '(:eins "0"))
             :to-equal '(:eins "10" :zwei "2"))))
 
+(describe "delve-export--merge-alist"
+  :var (alist)
+  (before-each
+    (setq alist '((eins . "eins") (zwei . "zwei") (drei . "drei"))))
+  (it "returns nil when called with nil"
+    (expect (delve-export--merge-alist nil nil)
+            :to-be nil))
+  (it "returns alist unchanged when merging with nil"
+    (expect (delve-export--merge-alist alist nil)
+            :to-equal alist))
+  (it "returns alist when called with (nil alist)"
+    (expect (delve-export--merge-alist nil alist)
+            :to-have-same-items-as alist))
+  (it "replaces value when key is found in original list"
+    (expect (delve-export--merge-alist alist '((zwei . "neuzwei")))
+            :to-equal '((eins . "eins") (zwei . "neuzwei") (drei . "drei"))))
+  (it "adds key-value-pair when key is not found in original list"
+    (expect (delve-export--merge-alist alist '((vier . "vier")))
+            :to-have-same-items-as (append alist '((vier . "vier"))))))
+
 (describe "delve-export--value-or-fn"
   (it "returns nil when called with nil value"
     (expect (delve-export--value-or-fn nil)
@@ -135,6 +155,131 @@
       (expect (plist-get new-options :value) :to-equal "value")
       (expect (plist-get new-options :fn)    :to-equal "name"))))
 
+
+(describe "delve-export--get-backend-by-name"
+  :var ((backends (list (delve-export-backend-create :name 'eins
+                                                     :header "eins")
+                        (delve-export-backend-create :name 'zwei
+                                                     :header "zwei")
+                        (delve-export-backend-create :name 'eins
+                                                     :header "drei"))))
+  (it "returns first backend matching the name"
+    (expect (delve-export-backend-header (delve-export--get-backend-by-name 'eins backends))
+            :to-equal "eins"))
+  (it "returns nil when there are no backends to choose from"
+    (expect (delve-export--get-backend-by-name 'eins nil)
+            :to-be nil))
+  (it "returns nil when there is no matching backend"
+    (expect (delve-export--get-backend-by-name 'vier backends)
+            :to-be nil)))
+
+(describe "Finding parents"
+  :var* ((backends (list (delve-export-backend-create :name 'eins
+                                                      :separator "sep-1"
+                                                      :header "eins"
+                                                      :printers '((type1 . fn1-1)
+                                                                  (type2 . fn2-1)))
+                        (delve-export-backend-create :name 'zwei
+                                                     :parent 'eins
+                                                     :separator "sep-2"
+                                                     :printers '((type2 . fn2-2)
+                                                                 (type3 . fn3-2))
+                                                     :header "zwei")
+                        (delve-export-backend-create :name 'drei
+                                                     :separator "sep-3"
+                                                     :parent 'zwei
+                                                     :printers '((type2 . fn2-3))
+                                                     :header "drei")))
+         (eins (nth 0 backends))
+         (zwei (nth 1 backends))
+         (drei (nth 2 backends)))
+  (describe "delve-export--get-parent"
+    (it "returns nil if there are no backends to choose from"
+      (expect (delve-export--get-parent drei nil)
+              :to-be nil))
+    (it "returns nil if there is no instance given"
+      (expect (delve-export--get-parent nil backends)
+              :to-be nil))
+    (it "returns nil if instance has no parent"
+      (expect (delve-export--get-parent eins backends)
+              :to-be nil))
+    (it "returns parent if instance has one parent"
+      (expect (delve-export--get-parent zwei backends)
+              :to-equal eins)))
+
+  (describe "delve-export--get-parent-backends"
+    (it "returns nil if there are no backends to choose from"
+      (expect (delve-export--get-parent-backends eins nil)
+              :to-be nil))
+    (it "returns nil if there is no instance given"
+      (expect (delve-export--get-parent-backends nil backends)
+              :to-be nil))
+    (it "returns nil if instance has no parent"
+      (expect (delve-export--get-parent-backends eins backends)
+              :to-be nil))
+    (it "returns list of parent if instance has one parent"
+      (expect (delve-export--get-parent-backends zwei backends)
+              :to-equal (list eins)))
+    (it "returns list of two parents (from closer to more distanced) if instance has two parents"
+      (expect (delve-export--get-parent-backends drei backends)
+              :to-equal (list eins zwei))))
+
+  (describe "delve-export--backend-as-plist"
+    (it "returns nil when instance is nil"
+      (expect (delve-export--backend-as-plist nil backends)
+              :to-be nil))
+    (it "returns backend as plist when there is no list of backends to choose from"
+      (expect (delve-export--backend-as-plist eins nil)
+              :to-have-same-items-as
+              '(:name eins
+                      :separator "sep-1"
+                      :header "eins"
+                      :footer nil
+                      :printers ((type1 . fn1-1)
+                                 (type2 . fn2-1))
+                      :assert nil
+                      :parent nil
+                      :options nil)))
+    (it "returns backend with no parents as plist"
+      (expect (delve-export--backend-as-plist eins backends)
+              :to-have-same-items-as
+              '(:name eins
+                      :separator "sep-1"
+                      :header "eins"
+                      :footer nil
+                      :printers ((type1 . fn1-1)
+                                 (type2 . fn2-1))
+                      :assert nil
+                      :parent nil
+                      :options nil)))
+    (it "returns backend with one parent as plist with inheritance"
+      (expect (delve-export--backend-as-plist zwei backends)
+              :to-have-same-items-as
+              '(:name zwei
+                      :separator "sep-2"
+                      :header "zwei"
+                      :footer nil
+                      ;; FIXME This is too static; we should
+                      ;; change for items only, assuming no order
+                      :printers ((type3 . fn3-2)
+                                 (type1 . fn1-1)
+                                 (type2 . fn2-2))
+                      :assert nil
+                      :parent eins
+                      :options nil)))
+    (it "returns backend with two parents as plist with normal inheritance"
+      (expect (delve-export--backend-as-plist drei backends)
+              :to-have-same-items-as
+              '(:name drei
+                      :separator "sep-3"
+                      :header "drei"
+                      :footer nil
+                      :printers ((type1 . fn1-1)
+                                 (type2 . fn2-3)
+                                 (type3 . fn3-2))
+                      :assert nil
+                      :parent zwei
+                      :options nil)))))
 
 (describe "delve-export--item-string"
   (it "ignores nil object"
