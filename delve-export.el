@@ -53,7 +53,42 @@ keyword.  E.g. the property `:separator' contains the value of
 the slot `separator'.  Special slots which accept both a
 value and a function are finalized before passing them to the
 printer function."
-  assert name printers header footer separator options)
+  assert parent name printers header footer separator options)
+
+(defun delve-export--merge-plist (plist1 plist2 &optional merge-alist)
+  "Merge PLIST2 into PLIST1, overwriting the latter's values.
+Instead of overwriting the value, optionally use the fn
+associated with the key in MERGE-ALIST to construct the merged
+value (e.g. `((:key . append))' to use the append function).  The
+function will be called with two arguments, the value from PLIST1
+and the value from PLIST2."
+  (unless (eq 0 (mod (length plist2) 2))
+    (error "Malformed property list: %S" plist2))
+  (let ((res (copy-sequence plist1)))
+    (while plist2
+      (pcase-let ((`(,key ,val _) plist2))
+        (let ((merged-val (if-let ((fn (alist-get key merge-alist)))
+                              (funcall fn (plist-get res key) val)
+                            val)))
+        (setq res (plist-put res key merged-val)
+              plist2 (cdr (cdr plist2))))))
+    res))
+
+(defun delve-export--merge-plists (merge-alist plist1 &rest plists)
+  "Merge all PLISTS into PLIST1, overriding PLIST1's values.
+Optionally specify special ways of merging (instead of simply
+overriding the value) by associating the merging function with a
+key in MERGE-ALIST, e.g. `((:key . append))'."
+  (--reduce-from (delve-export--merge-plist acc it merge-alist) plist1 plists))
+
+;; TODO Add tests
+(defun delve-export--merge-alists (alist1 alist2)
+  "Merge ALIST2 into ALIST1, overriding the latter's values.
+Key comparison is done with `eq'."
+  (let ((keys (-map #'car alist2)))
+    (cl-dolist (key keys)
+      (setf (alist-get key alist1) (alist-get key alist2)))
+    alist1))
 
 (defun delve-export--struct-to-plist (instance &optional exclude)
   "Return all slot-value-pairs of struct INSTANCE as a plist.
@@ -68,20 +103,41 @@ Exlude all slots from EXCLUDE."
                              (cl-struct-slot-value type slot instance))))
       res)))
 
-(defun delve-export--merge-plist (plist1 plist2)
-  "Merge PLIST2 into PLIST1, overwriting the latter's values."
-  (unless (eq 0 (mod (length plist2) 2))
-    (error "Malformed property list: %S" plist2))
-  (let ((res (copy-sequence plist1)))
-    (while plist2
-      (pcase-let ((`(,key ,val _) plist2))
-        (setq res (plist-put res key val)
-              plist2 (cdr (cdr plist2)))))
+;; TODO Add tests
+(defun delve-export--get-backend-by-name (name all-backends)
+  "Return instance with name matching NAME.
+Search for instances in the list ALL-BACKENDS."
+  (--find (eq (delve-export-backend-name it) name) all-backends))
+
+;; TODO Add tests
+(defun delve-export--get-parent (instance all-backends)
+  "Return parent backend of INSTANCE, or nil.
+Search for parent instances in the list ALL-BACKENDS (using the
+  name)."
+  (when-let* ((parent (delve-export-backend-parent instance)))
+    (delve-export--get-backend-by-name parent all-backends)))
+    
+;; TODO Add tests
+(defun delve-export--get-parent-backends (instance all-backends)
+  "Return a list of all parents of INSTANCE.
+Search for parent instances in the list ALL-BACKENDS (using the
+  name)."
+  (let ((child instance) res)
+    (while (setq child (delve-export--get-parent child all-backends))
+      (push child res))
     res))
 
-(defun delve-export--merge-plists (plist1 &rest plists)
-  "Merge all PLISTS into PLIST1, overriding PLIST1's values."
-  (-reduce-from #'delve-export--merge-plist plist1 plists))
+;; TODO Add tests
+(defun delve-export--backend-as-plist (instance all-backends)
+  "Return backend INSTANCE as plist using inheritance.
+Search for parent instances in the list ALL-BACKENDS (using the
+name)."
+  (let* ((trail  (cons instance (delve-export--get-parent-backends instance all-backends)))
+         (plists (-map #'delve-export--struct-to-plist (reverse trail)))
+         (merge-alist `((:printers . ,#'delve-export--merge-alists))))
+    (--reduce-from (delve-export--merge-plist acc it merge-alist)
+                   (car plists)
+                   (cdr plists))))
 
 (defun delve-export--value-or-fn (value &rest args)
   "Return VALUE unchanged or call it as a function with ARGS."
@@ -155,6 +211,7 @@ the values for the backend slots."
     (let* ((n       (length delve-objects))
            ;; merge everything into a big plist:
            (options  (delve-export--merge-plists
+                      '(:printers . ,#'delve-export--merge-alists)
                       (delve-export--struct-to-plist backend)
                       (when backend (delve-export-backend-options backend))
                       extra-options
@@ -227,22 +284,8 @@ Optional argument ARGS is ignored."
   (delve-export-backend-create
    :assert (lambda () (derived-mode-p 'org-mode))
    :name 'transclusion
-   :header nil
-   :footer (lambda (o) (when (> (plist-get o :n-total) 1) ""))
-   :options nil
-   :separator "\n"
-   :printers `((delve--pile    . ,(lambda (p o)
-                                    (concat
-                                     (string-join (--map (delve-export--item-string it o)
-                                                         (cons (delve--heading-create
-                                                                :text (delve--pile-name p))
-                                                               (delve--pile-zettels p)))
-                                                  (plist-get o :separator))
-                                     (plist-get o :separator))))
-               (delve--note    . ,(lambda (n _) (delve--note-text n)))
-               (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
-               (delve--info    . ,(lambda (i _) (delve--info-text i)))
-               (delve--zettel  . ,(lambda (z _) (format "#+transclude:  [[id:%s][%s]]"
+   :parent 'yank-into-org
+   :printers `((delve--zettel  . ,(lambda (z _) (format "#+transclude:  [[id:%s][%s]]"
                                                         (delve--zettel-id z)
                                                         (delve--zettel-title z))))))
    "Backend for integration with org-transclusion.")
@@ -251,6 +294,11 @@ Optional argument ARGS is ignored."
   (list delve-export--backend-for-yanking
         delve-export--backend-transclusion)
   "List of available handlers for yanking.")
+
+(defvar delve-export--backends
+  (list delve-export--backend-for-yanking
+        delve-export--backend-transclusion)
+  "List of all available export backends (for inheritance).")
 
 (defun delve-export--available-backends (backend-list)
   "Get all backends from BACKEND-LIST for current buffer."

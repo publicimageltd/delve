@@ -63,28 +63,41 @@
     (expect (delve-export--merge-plist nil plist)
             :to-equal plist))
   (it "merges plist with different keys"
-    (expect (delve-export--merge-plist plist '(:vier "4"))
+    (expect (delve-export--merge-plist  plist '(:vier "4"))
             :to-have-same-items-as
             (append plist '(:vier "4"))))
   (it "overwrites values when merging identical keys"
     (expect (delve-export--merge-plist plist '(:eins "neu1"))
             :to-have-same-items-as
-            '(:eins "neu1" :zwei "2" :drei "3"))))
+            '(:eins "neu1" :zwei "2" :drei "3")))
+  (it "uses fn in merge-alist to construct result"
+    (expect (delve-export--merge-plist plist '(:eins "neu") '((:eins . concat)))
+            :to-equal '(:eins "1neu" :zwei "2" :drei "3"))
+    (expect (delve-export--merge-plist '(:eins ((:hans . "dampf")))
+                                       '(:eins ((:grete . "mampf")))
+                                       '((:eins . append)))
+            :to-equal '(:eins ((:hans . "dampf") (:grete . "mampf")))))
+  (it "ignores key in merge-alist which are not present in any plist"
+    (expect (delve-export--merge-plist plist '(:eins "neu") '((:hans . dampf)))
+            :to-equal '(:eins "neu" :zwei "2" :drei "3"))))
 
 (describe "delve-export--merge-plists"
   :var ((plist '(:eins "1" :zwei "2")))
   (it "returns plist when called with no further arguments"
-    (expect (delve-export--merge-plists plist)
+    (expect (delve-export--merge-plists nil plist)
             :to-equal plist))
   (it "merges one property list with non-identical keys"
-    (expect (delve-export--merge-plists plist '(:drei "3"))
+    (expect (delve-export--merge-plists nil plist '(:drei "3"))
             :to-have-same-items-as (append plist '(:drei "3"))))
   (it "merges two property lists with non-identical keys"
-    (expect (delve-export--merge-plists plist '(:drei "3") '(:vier "4"))
+    (expect (delve-export--merge-plists nil plist '(:drei "3") '(:vier "4"))
             :to-have-same-items-as (append plist '(:drei "3" :vier "4"))))
   (it "overwrites values when merging identical keys"
-    (expect (delve-export--merge-plists plist '(:eins "neu1") '(:zwei "neu2"))
-            :to-equal '(:eins "neu1" :zwei "neu2"))))
+    (expect (delve-export--merge-plists nil plist '(:eins "neu1") '(:zwei "neu2"))
+            :to-equal '(:eins "neu1" :zwei "neu2")))
+  (it "merges using fn associated with a key"
+    (expect (delve-export--merge-plists '((:eins . concat)) plist '(:eins "0"))
+            :to-equal '(:eins "10" :zwei "2"))))
 
 (describe "delve-export--value-or-fn"
   (it "returns nil when called with nil value"
