@@ -238,8 +238,7 @@
                       :printers ((type1 . fn1-1)
                                  (type2 . fn2-1))
                       :assert nil
-                      :parent nil
-                      :options nil)))
+                      :parent nil)))
     (it "returns backend with no parents as plist"
       (expect (delve-export--backend-as-plist eins backends)
               :to-have-same-items-as
@@ -250,8 +249,7 @@
                       :printers ((type1 . fn1-1)
                                  (type2 . fn2-1))
                       :assert nil
-                      :parent nil
-                      :options nil)))
+                      :parent nil)))
     (it "returns backend with one parent as plist with inheritance"
       (expect (delve-export--backend-as-plist zwei backends)
               :to-have-same-items-as
@@ -265,8 +263,7 @@
                                  (type1 . fn1-1)
                                  (type2 . fn2-2))
                       :assert nil
-                      :parent eins
-                      :options nil)))
+                      :parent eins)))
     (it "returns backend with two parents as plist with normal inheritance"
       (expect (delve-export--backend-as-plist drei backends)
               :to-have-same-items-as
@@ -278,8 +275,7 @@
                                  (type2 . fn2-3)
                                  (type3 . fn3-2))
                       :assert nil
-                      :parent zwei
-                      :options nil)))))
+                      :parent zwei)))))
 
 (describe "delve-export--item-string"
   (it "ignores nil object"
@@ -289,7 +285,7 @@
     (expect (delve-export--item-string "string"
                                        `(:printers ((string . ,(lambda (obj _) obj)))))
             :to-equal "string"))
-  (it "passes options to printer"
+  (it "passes internal option list to printer"
     (expect (delve-export--item-string "string" `(:result "result"
                                                           :printers ((string . ,(lambda (_ opt) (plist-get opt :result))))))
             :to-equal "result"))
@@ -318,14 +314,6 @@
     (let ((backend (delve-export-backend-create :header "header")))
       (delve-export--insert buf backend nil '(:header "test"))
       (expect (buffer-string) :to-equal "test")))
-  (it "overrides backend slots with backend slot 'options'"
-    (let ((backend (delve-export-backend-create :header "header" :options '(:header "test"))))
-      (delve-export--insert buf backend nil)
-      (expect (buffer-string) :to-equal "test")))
-  (it "finally overrides everything with value in extra options"
-    (let ((backend (delve-export-backend-create :header "header" :options '(:header "test"))))
-      (delve-export--insert buf backend nil '(:header "anothertest"))
-      (expect (buffer-string) :to-equal "anothertest")))
   (it "throws when assertion function returns nil"
     (expect (delve-export--insert buf nil nil `(:assert ,#'ignore))
             :to-throw))

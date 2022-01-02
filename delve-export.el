@@ -229,9 +229,7 @@ the values for the backend slots."
                       '(:printers . ,#'delve-export--merge-alist)
                       ;; begin with the backend (with its inherited values)
                       (delve-export--backend-as-plist backend delve-export--backends)
-                      ;; then merge in the options
-                      (when backend (delve-export-backend-options backend))
-                      ;; now pass extra-options from this function call
+                      ;; pass extra-options from this function call
                       extra-options
                       ;; and finally some values for printing
                       (list :n-total n))))
@@ -276,7 +274,6 @@ Optional argument ARGS is ignored."
    :header nil
    ;; this is still a yank handler:
    :footer (lambda (o) (when (> (plist-get o :n-total) 1) ""))
-   :options nil
    :separator "\n"
    :printers `((delve--pile    . ,(lambda (p o)
                                     ;; NOTE This is not so elegant,
