@@ -30,30 +30,40 @@
   "A backend for exporting Delve objects.
 Slot NAME is a name (symbol) for the backend.
 
-OPTIONS holds a property list of options, which are passed to
-each exporting function in addition to the values of the backend
-instance.
+The value of the slot PARENT denotes another backend instance by
+name.  (To be found by name, the instance has to be stored in the
+variable `delve-export--backends'.)  When initalizing a backend,
+it takes in all values (slots) from a parent instance, if given.
+If the parent instance has another parent, values are taken first
+from that top parent instance, then overriden by the child
+instance, and so on.  In that way, a backend specializes by
+inheriting its basic functionality from parent backend(s) and by
+setting only some slots on its own.
+
+When inheriting, all slots are overriden by the child instance if
+the latter has a non-nil value.  An exception to that rule is the
+slot `printers', which is merged with previous values,
+effectively allowing the child backend to overwrite only
+particular functions instead of the whole set of printers.
 
 Slots HEADER, FOOTER and SEPARATOR are either strings, which are
 inserted as is, or functions returning a value to be
-inserted. The functions are called with a list of options.
-
-SEPARATOR can be nil, a string or a function with two
-arguments (object and options) returning a string. If SEPARATOR is
-non-nil, it will be inserted between each item (including
-the header and the footer).
+inserted. The functions are called with a list of options. If
+SEPARATOR is non-nil, its value will be inserted between each
+item (including the header and the footer).
 
 Slot PRINTERS is an alist, associating each Delve object type
 with a printer function.  Each printer function is called with
 the object and a property list of options. Apart from extra
-options which can be passed programmatically and the values from
-the slot OPTIONS, this property list also contains a complete
-copy of the backend's slots, each slot name corresponding to a
+options which can be passed programmatically when calling the
+export function, this property list also contains a complete copy
+of the backend's slots, each slot name corresponding to a
 keyword.  E.g. the property `:separator' contains the value of
-the slot `separator'.  Special slots which accept both a
-value and a function are finalized before passing them to the
-printer function."
-  assert parent name printers header footer separator options)
+the slot `separator'.  If the slot PARENT is non-nil, inheritance
+rules apply.  Special slots which accept both a value and a
+function are finalized before passing them to the printer
+function."
+  assert parent name printers header footer separator)
 
 ;; * Global Variables
 
