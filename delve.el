@@ -1120,7 +1120,7 @@ be used as a value for `filter-buffer-substring-function'."
      (t
       (insert s)))))
 
-(defun delve--yank (&optional arg)
+(defun delve--key--yank (&optional arg)
   "Yank last kill, if it is a Delve token string.
 Option ARG is currently ignored."
   (interactive)
@@ -1596,7 +1596,7 @@ If the user selects a non-storage file, pass to `find-file'."
     (define-key map (kbd "g")                        #'delve--key--sync)
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
-    (define-key map [remap yank]                     #'delve--yank)
+    (define-key map [remap yank]                     #'delve--key--yank)
     ;; Insert node(s):
     (let ((prefix (define-prefix-command 'delve--key--insert-prefix nil "Insert")))
       (define-key prefix "n" '(" node"     . delve--key--insert-node))
