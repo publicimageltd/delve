@@ -1482,7 +1482,8 @@ collecting."
   "Toggle between compact or default view of nodes."
   (interactive)
   (setq delve-local-compact-view (not delve-local-compact-view))
-  (lister-refresh-list lister-local-ewoc))
+  (lister-save-current-node lister-local-ewoc
+      (lister-refresh-list lister-local-ewoc)))
 
 ;; Delete Items
 
