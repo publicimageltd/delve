@@ -109,6 +109,9 @@ entries."
 (defvar-local delve-local-header-info "DELVE"
   "First line of the local Lister header.")
 
+(defvar-local delve-local-compact-view nil
+  "Whether to display the nodes in a compact way.")
+
 ;; * Faces
 
 (defgroup delve-faces nil
@@ -345,28 +348,35 @@ Return the prepared string."
 
 (defun delve--zettel-strings (zettel)
   "Return a list of strings representing ZETTEL."
-  (let ((node (delve--zettel-node zettel)))
+  (let* ((node        (delve--zettel-node zettel))
+         (sync-marker (when (delve--zettel-out-of-sync zettel)
+                        (delve-pp--add-face "* " 'warning)))
+         (title       (let ((title (org-roam-node-title node)))
+                        (propertize (or title "<No title>" 'face 'delve-title-face))))
+         (tags        (when (org-roam-node-tags node)
+                        (propertize (delve--tags-as-string node)'face 'delve-tags-face))))
     (list
-     ;; -- Title
-     (concat
-      ;; Maybe mark out of sync:
-      (when (delve--zettel-out-of-sync zettel)
-        (delve-pp--add-face "* " 'warning))
-      ;; Maybe display path:
-      (when (and delve-display-path
-                 (not (eq 0 (delve--zettel-level zettel))))
-        (let ((path (delve--zettel-olp zettel)))
-          (delve-pp--add-face
-           (concat (delve--zettel-filetitle zettel) "/"
-                   (string-join path "/")
-                   (when path "/"))
-           'delve-path-face)))
-      ;; Display node title:
-      (propertize (org-roam-node-title node) 'face 'delve-title-face))
-     ;; -- Tag line:
-     (propertize (delve--tags-as-string node) 'face 'delve-tags-face)
+     ;; Compact View - one line only::
+     (if delve-local-compact-view
+         (string-join (list sync-marker title tags) " ")
+       ;; Default view:
+       (let ((path (when (and delve-display-path
+                              (not (eq 0 (delve--zettel-level zettel))))
+                     (delve-pp--add-face
+                      (string-join (list (delve--zettel-filetitle zettel)
+                                         (string-join (delve--zettel-olp zettel) "/")
+                                         nil)
+                                   "/")
+                      'delve-path-face))))
+         (list
+          ;; TODO Alles kacke. sync-marker NIL wird nicht erkannt und
+          ;; erzeugt " ", und sowieso sollte da ein Formatstring rein,
+          ;; der alles regelt.
+          (when path (string-join (list sync-marker path " ")))
+          (if path title (string-join (list sync-marker title) " "))
+          (string-join (list tags (delve--zettel-info zettel)) " "))))
+     ;; Now all which is added both to compact and default view:
      ;; -- additional Zettel slots:
-     (delve--zettel-info zettel)
      ;; -- Preview:
      (when-let ((preview (delve--zettel-preview zettel)))
        (split-string (delve--prepare-preview preview) "\n")))))
@@ -1468,6 +1478,12 @@ collecting."
   ;; feedback how many items have been moved
   (lister-refresh-at ewoc :point))
 
+(defun delve--key--toggle-view ()
+  "Toggle between compact or default view of nodes."
+  (interactive)
+  (setq delve-local-compact-view (not delve-local-compact-view))
+  (lister-refresh-list lister-local-ewoc))
+
 ;; Delete Items
 
 (defun delve--key--multi-delete ()
@@ -1598,6 +1614,7 @@ If the user selects a non-storage file, pass to `find-file'."
     (define-key map [remap write-file]               #'delve-write-buffer)
     (define-key map [remap find-file]                #'delve-open-storage-file)
     (define-key map (kbd "g")                        #'delve--key--sync)
+    (define-key map (kbd "v")                        #'delve--key--toggle-view)
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
     (define-key map [remap yank]                     #'delve--key--yank)
