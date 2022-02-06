@@ -28,7 +28,8 @@
 
 (cl-defstruct (delve-export-backend (:constructor delve-export-backend-create))
   "A backend for exporting Delve objects.
-Slot NAME is a name (symbol) for the backend.
+Slot NAME is a name (symbol) for the backend; DESCRIPTION offers
+a description for the user (e.g. when selecting a backend).
 
 The value of the slot PARENT denotes another backend instance by
 name.  (To be found by name, the instance has to be stored in the
@@ -63,11 +64,12 @@ the slot `separator'.  If the slot PARENT is non-nil, inheritance
 rules apply.  Special slots which accept both a value and a
 function are finalized before passing them to the printer
 function."
-  assert parent name printers header footer separator)
+  assert parent name description printers header footer separator)
 
 ;; * Global Variables
 
-(defvar delve-export--backends)
+(defvar delve-export--backends nil
+  "Internal list holding all export backends.")
 
 ;; * Utilities to mimic some kind of inheritance
 
@@ -75,20 +77,21 @@ function."
   "Merge PLIST2 into PLIST1, overwriting the latter's values.
 Instead of overwriting the value, optionally use the fn
 associated with the key in MERGE-ALIST to construct the merged
-value (e.g. `((:key . append))' to use the append function).  The
+value (e.g. `((:key . append))' to use the append function).  That
 function will be called with two arguments, the value from PLIST1
 and the value from PLIST2."
   (unless (eq 0 (mod (length plist2) 2))
     (error "Malformed property list: %S" plist2))
-  (let ((res (copy-sequence plist1)))
-    (while plist2
-      (pcase-let ((`(,key ,val _) plist2))
+  (let* ((target  (copy-sequence plist1))
+         (from    (copy-sequence plist2)))
+    (while from
+      (pcase-let ((`(,key ,val _) from))
         (let ((merged-val (if-let ((fn (alist-get key merge-alist)))
-                              (funcall fn (plist-get res key) val)
+                              (funcall fn (plist-get target key) val)
                             val)))
-        (setq res (plist-put res key merged-val)
-              plist2 (cdr (cdr plist2))))))
-    res))
+        (setq target  (plist-put target key merged-val)
+              from    (cdr (cdr from))))))
+    target))
 
 (defun delve-export--merge-plists (merge-alist plist1 &rest plists)
   "Merge all PLISTS into PLIST1, overriding PLIST1's values.
@@ -100,10 +103,17 @@ key in MERGE-ALIST, e.g. `((:key . append))'."
 (defun delve-export--merge-alist (alist1 alist2)
   "Merge ALIST2 into ALIST1, overriding the latter's values.
 Key comparison is done with `eq'."
-  (let ((keys (-map #'car alist2)))
-    (cl-dolist (key keys)
-      (setf (alist-get key alist1) (alist-get key alist2)))
-    alist1))
+  (let ((target (copy-sequence alist1)))
+    (pcase-dolist (`(,key . ,val) alist2)
+      (setq target
+            ;; I tried first (setf (alist-get ....)), but
+            ;; that destroyed the original alist!
+            (if-let ((old-val (alist-get key target)))
+                (-replace `(,key . ,old-val)
+                          `(,key . ,val)
+                          target)
+              (append target `((,key . ,val))))))
+    target))
 
 (defun delve-export--struct-to-plist (instance &optional exclude)
   "Return all slot-value-pairs of struct INSTANCE as a plist.
@@ -118,19 +128,24 @@ Exlude all slots from EXCLUDE."
                              (cl-struct-slot-value type slot instance))))
       res)))
 
+(defun delve-export--eq-name (name instance)
+  "Check if Delve export backend INSTANCE has the name NAME."
+  (when instance
+    (eq (delve-export-backend-name instance) name)))
+
 (defun delve-export--get-backend-by-name (name all-backends)
   "Return instance with name matching NAME.
 Search for instances in the list ALL-BACKENDS."
-  (--find (eq (delve-export-backend-name it) name) all-backends))
+  (-find (-partial #'delve-export--eq-name name) all-backends))
 
 (defun delve-export--get-parent (instance all-backends)
   "Return parent backend of INSTANCE, or nil.
 Search for parent instances in the list ALL-BACKENDS (using the
-  name)."
+name)."
   (and instance
        (when-let* ((parent (delve-export-backend-parent instance)))
          (delve-export--get-backend-by-name parent all-backends))))
-    
+
 (defun delve-export--get-parent-backends (instance all-backends)
   "Return a list of all parents of INSTANCE.
 Search for parent instances in the list ALL-BACKENDS (using the
@@ -164,10 +179,10 @@ list without any modifications."
 
 (defun delve-export--process-special-values (options &rest keys)
   "Return OPTIONS with the values for KEYS processed in a special way.
-Leave the associated values unchanged unless they hold a function
-object or a symbol pointing to a function.  In that latter case,
-replace the value with the result of calling this function with
-OPTIONS as its argument."
+Leave the values associated with KEYS unchanged unless they hold
+a function object or a symbol pointing to a function.  In that
+latter case, replace the value with the result of calling this
+function with OPTIONS as its argument."
   (--reduce-from
    (if-let ((val (plist-get options it)))
        (plist-put acc it (delve-export--value-or-fn (plist-get options it) acc))
@@ -189,7 +204,14 @@ returns nil."
                                    (plist-get options :printers))))
       (funcall printer object options))))
 
-;; TODO Remove slot "option", since inheritance makes it unnecessary
+(defun delve-export--debug ()
+  "ARGH.  Eval buffer, dann das in *ielm*."
+  (let ((orig (--map (alist-get 'delve--zettel it) (mapcar #'delve-export-backend-printers delve-export--backends))))
+    (delve-export--backend-as-plist (delve-export--get-backend-by-name 'org-transclusion delve-export--backends)
+                                    delve-export--backends)
+    (list :orig orig
+          :neu (--map (alist-get 'delve--zettel it) (mapcar #'delve-export-backend-printers delve-export--backends)))))
+  
 (defun delve-export--insert (buf backend delve-objects
                                  &optional extra-options)
   "Insert DELVE-OBJECTS into BUF using BACKEND.
@@ -225,9 +247,11 @@ the values for the backend slots."
     (let* ((n       (length delve-objects))
            ;; merge everything into a big plist:
            (options  (delve-export--merge-plists
-                      ;; merge, don't override values in slot :printers
-                      '(:printers . ,#'delve-export--merge-alist)
-                      ;; begin with the backend (with its inherited values)
+                      `((:printers . ,#'delve-export--merge-alist))
+                      ;; begin with the backend (with its inherited
+                      ;; values)
+                      ;; BUG Hier ist der Fehler!
+                      ;; siehe delve-export--debug
                       (delve-export--backend-as-plist backend delve-export--backends)
                       ;; pass extra-options from this function call
                       extra-options
@@ -258,7 +282,33 @@ the values for the backend slots."
           (when footer (insert (concat (when (or delve-objects footer) sep)
                                        footer))))))))
 
-;; * Export to Org Links
+;; * Easier handling of the global backend list
+
+(defun delve-export--unregister-backend (name)
+  "Remove backend NAME from the variable `delve-export--backends'."
+  (setq delve-export--backends (--remove (delve-export--eq-name name it)
+                                         delve-export--backends)))
+
+(defun delve-export--register-backend (instance)
+  "Add backend INSTANCE to the list stored in `delve-export--backends'.
+If an instance with the same name is found, replace it."
+  (delve-export--unregister-backend (delve-export-backend-name instance))
+  (setq delve-export--backends
+        (append delve-export--backends (list instance))))
+
+(defmacro delve-export-new-backend (name description &rest keyword-value-pairs)
+  "Define and register a new export backend called NAME.
+Pass NAME, DESCRIPTION and KEYWORD-VALUE-PAIRS to
+`delve-export-backend-create' and add the thusly created backend
+to the internal variable `delve-export--backends'.
+
+For a list of possible keywords, see
+`delve-export-backend-create'."
+  (declare (indent 1))
+  `(delve-export--register-backend
+    (delve-export-backend-create :name ,name :description ,description ,@keyword-value-pairs)))
+
+;; * Functions to be used by the export backends
 
 (defun delve-export--zettel-to-link (z &optional args)
   "Return zettel Z as an Org link pointing to its headline.
@@ -267,67 +317,68 @@ Optional argument ARGS is ignored."
   (org-link-make-string (concat "id:" (delve--zettel-id z))
                         (delve--zettel-title z)))
 
-(defvar delve-export--backend-for-yanking
-  (delve-export-backend-create
-   :assert (lambda () (derived-mode-p 'org-mode))
-   :name 'yank-into-org
-   :header nil
-   ;; this is still a yank handler:
-   :footer (lambda (o) (when (> (plist-get o :n-total) 1) ""))
-   :separator "\n"
-   :printers `((delve--pile    . ,(lambda (p o)
-                                    ;; NOTE This is not so elegant,
-                                    ;; but it works.  Alternatively,
-                                    ;; we could check the return value
-                                    ;; of `delve-export--item-string'
-                                    ;; and recursively postprocess
-                                    ;; returned lists as further
-                                    ;; items. But, well....
-                                    (concat
-                                     (string-join (--map (delve-export--item-string it o)
-                                                         (cons (delve--heading-create
-                                                                :text (delve--pile-name p))
-                                                               (delve--pile-zettels p)))
-                                                  (plist-get o :separator))
-                                     (plist-get o :separator))))
-               (delve--note    . ,(lambda (n _) (delve--note-text n)))
-               (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
-               (delve--info    . ,(lambda (i _) (delve--info-text i)))
-               (delve--zettel  . ,#'delve-export--zettel-to-link)))
-  "Backend for exporting Delve items to simple Org mode links.")
+;; * Define the actual backends
 
-(defvar delve-export--backend-transclusion
-  (delve-export-backend-create
-   :assert (lambda () (derived-mode-p 'org-mode))
-   :name 'transclusion
+(delve-export-new-backend 'yank-into-org
+  "Insert Delve items as simple Org mode links"
+  :assert (lambda () (derived-mode-p 'org-mode))
+  :footer (lambda (o) (when (> (plist-get o :n-total) 1) ""))
+  :separator "\n"
+  :printers `((delve--pile    . ,(lambda (p o)
+                                   (concat
+                                    (string-join (--map (delve-export--item-string it o)
+                                                        (cons (delve--heading-create
+                                                               :text (delve--pile-name p))
+                                                              (delve--pile-zettels p)))
+                                                 (plist-get o :separator))
+                                    (plist-get o :separator))))
+              (delve--note    . ,(lambda (n _) (delve--note-text n)))
+              (delve--heading . ,(lambda (h _) (concat "* " (delve--heading-text h))))
+              (delve--info    . ,(lambda (i _) (delve--info-text i)))
+              (delve--zettel  . ,#'delve-export--zettel-to-link)))
+
+(delve-export-new-backend 'org-transclusion
+  "Print Delve zettels as links suitable for org-transclusion"
+   :assert (lambda () (and (derived-mode-p 'org-mode)
+                           (featurep 'org-transclusion)
+                           (boundp 'org-transclusion-mode)
+                           org-transclusion-mode))
    :parent 'yank-into-org
    :printers `((delve--zettel  . ,(lambda (z _) (format "#+transclude:  [[id:%s][%s]]"
                                                         (delve--zettel-id z)
                                                         (delve--zettel-title z))))))
-   "Backend for integration with org-transclusion.")
 
-(defvar delve-export--yank-handlers
-  (list delve-export--backend-for-yanking
-        delve-export--backend-transclusion)
-  "List of available handlers for yanking.")
+(defvar  delve-export--yank-handlers
+  (list 'org-transclusion
+        'yank-into-org)
+  "List of available backends for yanking (by name).
+When yanking, check which of these backends can be used in the
+current buffer by calling its `assert' function.  If there are
+multiple options available, let the user choose the proper
+backend.")
 
-(defvar delve-export--backends
-  (list delve-export--backend-for-yanking
-        delve-export--backend-transclusion)
-  "List of all available export backends (for inheritance).")
-
-(defun delve-export--available-backends (backend-list)
-  "Get all backends from BACKEND-LIST for current buffer."
+(defun delve-export--available-backends (&optional backend-names)
+  "Get all export backends available for the current buffer.
+Return those backends from `delve-export--backends' for which the
+`assert' function returns a non-nil value, or for which no such
+function is defined.  Optionally limit check to those backends
+with a name in BACKEND-NAMES."
   (--filter (if-let ((assert-fn (delve-export-backend-assert it)))
                 (funcall assert-fn)
               t)
-            backend-list))
+            (if backend-names
+                (-non-nil
+                 (--map (delve-export--get-backend-by-name it delve-export--backends)
+                        backend-names))
+              delve-export--backends)))
 
 (defun delve-export--select-backend (backends)
-  "Let the user select a backend from BACKENDS."
-  (let* ((candidates (-group-by #'delve-export-backend-name backends))
-         (selection  (completing-read "Select insertion format: " candidates)))
-    (car (alist-get (intern selection) candidates))))
+  "Let the user select a backend from BACKENDS.
+Skip selection if there is only one backend to choose from."
+  (let* ((candidates (-group-by #'delve-export-backend-name backends)))
+    (if (eq 1 (length candidates))
+         (car (cdr (car candidates)))
+      (car (alist-get (intern (completing-read "Select insertion format: " candidates)) candidates)))))
 
 (provide 'delve-export)
 ;;; delve-export.el ends here

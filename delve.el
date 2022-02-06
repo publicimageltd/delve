@@ -1101,7 +1101,11 @@ be used as a value for `filter-buffer-substring-function'."
      '(delve--yank-handler))))
 
 (defun delve--yank-handler (s)
-  "Insert tokenized string S as a Delve object at point."
+  "Insert tokenized string S as a Delve object at point.
+In Delve buffers, insert at point into the list.  Else insert
+using the first export backend in `delve-export--yank-handlers'
+for which the assert function returns non-nil.  If no such
+handler is found, simply insert S as it is."
   (let* ((backends (delve-export--available-backends delve-export--yank-handlers))
          (objects (delve-store--create-object-list (ignore-errors (read (substring-no-properties s))))))
     (cond

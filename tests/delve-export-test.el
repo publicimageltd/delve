@@ -238,6 +238,7 @@
                       :printers ((type1 . fn1-1)
                                  (type2 . fn2-1))
                       :assert nil
+                      :description nil
                       :parent nil)))
     (it "returns backend with no parents as plist"
       (expect (delve-export--backend-as-plist eins backends)
@@ -249,6 +250,7 @@
                       :printers ((type1 . fn1-1)
                                  (type2 . fn2-1))
                       :assert nil
+                      :description nil
                       :parent nil)))
     (it "returns backend with one parent as plist with inheritance"
       (expect (delve-export--backend-as-plist zwei backends)
@@ -263,6 +265,7 @@
                                  (type1 . fn1-1)
                                  (type2 . fn2-2))
                       :assert nil
+                      :description nil
                       :parent eins)))
     (it "returns backend with two parents as plist with normal inheritance"
       (expect (delve-export--backend-as-plist drei backends)
@@ -275,6 +278,7 @@
                                  (type2 . fn2-3)
                                  (type3 . fn3-2))
                       :assert nil
+                      :description nil
                       :parent zwei)))))
 
 (describe "delve-export--item-string"
