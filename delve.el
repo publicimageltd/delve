@@ -348,35 +348,51 @@ Return the prepared string."
 
 (defun delve--zettel-strings (zettel)
   "Return a list of strings representing ZETTEL."
-  (let* ((node        (delve--zettel-node zettel))
-         (sync-marker (when (delve--zettel-out-of-sync zettel)
-                        (delve-pp--add-face "* " 'warning)))
-         (title       (let ((title (org-roam-node-title node)))
-                        (propertize (or title "<No title>" 'face 'delve-title-face))))
-         (tags        (when (org-roam-node-tags node)
-                        (propertize (delve--tags-as-string node)'face 'delve-tags-face))))
+  (let ((main-item-list
+         ;; Compact View - one line only::
+         (if delve-local-compact-view
+             (list
+              (delve-pp-fields zettel `(;; title:
+                                        ((or (delve--zettel-title it) "<No title>")
+                                         :add-face delve-title-face)
+                                        ;; tags:
+                                         ((delve--tags-as-string (delve--zettel-node it))
+                                         :add-face delve-tags-face))))
+           ;; Default view:
+           (list
+            ;; -- first line:
+            (when (and delve-display-path
+                       (not (eq 0 (delve--zettel-level zettel))))
+              (delve-pp-fields zettel `(;; path:
+                                        (,#'delve--zettel-filetitle
+                                         :format "%s/"
+                                         :add-face delve-path-face)
+                                        ((when (delve--zettel-olp it)
+                                           (string-join (delve--zettel-olp it) "/"))
+                                         :format "%s/"
+                                         :add-face delve-path-face))))
+            ;; -- second line:
+            (delve-pp-fields zettel `(;; title
+                                      (,#'delve--zettel-title
+                                       :add-face delve-title-face))
+                             " " "<No title>")
+            ;; -- third line:
+            (delve-pp-fields zettel `(;; tags
+                                      ((delve--tags-as-string (delve--zettel-node it))
+                                       :add-face delve-tags-face)
+                                      ;; info
+                                      ,#'delve--zettel-info)
+                             " " nil)))))
+    ;; add sync marker to front:
+    (when (and (setq main-item-list (cl-remove-if #'null main-item-list))
+               (delve--zettel-out-of-sync zettel))
+      (setq main-item-list (cons (concat (delve-pp--add-face "* " 'warning)
+                                         (car main-item-list))
+                                 (cdr main-item-list))))
+    ;; Now add everything which is common both to compact and default
+    ;; view:
     (list
-     ;; Compact View - one line only::
-     (if delve-local-compact-view
-         (string-join (list sync-marker title tags) " ")
-       ;; Default view:
-       (let ((path (when (and delve-display-path
-                              (not (eq 0 (delve--zettel-level zettel))))
-                     (delve-pp--add-face
-                      (string-join (list (delve--zettel-filetitle zettel)
-                                         (string-join (delve--zettel-olp zettel) "/")
-                                         nil)
-                                   "/")
-                      'delve-path-face))))
-         (list
-          ;; TODO Alles kacke. sync-marker NIL wird nicht erkannt und
-          ;; erzeugt " ", und sowieso sollte da ein Formatstring rein,
-          ;; der alles regelt.
-          (when path (string-join (list sync-marker path " ")))
-          (if path title (string-join (list sync-marker title) " "))
-          (string-join (list tags (delve--zettel-info zettel)) " "))))
-     ;; Now all which is added both to compact and default view:
-     ;; -- additional Zettel slots:
+     main-item-list
      ;; -- Preview:
      (when-let ((preview (delve--zettel-preview zettel)))
        (split-string (delve--prepare-preview preview) "\n")))))
