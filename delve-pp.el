@@ -43,7 +43,7 @@
 ;;   => "hallo du"
 ;;
 ;; (delve-pp-fields nil '("hallo" (not :format "%s") "du"))
-;;   => "hallo not du"
+;;   => "hallo t du"
 ;;
 ;; (delve-pp-fields nil '("value" "=" "%s"))
 ;;   => "value = nil"
@@ -129,6 +129,9 @@ face mods will be ignored."
 If PPRINTER is a function, OBJECT is passed as to as its sole
 argument.
 
+If PPRINTER is a list, execute it as a lambda form with the
+variable `it' bound to OBJECT.
+
 If PPRINTER is a string, it is used a value to `format'
 OBJECT.
 
@@ -144,6 +147,8 @@ the field with the face f. For a list of available mods, see
 `delve-pp-apply-mods'."
   (let (s format-spec)
     ;; first create the string to be modified
+    (when (listp pprinter)
+      (setq pprinter `(lambda (it) (ignore it) ,pprinter)))
     (if (functionp pprinter)
         (setq s (funcall pprinter object))
       (setq format-spec (plist-get mods :format))
@@ -158,13 +163,16 @@ the field with the face f. For a list of available mods, see
       ;; finally pass the result
     s))
 
-(cl-defun delve-pp-fields (object pp-schemes &optional (separator " "))
+(cl-defun delve-pp-fields (object pp-schemes &optional
+                                  (separator " ")
+                                  (nil-value ""))
   "Return a pretty printed multi-field representation of OBJECT.
 
 PP-SCHEMES is a list of elements, each designating a 'field' to
 represent the object.  Create the resulting string by joining all
 these results using SEPARATOR, discarding nil values.  Return an
-empty string if all fields returned nil values.
+empty string or the optional argument NIL-VALUE if all fields
+returned nil values.
 
 The element of PP-SCHEMES can either be a string, which is simply
 used as-is and thus represents a constant value.  If it is a
@@ -188,22 +196,24 @@ message in the result.  This output is formed by passing
 `delve-pp-invalid-scheme-error-string' to `format'.  Setting the
 variable to nil will inhibit any feedback on invalid schemes.
 Note that no check is being done on the values passed."
-  (string-join
-   (cl-remove-if #'null
-                 (mapcar (lambda (it)
-                           (pcase it
-                             ((pred stringp)   (delve-pp-field object it nil)) ;;it)
-                             ((pred functionp) (delve-pp-field object it nil))
-                             (`(,fn)           (delve-pp-field object fn nil))
-                             (`(,fn ,mods)     (if (listp mods)
-                                                   (delve-pp-field object fn mods)
-                                                 (when delve-pp-invalid-scheme-error-string
-                                                   (format delve-pp-invalid-scheme-error-string it))))
-                             (`(,fn . ,mods)   (delve-pp-field object fn mods))
-                             (_                (when delve-pp-invalid-scheme-error-string
-                                               (format delve-pp-invalid-scheme-error-string it)))))
-                         pp-schemes))
-   separator))
+  (let ((result (cl-remove-if #'null
+                              (mapcar (lambda (it)
+                                        (pcase it
+                                          ((pred stringp)   (delve-pp-field object it nil))
+                                          ((pred functionp) (delve-pp-field object it nil))
+                                          (`(,fn)           (delve-pp-field object fn nil))
+                                          (`(,fn ,mods)     (if (listp mods)
+                                                                (delve-pp-field object fn mods)
+                                                              (when delve-pp-invalid-scheme-error-string
+                                                                (format delve-pp-invalid-scheme-error-string it))))
+                                          (`(,fn . ,mods)   (delve-pp-field object fn mods))
+                                          (_                (when delve-pp-invalid-scheme-error-string
+                                                              (format delve-pp-invalid-scheme-error-string it)))))
+                                      pp-schemes))))
+    (if result
+        (string-join result separator)
+      nil-value)))
+      
 
 (provide 'delve-pp)
 ;;; delve-pp.el ends here
