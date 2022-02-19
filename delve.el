@@ -1062,10 +1062,7 @@ Optional argument PREFIX is currently not used."
 Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item 'delve--zettel)))
   (ignore prefix)
-  (delve--push-to-global-mark-ring)
-  (let ((buf (org-roam-node-find-noselect (delve--zettel-node zettel))))
-    (switch-to-buffer buf)
-    (when (org-invisible-p) (org-show-context))))
+  (org-roam-node-open (delve--zettel-node zettel)))
 
 
 ;; * Copy / Paste
