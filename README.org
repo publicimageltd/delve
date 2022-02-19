@@ -268,7 +268,7 @@ point.
 
 If editing multiple nodes, you can choose between all tags which are
 present in all nodes (union of sets). Attempts to remove a tag in a node
-which does not have this tag is silently skipped.
+which does not have this tag are silently skipped.
 
 Press =g= to refresh after editing.
 
