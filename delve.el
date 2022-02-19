@@ -1169,16 +1169,16 @@ Option ARG is currently ignored."
 (defvar delve--fromlink-info "Link from %s"
   "Info format string for fromlinks.")
 
-(defun delve--verzetteln (nodes &optional info)
-    "Turn all NODES into Delve zettel.
-Optional fill the info slot with the string INFO."
+(defun delve--verzetteln (roam-nodes &optional info)
+    "Return all Org ROAM-NODES as Delve zettel objects.
+Optional fill the info slot of each object with the string INFO."
     (--map (let ((z (delve--zettel-create it)))
              (setf (delve--zettel-info z) info)
              z)
-           nodes))
+           roam-nodes))
 
 (defun delve--zettel-info-stub (format-string zettel)
-  "Create a buttonized info stub for ZETTEL using FORMAT-STRING.
+  "Create a buttonized info stub representing ZETTEL using FORMAT-STRING.
 Replace '%s' in FORMAT-STRING with the button."
   (format format-string
           (delve--get-button (delve--zettel-stub zettel)
