@@ -337,6 +337,7 @@ Optional argument ARGS is ignored."
               (delve--info    . ,(lambda (i _) (delve--info-text i)))
               (delve--zettel  . ,#'delve-export--zettel-to-link)))
 
+;; NOTE This is still experimental and not enabled by default.
 (delve-export-new-backend 'org-transclusion
   "Print Delve zettels as links suitable for org-transclusion"
    :assert (lambda () (and (derived-mode-p 'org-mode)
@@ -349,8 +350,7 @@ Optional argument ARGS is ignored."
                                                         (delve--zettel-title z))))))
 
 (defvar  delve-export--yank-handlers
-  (list 'org-transclusion
-        'yank-into-org)
+  (list 'yank-into-org)
   "List of available backends for yanking (by name).
 When yanking, check which of these backends can be used in the
 current buffer by calling its `assert' function.  If there are
