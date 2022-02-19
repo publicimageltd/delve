@@ -38,6 +38,7 @@ options.
  - Yank copied Zettel into Org buffers as links.
  - Preview a node in =Delve=, thus offering a first rough glance at the
    content of a node without leaving the collection buffer.
+ - Toggle between a short node view and a more extended one.
  - Edit the node's tags from within the =Delve= buffer without leaving it.
  - Insert backlinks or fromlinks of a specific node.
  - Hide away nodes by creating "piles".
@@ -166,10 +167,11 @@ the command offers you to add that result into another collection.
 
 [[./screenshots/node-with-preview.png]]
 
-| Command / Keys | Function                                     |
-|----------------+----------------------------------------------|
-| o, C-return    | Visit the node at point  (its original file) |
-| RET            | If on a node, toggle preview                  |
+| Command / Keys | Function                                                                |
+|----------------+-------------------------------------------------------------------------|
+| o, C-return    | Visit the node at point  (its original file)                            |
+| v              | Toggle display of node (long view vs. short view with only basic infos) |
+| RET            | If on a node, toggle preview                                            |
 
 The preview buffer recognizes all id links in the previewed text and
 turns them into 'buttons'. Press RET or click on these buttonized
@@ -326,6 +328,7 @@ This is a list of stuff I intend to add (soonish):
 
 ** Current 
 
+  - Toggle between extended view (default) and a shorter one
   - Rudimentary copy/paste
   - Yank copied or pasted zettel into org buffers
   - Bugfix because org-roam somwhere lost the function =org-roam-node-find-file-noselect=.
