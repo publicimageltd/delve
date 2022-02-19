@@ -915,9 +915,9 @@ Searches both zettels and piles."
       (substring s 0 width)
     s))
 
-(defun delve--zettel-stub (zettel)
+(defun delve--zettel-short-title (zettel)
   "Return a shortened title of ZETTEL.
-Return titel unchanged if it has less than 40 characters; else
+Return title unchanged if it has less than 40 characters; else
 produce a shortened version with each word of the title truncated
 to 5 characters."
   (let* ((stub-width 40)
@@ -1161,15 +1161,20 @@ Option ARG is currently ignored."
 
 ;; (current-kill 0)
 
-;; * Insert backlinks and fromlinks
+;; * Insert backlinks and fromlinks in slot `info'
 
-(defvar delve--backlink-info "Backlink to %s"
-  "Info format string for backlinks.")
+(defvar delve--backlink-format "Backlink to %s"
+  "Format for insertion of backlinks in Zettel slot `info'.
+\%s will be replaced by a button linking to the Zettel in the
+list view.")
 
-(defvar delve--fromlink-info "Link from %s"
-  "Info format string for fromlinks.")
+(defvar delve--fromlink-format "Link from %s"
+  "Format for insertion of fromlinks in Zettel slot `info'.
+\%s will be replaced by a button linking to the Zettel in the
+list view.")
 
-(defun delve--verzetteln (roam-nodes &optional info)
+;; NOTE This could be generalized to set any slots while mapping
+(defun delve--nodes-to-zettel (roam-nodes &optional info)
     "Return all Org ROAM-NODES as Delve zettel objects.
 Optional fill the info slot of each object with the string INFO."
     (--map (let ((z (delve--zettel-create it)))
@@ -1177,11 +1182,12 @@ Optional fill the info slot of each object with the string INFO."
              z)
            roam-nodes))
 
-(defun delve--zettel-info-stub (format-string zettel)
-  "Create a buttonized info stub representing ZETTEL using FORMAT-STRING.
-Replace '%s' in FORMAT-STRING with the button."
+(defun delve--zettel-create-link-info (format-string zettel)
+  "Create a string with a button pointing to ZETTEL.
+Replace '%s' in FORMAT-STRING with the button.  Use a shortened
+representation of the ZETTEL object as a title for the button."
   (format format-string
-          (delve--get-button (delve--zettel-stub zettel)
+          (delve--get-button (delve--zettel-short-title zettel)
             'action (lambda (_)
                       (if-let ((node (delve--find-zettel-by-id (delve--zettel-id zettel))))
                           (progn
@@ -1189,21 +1195,14 @@ Replace '%s' in FORMAT-STRING with the button."
                             (lister-goto lister-local-ewoc node))
                         (user-error "Zettel not found in this buffer"))))))
 
-(defun delve--get-infolinks (zettel query-fn info-format)
-  "Call QUERY-FN with ID and add formatted info.
-INFO-STRING must contain '%s' which is replaced by the stub of
-ZETTEL."
-  (-some--> (funcall query-fn (delve--zettel-id zettel))
-    (delve--verzetteln it (delve--zettel-info-stub info-format zettel))))
-
 (defun delve--key--backlinks (zettel &optional select-target)
   "Insert all backlinks to ZETTEL.
 With SELECT-TARGET, select target collection for the link list,
 else insert it as a sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
   (let* ((nodes   (delve-query-backlinks-by-id (delve--zettel-id zettel)))
-         (stub    (delve--zettel-info-stub delve--backlink-info zettel))
-         (zettels (delve--verzetteln nodes stub)))
+         (stub    (delve--zettel-create-link-info delve--backlink-format zettel))
+         (zettels (delve--nodes-to-zettel nodes stub)))
     (or (delve--insert-or-select zettels select-target)
         (message "No backlinks"))))
 
@@ -1213,8 +1212,8 @@ With SELECT-TARGET, select target collection for the link list,
 else insert it as a sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
   (let* ((nodes   (delve-query-fromlinks-by-id (delve--zettel-id zettel)))
-         (stub    (delve--zettel-info-stub delve--fromlink-info zettel))
-         (zettels (delve--verzetteln nodes stub)))
+         (stub    (delve--zettel-create-link-info delve--fromlink-format zettel))
+         (zettels (delve--nodes-to-zettel nodes stub)))
     (or (delve--insert-or-select zettels select-target)
         (message "No tolinks to this zettel node"))))
 
@@ -1225,9 +1224,9 @@ else insert it as a sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
   (let* ((id       (delve--zettel-id zettel))
          (b-zettel (-some--> (delve-query-backlinks-by-id id)
-                     (delve--verzetteln it (delve--zettel-info-stub delve--backlink-info zettel))))
+                     (delve--nodes-to-zettel it (delve--zettel-create-link-info delve--backlink-format zettel))))
          (f-zettel (-some--> (delve-query-fromlinks-by-id id)
-                     (delve--verzetteln it (delve--zettel-info-stub delve--fromlink-info zettel)))))
+                     (delve--nodes-to-zettel it (delve--zettel-create-link-info delve--fromlink-format zettel)))))
     (or (delve--insert-or-select (append b-zettel f-zettel) select-target)
         (message "This zettel has no backlinks or fromlinks (you should change that)"))))
 
@@ -1238,7 +1237,7 @@ else insert it as a sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
   (let* ((all-nodes  (delve-query-backlinks-by-id (delve--zettel-id zettel)))
          (nodes      (delve--select-nodes all-nodes "Insert backlinks:"))
-         (zettels    (delve--verzetteln nodes (delve--zettel-info-stub delve--backlink-info zettel))))
+         (zettels    (delve--nodes-to-zettel nodes (delve--zettel-create-link-info delve--backlink-format zettel))))
     (or (delve--insert-or-select zettels select-target)
         (user-error "No backlinks to insert"))))
 
@@ -1249,7 +1248,7 @@ else insert it as a sublist below point."
   (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
   (let* ((all-nodes  (delve-query-backlinks-by-id (delve--zettel-id zettel)))
          (nodes      (delve--select-nodes all-nodes "Insert fromlinks:"))
-         (zettels    (delve--verzetteln nodes (delve--zettel-info-stub delve--fromlink-info zettel))))
+         (zettels    (delve--nodes-to-zettel nodes (delve--zettel-create-link-info delve--fromlink-format zettel))))
     (or (delve--insert-or-select zettels select-target)
         (user-error "No fromlinks to insert"))))
 
