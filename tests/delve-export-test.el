@@ -261,9 +261,11 @@
                       :footer nil
                       ;; FIXME This is too static; we should
                       ;; change for items only, assuming no order
-                      :printers ((type3 . fn3-2)
-                                 (type1 . fn1-1)
-                                 (type2 . fn2-2))
+                      :printers ((type1 . fn1-1)
+                                 ;; these two functions belong to
+                                 ;; 'zwei' and override same keys in 'eins':
+                                 (type2 . fn2-2)
+                                 (type3 . fn3-2))
                       :assert nil
                       :description nil
                       :parent eins)))
@@ -274,9 +276,9 @@
                       :separator "sep-3"
                       :header "drei"
                       :footer nil
-                      :printers ((type1 . fn1-1)
-                                 (type2 . fn2-3)
-                                 (type3 . fn3-2))
+                      :printers ((type2 . fn2-3)
+                                 (type3 . fn3-2)
+                                 (type1 . fn1-1))
                       :assert nil
                       :description nil
                       :parent zwei)))))
