@@ -485,11 +485,11 @@ Return the prepared string."
   (flatten-tree
    (list (propertize delve-local-header-info 'face 'delve-header-face)
          (delve--db-info)
-         (when delve-local-storage-file
-           (concat
-            (when lister-local-modified
-              "* ")
-            (propertize delve-local-storage-file 'face 'font-lock-string-face))))))
+         (if delve-local-storage-file
+             (concat (when lister-local-modified "* ")
+                     (propertize delve-local-storage-file 'face 'font-lock-string-face))
+           (propertize "<Collection not saved>" 'face 'warning)))))
+
 
 ;; * Buffer and Dashboard
 
@@ -569,7 +569,7 @@ Return the buffer object."
 (defun delve-unopened-storages ()
   "Return all Delve storage files which are not visited yet."
   (-map #'abbreviate-file-name
-        (-difference (delve--storage-files :full-path)
+        (-difference (delve--storage-files)
                      (-map #'expand-file-name
                            (-keep #'delve-get-storage-file
                                   (delve-buffer-list))))))
