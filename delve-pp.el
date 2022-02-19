@@ -92,8 +92,9 @@ If set to nil, return nil instead.")
 
 (defun delve-pp--add-face (s face-or-spec)
   "Add FACE-OR-SPEC to the face properties of S."
-  (add-face-text-property 0 (length s) face-or-spec t s)
-  s)
+  (let ((new-s (copy-sequence s)))
+    (add-face-text-property 0 (length new-s) face-or-spec t new-s)
+    new-s))
 
 (defun delve-pp-apply-mods (s mod arg)
   "Return S modified by applying MOD using ARG.
