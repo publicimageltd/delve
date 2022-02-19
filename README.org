@@ -32,8 +32,10 @@ options.
  - Insert or delete nodes interactively from the =Delve= buffer, or from
    any Org Roam file using =delve-minor-mode=.
  - Re-arrange nodes manually by moving them around, or by creating
-   hierarchical trees. You can also use copy or kill regions, and
-   reinsert them by pasting.
+   hierarchical trees.
+ - Copy and paste Zettels, individually or by marking them or with
+   regions.
+ - Yank copied Zettel into Org buffers as links.
  - Preview a node in =Delve=, thus offering a first rough glance at the
    content of a node without leaving the collection buffer.
  - Edit the node's tags from within the =Delve= buffer without leaving it.
@@ -325,6 +327,8 @@ This is a list of stuff I intend to add (soonish):
 ** Current 
 
   - Rudimentary copy/paste
+  - Yank copied or pasted zettel into org buffers
+  - Bugfix because org-roam somwhere lost the function =org-roam-node-find-file-noselect=.
   - Sorting
 
 ** 0.9.3
