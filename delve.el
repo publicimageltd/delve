@@ -695,13 +695,12 @@ to the end, in parentheses.  To remove SUFFIX, use
                             cand))
 
 (defun delve--get-collection-buffer (buf-or-name)
-  "Get a buffer containing the collection BUF-OR-NAME.
+  "Get a Delve buffer containing the collection BUF-OR-NAME.
 BUF-OR-NAME must be a string or a buffer object.  If it is a
-buffer object, return it unchanged.  The string is either a
-buffer name, a file name (with an extension) or the title for a
-new collection.  If it is a file name, first check if it
-designates an existing file or else use the base name as title
-for a new collection."
+buffer object, return it unchanged.  Else check if the string is
+a valid Delve storage file name and load it, or create a new
+Delve buffer using the string as its name.  Always return the
+newly created buffer object."
   (if (bufferp buf-or-name)
       buf-or-name
     (or (get-buffer buf-or-name)
