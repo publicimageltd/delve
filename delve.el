@@ -1625,7 +1625,7 @@ For the meaning of SYM, NEW, OP and BUF, see the info page for
     (set sym new)
     (lister-refresh-header-footer (lister-get-ewoc buf))))
 
-(defun delve--ask-storage-file-name ()
+(defun delve--prompt-new-storage-file ()
   "Ask for a file name for a Delve store."
   (setq delve--storage-dir (delve--file-as-dir (or delve--storage-dir
                                               (car (-list delve-storage-paths)))))
@@ -1691,14 +1691,14 @@ BUF is not yet visiting any file, ask the user."
   (delve--assert-buf buf "Buffer to save must be in Delve mode")
   (let ((name  (or file-name
                    (buffer-local-value 'delve-local-storage-file buf)
-                   (delve--ask-storage-file-name))))
+                   (delve--prompt-new-storage-file))))
     (delve--do-save-buffer buf name))
   (with-current-buffer buf
     (message "Collection stored in file %s" delve-local-storage-file)))
 
 (defun delve-write-buffer (buf file-name)
   "Store BUF in FILE-NAME and associate it."
-  (interactive (list (current-buffer) (delve--ask-storage-file-name)))
+  (interactive (list (current-buffer) (delve--prompt-new-storage-file)))
   (delve-save-buffer buf file-name))
 
 (defun delve-open-storage-file ()
