@@ -510,14 +510,63 @@ Return the prepared string."
 
 ;; * Buffer and Dashboard
 
+(defun delve--all-files-in-paths (paths &optional suffix)
+  "Return all files ending in SUFFIX within list of PATHS."
+  (let ((the-suffix (or suffix "")))
+    ;; delete dups in case there's a "." in the list
+    (-uniq (-flatten (--map (directory-files it t (rx (and string-start (not ".")
+                                                           (* anything)
+                                                           (literal the-suffix) string-end)))
+                            paths)))))
+
+(defun delve--all-file-extensions (files)
+  "Return an aggregate list counting all extensions in FILES.
+The result is an alist with the file extension (without period)
+as its key and an integer count as value."
+  (--map (cons (car it) (length (cdr it)))
+         (-group-by #'file-name-extension files)))
+
+(defun delve-convert-storage-directory (delve-store)
+  "Change all files in DELVE-STORE to conform to `delve-storage-suffix'.
+Prompt the user before doing any real changes.  If DELVE-STORE is
+not provided, also prompt the user for the directory to be
+converted."
+  (interactive (list (read-directory-name " Convert all files in this directory:"
+                                          (concat (file-name-directory user-emacs-directory) "delve-store"))))
+  (let* ((files (delve--all-files-in-paths (list delve-store) ""))
+         (ext-list (delve--all-file-extensions files))
+         ;; That's way too explicit for this one-time function, but
+         ;; hey, it's so easy in lisp:
+         (ext-string (string-join (--map (let ((ext (car it))
+                                               (n   (cdr it)))
+                                           (format "%d %s %s"
+                                                   n
+                                                   (if (eq 1 n) "file has" "files have")
+                                                   (if ext (format "the extension .%s" ext)
+                                                     "no extension")))
+                                         ext-list)
+                                  ", and "))
+         (total    (length files)))
+    (if (not (y-or-n-p (format "There are total %d files.  %s.  Convert them all to end in %s? "
+                               total ext-string delve-storage-suffix)))
+        (user-error "Canceled")
+      (dolist-with-progress-reporter (file files)
+        "Renaming files..."
+        (rename-file file (concat (file-name-sans-extension file) delve-storage-suffix) t)))))
+
 (defun delve--storage-files ()
-  "Return all storage files as full path names.
-If `delve-store-directory' does not exist, create it."
-  (when (not (file-exists-p delve-store-directory))
-    (if (y-or-n-p (format "Storage directory %s does not exist.  Create it? " delve-store-directory))
-        (make-directory delve-store-directory t)
-      (error "Storage directory %s does not exist" delve-store-directory)))
-  (directory-files delve-store-directory t (rx string-start (not "."))))
+  "Return all available storage files as full path names.
+If `delve-storage-paths' only contains one single directory which
+does not yet exist, create it."
+  (when delve-storage-paths
+    ;; If delve-storage-path is a single directory, maybe create it:
+    (when (and (eq 'string (type-of delve-storage-paths))
+               (not (file-exists-p delve-storage-paths)))
+      (if (y-or-n-p (format "Storage directory %s does not exist.  Create it? " delve-storage-paths))
+          (make-directory delve-storage-paths t)
+        (user-error "Canceled.  To skip this test, call (setq delve-storage-paths '(\"%s\")) in your config file.  " delve-storage-paths)))
+    ;; Now collect the files
+    (delve--all-files-in-paths (-list delve-storage-paths) delve-storage-suffix)))
 
 (defun delve--storage-p (file-name)
   "Check if FILE-NAME represents an existing Delve storage file.
