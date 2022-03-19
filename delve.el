@@ -517,6 +517,15 @@ Return the prepared string."
 
 ;; * Storage File Handling
 
+(defun delve--set-storage-dir (&optional last-file-name)
+  "Make sure that `delve--storage-dir' has a value.
+Optionally set the value to the directory part of LAST-FILE-NAME."
+  (setq delve--storage-dir (delve--file-as-dir
+                            (if last-file-name
+                                (delve--file-as-dir (file-name-directory last-file-name))
+                              (or delve--storage-dir
+                                  (car (-list delve-storage-paths)))))))
+
 (defun delve--file-as-dir (s)
   "Return S as a directory file name iff it is a string.
 Unlike `file-name-as-directory', this function returns nil if S
@@ -697,7 +706,9 @@ for a new collection."
       buf-or-name
     (or (get-buffer buf-or-name)
         (if (delve--storage-p buf-or-name)
-            (delve--read-storage-file buf-or-name)
+            (let ((buf (delve--read-storage-file buf-or-name)))
+              (delve--set-storage-dir buf-or-name)
+              buf)
           (when (file-name-extension buf-or-name)
             (setq buf-or-name (file-name-sans-extension (file-name-base buf-or-name))))
           (delve--new-buffer buf-or-name)))))
@@ -1627,8 +1638,7 @@ For the meaning of SYM, NEW, OP and BUF, see the info page for
 
 (defun delve--prompt-new-storage-file ()
   "Ask for a file name for a Delve store."
-  (setq delve--storage-dir (delve--file-as-dir (or delve--storage-dir
-                                              (car (-list delve-storage-paths)))))
+  (delve--set-storage-dir)
   (let ((info "")          ;; info added to the prompt
         (res  nil)         ;; resulting file name
         (initial nil))     ;; when confirming fixed suffix
@@ -1681,12 +1691,14 @@ Return BUF."
          (delve-list (with-temp-message "Creating data objects..."
                        (delve-store--create-object-list l)))
          (buf-name   (format "Zettel imported from '%s'" (file-name-nondirectory file-name))))
+    ;; link buffer to file:
     (delve--setup-file-buffer (delve--new-buffer buf-name delve-list) file-name)))
 
+;; TODO Test if it works after introducing delve-storage-paths
 (defun delve-save-buffer (buf &optional file-name)
   "Store BUF in its existing storage file or create a new one.
 If FILE-NAME is not set, use the file name BUF is linked to.  If
-BUF is not yet visiting any file, ask the user."
+BUF is not yet visiting any file, ask for a file name."
   (interactive (list (current-buffer)))
   (delve--assert-buf buf "Buffer to save must be in Delve mode")
   (let ((name  (or file-name
@@ -1696,22 +1708,33 @@ BUF is not yet visiting any file, ask the user."
   (with-current-buffer buf
     (message "Collection stored in file %s" delve-local-storage-file)))
 
+;; TODO Test if it works after introducing delve-storage-paths
 (defun delve-write-buffer (buf file-name)
   "Store BUF in FILE-NAME and associate it."
   (interactive (list (current-buffer) (delve--prompt-new-storage-file)))
   (delve-save-buffer buf file-name))
 
-(defun delve-open-storage-file ()
-  "Open an existing storage file.
+;; TODO Test if it works after introducing delve-storage-paths
+(defun delve-find-storage-file ()
+  "Visit a Delve storage file or create a new Delve buffer.
 If the user selects a non-storage file, pass to `find-file'."
   (interactive)
-  (let* ((default-dir (expand-file-name (file-name-as-directory delve-store-directory)))
-         (file-name   (expand-file-name (read-file-name "Open Delve store or other file: " default-dir))))
-    (if (delve--storage-p file-name)
-        (switch-to-buffer (delve--read-storage-file file-name))
-      ;; TODO Replace that test with testing the file suffix
-      (if (string= (file-name-directory file-name) default-dir)
-          (switch-to-buffer (delve--new-buffer (file-name-base file-name)))
+  (delve--set-storage-dir)
+  (let* ((file-name   (expand-file-name (read-file-name "Find Delve storage or other file: " delve--storage-dir))))
+    (pcase file-name
+      ((pred delve--storage-p)
+       (progn
+         (switch-to-buffer (delve--read-storage-file file-name))
+         ;; We set storage-dir here instead in the low level
+         ;; functions, because else it would mess up the user's
+         ;; workflow.
+         (delve--set-storage-dir file-name)))
+      ((pred delve--storage-file-name-p)
+       (progn
+         (switch-to-buffer (delve--new-buffer (file-name-base file-name)))
+         ;; see above
+         (delve--set-storage-dir file-name)))
+      (_
         (find-file file-name)))))
 
 ;;; * Delve Major Mode
@@ -1723,7 +1746,7 @@ If the user selects a non-storage file, pass to `find-file'."
     (define-key map (kbd "q")                        #'bury-buffer)
     (define-key map [remap save-buffer]              #'delve-save-buffer)
     (define-key map [remap write-file]               #'delve-write-buffer)
-    (define-key map [remap find-file]                #'delve-open-storage-file)
+    (define-key map [remap find-file]                #'delve-find-storage-file)
     (define-key map (kbd "g")                        #'delve--key--sync)
     (define-key map (kbd "v")                        #'delve--key--toggle-view)
     ;; Any item:
