@@ -66,11 +66,28 @@ Each element can be a tag or a list of tags."
   :type '(repeat (choice (string :tag "Tag")
                          (repeat (string :tag "Tags")))))
 
-(defcustom delve-store-directory (concat (file-name-directory user-emacs-directory)
+(defcustom delve-storage-paths (concat (file-name-directory user-emacs-directory)
                                          "delve-store")
-  "Path to a default directory for storing delve buffers in."
+  "Paths to for default directories to store Delve buffers in.
+When the user is prompted for a storage, all Delve stores found
+here will be offered as default choices.  It is, however, not
+obligatory to store files in these locations.  Storages located
+elsewhere just don't shop up in the prompt.
+
+The value of this variable can be either a file path, a list of
+file paths, or nil.
+
+Use the file path \".\" to add the current directory to the list of default storage paths."
   :group 'delve
-  :type  'directory)
+  :type  '(choice
+           (const :tag "No default" nil)
+           (directory :tag "Single path (use M-TAB for completion)")
+           (repeat :tag "List of paths (use M-TAB for completion)" directory)))
+
+(defcustom delve-storage-suffix ".delve"
+  "Suffix for Delve storage files."
+  :group 'delve
+  :type  'string)
 
 (defcustom delve-display-path t
   "Turn on display of paths before the node's title.
