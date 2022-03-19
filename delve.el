@@ -114,6 +114,9 @@ entries."
 (defvar delve--last-selected-buffer nil
   "Last buffer selected with `delve--select-collection-buffer'.")
 
+(defvar delve--storage-dir nil
+  "Directory from last used storage file.")
+
 ;; * Buffer Local Variables
 
 (defvar-local delve-local-storage-file nil
@@ -508,7 +511,20 @@ Return the prepared string."
            (propertize "<Collection not saved>" 'face 'warning)))))
 
 
-;; * Buffer and Dashboard
+;; * Storage File Handling
+
+(defun delve--file-as-dir (s)
+  "Return S as a directory file name iff it is a string.
+Unlike `file-name-as-directory', this function returns nil if S
+is nil."
+  (when s (file-name-as-directory s)))
+
+(defun delve--fix-suffix (s suffix)
+  "Add file SUFFIX to S, maybe removing existing suffixes."
+  (let ((ext (file-name-extension s t)))
+    (if (eq "" ext)
+        (concat s suffix)
+      (concat (file-name-sans-extension s) suffix))))
 
 (defun delve--all-files-in-paths (paths &optional suffix)
   "Return all files ending in SUFFIX within list of PATHS."
@@ -573,6 +589,13 @@ does not yet exist, create it."
 Just check the existence of the file, don't look at the contents."
   (-contains-p (delve--storage-files)
                (expand-file-name file-name)))
+
+(defun delve--storage-file-name-p (file-name)
+  "Check if FILE-NAME is a valid storage file name.
+Do not check for existence; just validate the name."
+  (string-match-p (rx (literal delve-storage-suffix) string-end) file-name))
+
+;; * Buffer and Dashboard
 
 (defun delve--create-buffer-name (name)
   "Create a name for a Delve buffer using NAME."
@@ -1598,22 +1621,29 @@ For the meaning of SYM, NEW, OP and BUF, see the info page for
     (set sym new)
     (lister-refresh-header-footer (lister-get-ewoc buf))))
 
-(defun delve--ask-storage-file-name (&optional existing-only)
-  "Ask for a file name for a Delve store.
-Limit selection to only existing files if EXISTING-ONLY is
-non-nil.  Offer completion of files in the directory
-`delve-store-directory'."
-  (let* ((default-dir (concat (file-name-as-directory delve-store-directory)))
-         (file-name (read-file-name "File name for a Delve store: " default-dir
-                                    nil existing-only)))
-    (cond
-     ((file-directory-p file-name)
-      (user-error "File must not be a directory"))
-     ((and (not existing-only) (file-exists-p file-name))
-      (if (y-or-n-p "File exists, overwrite it? ")
-          file-name
-        (user-error "Canceled")))
-     (t file-name))))
+(defun delve--ask-storage-file-name ()
+  "Ask for a file name for a Delve store."
+  (setq delve--storage-dir (delve--file-as-dir (or delve--storage-dir
+                                              (car (-list delve-storage-paths)))))
+  (let ((info "")          ;; info added to the prompt
+        (res  nil)         ;; resulting file name
+        (initial nil))     ;; when confirming fixed suffix
+    (cl-labels ((dir-p (name) (when (file-exists-p name)
+                                (file-directory-p name))))
+      ;; FIXME Use a cl-loop construct instead
+      (while (progn
+               (setq res (read-file-name (format "%sDelve store file name: "
+                                                 (propertize info 'face 'warning))
+                                         delve--storage-dir nil nil initial)
+                     initial nil
+                     delve--storage-dir (delve--file-as-dir (file-name-directory res)))
+               (if (dir-p res)
+                   (setq info (format "Not a file name '%s'\n" (abbreviate-file-name res)))
+                 (unless (delve--storage-file-name-p res)
+                   (setq res (delve--fix-suffix res delve-storage-suffix)
+                         initial (file-name-nondirectory res)
+                         info (format "File must have suffix '%s', please confirm\n" delve-storage-suffix))))))
+      res)))
 
 (defun delve--setup-file-buffer (buf file-name)
   "Set up Delve buffer BUF as a buffer visiting FILE-NAME.
