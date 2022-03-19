@@ -69,10 +69,14 @@ Each element can be a tag or a list of tags."
 (defcustom delve-storage-paths (concat (file-name-directory user-emacs-directory)
                                          "delve-store")
   "Paths to for default directories to store Delve buffers in.
-When the user is prompted for a storage, all Delve stores found
-here will be offered as default choices.  It is, however, not
-obligatory to store files in these locations.  Storages located
-elsewhere just don't shop up in the prompt.
+When the user is prompted for reading a storage, all Delve stores
+found here will be offered as default choices.  It is, however,
+not obligatory to store files in these locations.  Storages
+located elsewhere just don't show up in the prompt.
+
+When writing a Delve list to a new storage file, the first (or
+only) value of this variable is initially used as the default
+directory.
 
 The value of this variable can be either a file path, a list of
 file paths, or nil.
