@@ -1,26 +1,5 @@
 #+TITLE: delve.el
 
-*Slightly Breaking Change*: As of v =0.9.4=, the [[#Storing collections in files][storage system]] has
-changed. Previously, Delve storage files had only been accepted in a
-special user directory relative to the Emacs root directory. The new
-system accepts multiple storage directories. Since all storage files
-will be recognized by their extension =.delve=, you must change all
-existing storages by renaming the files. There is an interactive
-function to automate that, howver; see [[#Storing collections in files][here]].
-
-** Table of Contents
- - [[#feature list][Quick overview: Features]]
- - [[#installation][Installation]] 
- - [[#the notion of a 'collection'][It's all about 'collections]]
- - [[#storing collections in files][Storing Collections in files]]
- - [[#how items are presented][How it looks -- Some Screenshots]]
- - [[#keybindings / usage][Keybindings / Usage]]
-  - [[##delve][Delve]]
-  - [[##delve minor mode][Delve Minor Mode]]
- - [[#customizations][Customizations]]
- - [[#upcoming][Upcoming]]
- - [[#changelog][Changelog]]
- 
 **  So what is Delve?
 
 =Delve= (currently version =0.9.3=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
@@ -29,8 +8,37 @@ separate application buffer. It helps you to quickly establish and
 maintain a project-specific subset of Org Roam Nodes, e.g. when
 writing a paper or for collecting information on a particular topic.
 Those subsets (called 'collections') can be stored persistently in
-separate files. =Delve= also offers functions to 'edit' nodes, e.g. by
-adding or removing tags without having to open the node's file itself.
+separate files. =Delve= also offers functions to 'edit' nodes remotely,
+e.g. by adding or removing tags without having to open the node's file
+itself.
+
+Here's a slightly outdated gif:
+
+[[./screenshots/delve-intro-tour.gif]]
+
+*Slightly Breaking Change*: As of v =0.9.4=, the [[#Storing collections in files][storage system]] has
+changed. Previously, =Delve= storage files had only been accepted in a
+special user directory relative to the Emacs root directory. The new
+system accepts multiple storage directories. Since all storage files
+will be recognized by their extension =.delve=, you must change all
+existing storages by renaming the files. There is an interactive
+function to automate that; see [[#Storing collections in
+files][this section]].
+
+** Table of Contents
+ - [[#feature list][Quick overview: Features]]
+ - [[#installation][Installation]] 
+ - [[#the notion of a 'collection'][It's all about 'collections]]
+ - [[#storing collections in files][Storing Collections in files]]
+ - [[#how items are presented][How items are presented]]
+ - [[#keybindings / usage][Keybindings / Usage]]
+  - [[##delve][Delve]]
+  - [[##delve minor mode][Delve Minor Mode]]
+ - [[#customizations][Customizations]]
+ - [[#upcoming][Upcoming]]
+ - [[#changelog][Changelog]]
+ 
+* State of Development
 
 The present version is a complete rewrite in response to =Org Roam=
 fundamentally changing its internal structure when migrating from =v1=
@@ -38,13 +46,10 @@ to =v2=. It has grown much more than its author has expected. Please
 file an issue if there are functionalities you miss or if you find an
 error. Also feel free to discuss conceptual issues. 
 
-Upcoming changes: Presently, development is mostly aiming at
-stabilizing the current basic set of features and covering the present
-functionality with automated tests. There are also plans for a closer
-integration with [[https://github.com/org-roam/org-roam-ui][org-roam-ui]]. Further plans are to add some export
-options.
-
-[[./screenshots/delve-intro-tour.gif]]
+Presently, development is mostly aiming at stabilizing the current
+basic set of features and covering the present functionality with
+automated tests. There are also plans for a closer integration with
+[[https://github.com/org-roam/org-roam-ui][org-roam-ui]]. Further plans are to add some export options.
 
 * Feature List
 
@@ -131,8 +136,8 @@ delve-open-storage-file= (or =C-x f= from within a =Delve= buffer). To save
 a buffer which is already linked to a new file, use =M-x
 delve-write-buffer= (or =C-x w= from within a =Delve= buffer).
 
-All storage files will be recognized by its suffix =.delve=, which can
-be changed by setting =delve-storage-suffix=.
+All storage files will be recognized by the file extension =.delve=. The
+extension can be changed by setting =delve-storage-suffix=.
 
 Once a buffer is associated with a file, the file name will be
 displayed in the header. There will be an asterisk displayed before
@@ -153,6 +158,17 @@ can customize it:
 
 Note that if you provide multiple paths, you will have to make sure by
 yourself that these directories do actually exist.
+
+*Note* for the change to =0.9.4=: If you had used =Delve= prior to v =0.9.4=,
+you might want to convert all existing files in the storage directory
+to the new file name format. You can use =M-x
+delve-convert-storage-directory= for that. The function is interactive
+and will guide you through the conversion process in two steps: It
+first asks you for the directory name (the default should be fine if
+you did not yet change =delve-storage-paths=) and then gives you some
+information about the files found in this directory. Only after you
+confirm that will your files be changed. In any case, the function is
+just a bulk rename, so you can just do it manually.
 
 * How items are presented
 
@@ -367,12 +383,14 @@ This is a list of stuff I intend to add (soonish):
 * Changelog
 
 ** Current 
-
-  - Toggle between extended view (default) and a shorter one
-  - Rudimentary copy/paste
-  - Yank copied or pasted zettel into org buffers
+ 
+  - Lift storage system restriction to one predefined directory; force
+    all storage files to end in =.delve=.
+  - Toggle between extended view (default) and a shorter one.
+  - Rudimentary copy/paste.
+  - Yank copied or pasted Org Roam Node zettel into org buffers.
   - Bugfix because org-roam somwhere lost the function =org-roam-node-find-file-noselect=.
-  - Sorting
+  - Sorting.
 
 ** 0.9.3
 
