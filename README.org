@@ -1,16 +1,18 @@
 #+TITLE: delve.el
 
+** Table of Contents
  - [[#feature list][Quick overview: Features]]
  - [[#installation][Installation]] 
  - [[#the notion of a 'collection'][It's all about 'collections]]
  - [[#how items are presented][How it looks -- Some Screenshots]]
  - [[#keybindings / usage][Keybindings / Usage]]
-  - [[#delve][Delve]]
-  - [[#delve minor mode][Delve Minor Mode]]
+  - [[##delve][Delve]]
+  - [[##delve minor mode][Delve Minor Mode]]
  - [[#customizations][Customizations]]
  - [[#upcoming][Upcoming]]
  - [[#changelog][Changelog]]
  
+**  So what is Delve?
 
 =Delve= (currently version =0.9.3=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
 provides tools to collect, inspect and edit Org Roam Nodes in a
@@ -37,19 +39,18 @@ options.
 
 * Feature List
 
- - =Dashboard= with customizable queries to have quick access (and
-   overview) of nodes with a certain tags, and to see all nodes with
-   no links.
+ - =Dashboard= with customizable queries for quick access (and overview)
+   of nodes with certain tags and of nodes with no links.
  - Sort any list with a spiffy interactive transient menu.
  - Insert or delete nodes interactively from the =Delve= buffer, or from
    any Org Roam file using =delve-minor-mode=.
  - Re-arrange nodes manually by moving them around, or by creating
    hierarchical trees.
- - Copy and paste Zettels, individually or by marking them or with
-   regions.
+ - Copy and paste Delve nodes individually, by marking them or simply
+   using transient regions.
  - Yank copied Zettel into Org buffers as links.
- - Preview a node in =Delve=, thus offering a first rough glance at the
-   content of a node without leaving the collection buffer.
+ - Preview a node in =Delve= for a rough glance at the content of a node
+   without having to leave the collection buffer.
  - Toggle between a short node view and a more extended one.
  - Edit the node's tags from within the =Delve= buffer without leaving it.
  - Insert backlinks or fromlinks of a specific node.
