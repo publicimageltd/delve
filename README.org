@@ -1,5 +1,17 @@
 #+TITLE: delve.el
 
+ - [[#feature list][Quick overview: Features]]
+ - [[#installation][Installation]] 
+ - [[#the notion of a 'collection'][It's all about 'collections]]
+ - [[#how items are presented][How it looks -- Some Screenshots]]
+ - [[#keybindings / usage][Keybindings / Usage]]
+  - [[#delve][Delve]]
+  - [[#delve minor mode][Delve Minor Mode]]
+ - [[#customizations][Customizations]]
+ - [[#upcoming][Upcoming]]
+ - [[#changelog][Changelog]]
+ 
+
 =Delve= (currently version =0.9.3=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
 provides tools to collect, inspect and edit Org Roam Nodes in a
 separate application buffer. It helps you to quickly establish and
