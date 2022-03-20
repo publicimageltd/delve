@@ -1,9 +1,18 @@
 #+TITLE: delve.el
 
+*Slightly Breaking Change*: As of v =0.9.4=, the [[#Storing collections in files][storage system]] has
+changed. Previously, Delve storage files had only been accepted in a
+special user directory relative to the Emacs root directory. The new
+system accepts multiple storage directories. Since all storage files
+will be recognized by their extension =.delve=, you must change all
+existing storages by renaming the files. There is an interactive
+function to automate that, howver; see [[#Storing collections in files][here]].
+
 ** Table of Contents
  - [[#feature list][Quick overview: Features]]
  - [[#installation][Installation]] 
  - [[#the notion of a 'collection'][It's all about 'collections]]
+ - [[#storing collections in files][Storing Collections in files]]
  - [[#how items are presented][How it looks -- Some Screenshots]]
  - [[#keybindings / usage][Keybindings / Usage]]
   - [[##delve][Delve]]
@@ -110,22 +119,40 @@ explicitly visit that buffer, use =C-u f12= (=C-u M-x delve=).
 
 * Storing collections in files
 
-You can save or load any =Delve= buffer by using =M-x delve-open-storage-file
-(or =C-x f= from within a =Delve= buffer) or =M-x delve-save-buffer= (or =C-x
-s=, respectively). To save the buffer to a new file, use =M-x
-delve-write-buffer= (or =C-x w=).
+If you call =Delve= (=M-x delve=), it will offer you a list of all stored
+collections. This is useful e.g. when adding Org roam nodes to an
+existing collection.
+
+=Delve= tries to mimic Emacs's established behavior of storing buffers
+into files. To store a collection, save any =Delve= buffer with =M-x
+delve-save-buffer= (or =C-x s= from within a =Delve= buffer). To open a
+collection (visit it in a new buffer), respectively use =M-x
+delve-open-storage-file= (or =C-x f= from within a =Delve= buffer). To save
+a buffer which is already linked to a new file, use =M-x
+delve-write-buffer= (or =C-x w= from within a =Delve= buffer).
+
+All storage files will be recognized by its suffix =.delve=, which can
+be changed by setting =delve-storage-suffix=.
 
 Once a buffer is associated with a file, the file name will be
-displayed in the header. There will be an asterisk before the file
-name if the content has been modified and is thus not guaranteed to
-match the stored content anymore.
+displayed in the header. There will be an asterisk displayed before
+the file name if the buffer content has been modified.
 
-There is a default storage directory defined in the variable
-=delve-store-directory=. It defaults to the directory =delve-store= within
-the local emacs user directory.
+The default storage directory is defined in the variable
+=delve-storage-paths=. It is initially set to a directory =delve-store=
+within the local emacs user directory, which will be created when you
+use the storage feature for the first time. But since it's Emacs, you
+can customize it:
 
-Currently, storage is only possible within this directory. It is
-planned to make storage more flexible.
+#+begin_src emacs-lisp
+;; one file name -- one directory:
+(setq delve-storage-paths "~/path/to/directory")
+;; a list of file names -- multiple locations:
+(setq delve-storage-paths '("~/path1" "~/path2"))
+#+end_src
+
+Note that if you provide multiple paths, you will have to make sure by
+yourself that these directories do actually exist.
 
 * How items are presented
 
