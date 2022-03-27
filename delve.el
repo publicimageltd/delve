@@ -517,6 +517,12 @@ Return the prepared string."
 
 ;; * Storage File Handling
 
+(defun delve--file-as-dir (s)
+  "Return S as a directory file name iff it is a string.
+Unlike `file-name-as-directory', this function returns nil if S
+is nil."
+  (when s (file-name-as-directory s)))
+
 (defun delve--set-storage-dir (&optional last-file-name)
   "Make sure that `delve--storage-dir' has a value.
 Optionally set the value to the directory part of LAST-FILE-NAME."
@@ -526,12 +532,6 @@ Optionally set the value to the directory part of LAST-FILE-NAME."
                               (or delve--storage-dir
                                   (car (-list delve-storage-paths)))))))
 
-(defun delve--file-as-dir (s)
-  "Return S as a directory file name iff it is a string.
-Unlike `file-name-as-directory', this function returns nil if S
-is nil."
-  (when s (file-name-as-directory s)))
-
 (defun delve--fix-suffix (s suffix)
   "Add file SUFFIX to S, maybe removing existing suffixes."
   (let ((ext (file-name-extension s t)))
@@ -540,15 +540,17 @@ is nil."
       (concat (file-name-sans-extension s) suffix))))
 
 (defun delve--all-files-in-paths (paths &optional suffix)
-  "Return all files ending in SUFFIX within list of PATHS."
-  (let ((the-suffix (or suffix "")))
+  "Return all files ending in SUFFIX within list of PATHS.
+Returns the full paths (expanded file names)."
+  (let* ((the-suffix (or suffix "")))
     ;; delete dups in case there's a "." in the list
-    (-uniq (-flatten (--map (directory-files it t (rx (and string-start (not ".")
-                                                           (* anything)
+    (-uniq (-flatten (--map (directory-files it t (rx (and string-start
+                                                           (* (not "."))
                                                            (literal the-suffix) string-end)))
                             paths)))))
 
 (defun delve--all-file-extensions (files)
+  ;; DONT TEST, will be removed in 1.1
   "Return an aggregate list counting all extensions in FILES.
 The result is an alist with the file extension (without period)
 as its key and an integer count as value."
@@ -556,6 +558,7 @@ as its key and an integer count as value."
          (-group-by #'file-name-extension files)))
 
 (defun delve-convert-storage-directory (delve-store)
+  ;; DONT TEST, will be removed in 1.1
   "Change all files in DELVE-STORE to conform to `delve-storage-suffix'.
 Prompt the user before doing any real changes.  If DELVE-STORE is
 not provided, also prompt the user for the directory to be
