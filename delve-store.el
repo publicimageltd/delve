@@ -20,7 +20,7 @@
 
 ;;; Commentary:
 
-;; Library for reading and writing list data in files.
+;; Library for reading and writing Delve data in files.
 
 ;;; Code:
 (require 'seq)
@@ -28,6 +28,8 @@
 (require 'lister)
 (require 'delve-data-types)
 (require 'delve-query)
+
+;; * Generic read/write stuff
 
 (defun delve-store--write (file-name lisp-object)
   "Write LISP-OBJECT to FILE-NAME.
@@ -63,7 +65,7 @@ Return LISP-OBJECT."
           (error (error "Error reading data base: %s" (error-message-string err)))))
     (error "File not found: %s" file-name)))
 
-;;; * Store a Delve list
+;;; * Delve Tokenizer
 
 (defun delve-store--tokenize-object (delve-object)
   "Represent DELVE-OBJECT as a special list item.
@@ -83,8 +85,8 @@ suffice to fully reconstruct the complete item."
      (delve--info   (list :text  (delve--info-text delve-object)))
      (delve--note   (list :text  (delve--note-text delve-object))))))
 
-(defun delve-store--parse-tokenized-object (id-hash elt)
-  "Create a Delve object parsing tokenized object ELT.
+(defun delve-store--parse-element (id-hash elt)
+  "Create a Delve object from token ELT.
 Use ID-HASH to get the nodes by their ID."
   (pcase elt
     (`(delve--zettel :id ,id)
@@ -96,7 +98,7 @@ Use ID-HASH to get the nodes by their ID."
      (delve--pile-create :name name
                          :zettels (mapcar
                                    (apply-partially
-                                    #'delve-store--parse-tokenized-object id-hash)
+                                    #'delve-store--parse-element id-hash)
                                    zettels)))
     ;;
     (`(delve--query :info ,info :fn ,fn)
@@ -113,10 +115,6 @@ Use ID-HASH to get the nodes by their ID."
     ;;
     (_  (delve--info-create :text (format "Could not parse expression %s" elt)))))
 
-;;; * Read a stored list
-
-;; Useful for looping over the token list:
-
 ;; TODO Replace this with -tree-map; but beware that we map through lists!
 (defun delve-store--map-tokenized-tree (fn l)
   "Apply FN to each list element of tree L."
@@ -125,24 +123,25 @@ Use ID-HASH to get the nodes by their ID."
     (--map (delve-store--map-tokenized-tree fn it) l))
    (t (funcall fn l))))
 
-;; Prefetch all IDs:
-
-(defun delve-store--parse-get-id (elt)
-  "Return all IDs for tokenized ELT."
+(defun delve-store--get-ids-for-token (elt)
+  "Return Org Roam IDs for tokenized Delve object ELT.
+Return nil if ELT does not reference any Org Roam node."
   (pcase elt
     (`(delve--zettel :id ,id)     id)
     (`(delve--pile :name ,_ :zettels ,zettels)
-     (-map #'delve-store--parse-get-id zettels))
+     (-map #'delve-store--get-ids-for-token zettels))
     (_ nil)))
 
-(defun delve-store--get-all-ids (l)
+(defun delve-store--get-ids-for-token-list (l)
   "Get all ids in the Delve token list L."
   (->> l
-    (delve-store--map-tokenized-tree #'delve-store--parse-get-id)
+    (delve-store--map-tokenized-tree #'delve-store--get-ids-for-token)
     (flatten-tree)))
 
 (defun delve-store--prefetch-ids (ids)
-  "Return all nodes with IDS as a hash table with id as key."
+  "Create an hash table associating Org Roam nodes by IDS.
+The Org Roam ID serves as the key, the node object is the
+associated value."
   (let ((nodes  (delve-query-nodes-by-id ids))
         (table  (make-hash-table :test 'equal)))
     (while nodes
@@ -150,18 +149,13 @@ Use ID-HASH to get the nodes by their ID."
       (setq nodes (cdr nodes)))
     table))
 
-;; Parse and create Delve objects:
-
-;;; TODO Write tests
-(defun delve-store--create-object-list (l)
+(defun delve-store--parse-list (l)
   "Create Delve objects for stored list L."
-  (let* ((ids    (delve-store--get-all-ids l))
+  (let* ((ids    (delve-store--get-ids-for-token-list l))
          (table  (delve-store--prefetch-ids ids)))
     (delve-store--map-tokenized-tree
-     (-partial #'delve-store--parse-tokenized-object table)
+     (-partial #'delve-store--parse-element table)
      l)))
-
-;;; Test-DB: (delve-store--read "~/.emacs.d/delve-store/stufen.el")
 
 (provide 'delve-store)
 ;;; delve-store.el ends here

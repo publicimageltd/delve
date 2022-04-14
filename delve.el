@@ -81,7 +81,8 @@ directory.
 The value of this variable can be either a file path, a list of
 file paths, or nil.
 
-Use the file path \".\" to add the current directory to the list of default storage paths."
+Use the file path \".\" to add the current directory to the list
+of default storage paths."
   :group 'delve
   :type  '(choice
            (const :tag "No default" nil)
@@ -1234,7 +1235,7 @@ using the first export backend in `delve-export--yank-handlers'
 for which the assert function returns non-nil.  If no such
 handler is found, simply insert S as it is."
   (let* ((backends (delve-export--available-backends delve-export--yank-handlers))
-         (objects (delve-store--create-object-list (ignore-errors (read (substring-no-properties s))))))
+         (objects (delve-store--parse-list (ignore-errors (read (substring-no-properties s))))))
     (cond
      ;; insert in Delve buffer
      ((derived-mode-p 'delve-mode)
@@ -1673,7 +1674,7 @@ Return BUF."
     (lister-refresh-header-footer lister-local-ewoc))
   buf)
 
-;;; TODO Write test
+;;; pTODO Write test
 (defun delve--do-save-buffer (buf file-name)
   "Store the Delve list of BUF in FILE-NAME."
   ;; store list:
@@ -1691,7 +1692,7 @@ Return BUF."
     (error "File not found %s" file-name))
   (let* ((l          (delve-store--read file-name))
          (delve-list (with-temp-message "Creating data objects..."
-                       (delve-store--create-object-list l)))
+                       (delve-store--parse-list l)))
          (buf-name   (format "Zettel imported from '%s'" (file-name-nondirectory file-name))))
     ;; link buffer to file:
     (delve--setup-file-buffer (delve--new-buffer buf-name delve-list) file-name)))

@@ -101,9 +101,9 @@
         (expect (delve-store--map-tokenized-tree #'car l)
                 :to-equal '("A" "B" ("C" "D"))))))
 
-  (describe "delve-store--parse-tokenized-object"
+  (describe "delve-store--parse-element"
     (it "returns info object if it could not parse its argument"
-      (let ((res (delve-store--parse-tokenized-object nil '(delve--unknown-object :arg "dummy"))))
+      (let ((res (delve-store--parse-element nil '(delve--unknown-object :arg "dummy"))))
         (expect (type-of res) :to-be 'delve--info))))
   (describe "delve-store--tokenize-object"
     (it "throws an error if passed an unknown object"
@@ -111,7 +111,7 @@
       (expect (delve-store--tokenize-object (make-delve--unknown-object :slot "value"))
               :to-throw)))
 
-  (describe "delve-store--get-all-ids"
+  (describe "delve-store--get-ids-for-token-list"
     (it "gets all ids from a tokenized zettel list"
       ;; We skip creating real nodes, since we only need to pass the
       ;; ids around:
@@ -122,7 +122,7 @@
                             (mapcar #'get-node)
                             (mapcar #'delve--zettel-create)
                             (mapcar #'delve-store--tokenize-object))))
-        (expect (delve-store--get-all-ids tokenized)
+        (expect (delve-store--get-ids-for-token-list tokenized)
                 :to-have-same-items-as ids))))
     (it "skips token without ids:"
       (let* ((ids '("A" "B"))
@@ -134,8 +134,8 @@
              (n    (delve--note-create :text "No no"))
              (ts   (mapcar #'delve-store--tokenize-object
                            `(,@zs ,i ,n))))
-        (expect (delve-store--get-all-ids ts)
-                :to-equal (delve-store--get-all-ids
+        (expect (delve-store--get-ids-for-token-list ts)
+                :to-equal (delve-store--get-ids-for-token-list
                            (mapcar #'delve-store--tokenize-object zs))))))
 
   (describe "delve-store--prefetch-ids"
@@ -161,7 +161,7 @@
              (hash   (let ((h (make-hash-table :test #'equal)))
                        (puthash id node h)
                        h)))
-        (expect (delve-store--parse-tokenized-object hash token)
+        (expect (delve-store--parse-element hash token)
                 :to-equal zettel)))
     (it "'delve--pile'"
       (let* ((ids     '("AA" "BB"))
@@ -174,27 +174,27 @@
                       (cl-dolist (node nodes)
                         (puthash (org-roam-node-id node) node h))
                       h)))
-        (expect (delve-store--parse-tokenized-object hash token)
+        (expect (delve-store--parse-element hash token)
                 :to-equal pile)))
     (it "'delve--note'"
       (let* ((note   (delve--note-create :text "Hallo!"))
              (token  (delve-store--tokenize-object note)))
-        (expect (delve-store--parse-tokenized-object nil token)
+        (expect (delve-store--parse-element nil token)
                 :to-equal note)))
     (it "'delve--info'"
       (let* ((info   (delve--info-create :text "Hallo!"))
              (token  (delve-store--tokenize-object info)))
-        (expect (delve-store--parse-tokenized-object nil token)
+        (expect (delve-store--parse-element nil token)
                 :to-equal info)))
     (it "'delve--heading'"
       (let* ((heading (delve--heading-create :text "HEADING"))
              (token   (delve-store--tokenize-object heading)))
-        (expect (delve-store--parse-tokenized-object nil token)
+        (expect (delve-store--parse-element nil token)
                 :to-equal heading)))
     (it "'delve--query'"
       (let* ((query   (delve--query-create))
              (token  (delve-store--tokenize-object query)))
-        (expect (delve-store--parse-tokenized-object nil token)
+        (expect (delve-store--parse-element nil token)
                 :to-equal query)))
     ))
 
