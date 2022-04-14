@@ -128,12 +128,12 @@
 
 (describe "Parsing"
 
-  (describe "delve-store--map-tokenized-tree"
+  (describe "delve-store--map-tree"
     (it "maps over list elements"
       (let ((l '(("A") ("B") (("C") ("D")))))
-        (expect (delve-store--map-tokenized-tree #'listp l)
+        (expect (delve-store--map-tree #'listp l)
                 :to-equal '(t t (t t)))
-        (expect (delve-store--map-tokenized-tree #'car l)
+        (expect (delve-store--map-tree #'car l)
                 :to-equal '("A" "B" ("C" "D"))))))
 
   (describe "delve-store--parse-element"

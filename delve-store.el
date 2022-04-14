@@ -115,7 +115,7 @@ Use ID-HASH to get the nodes by their ID."
     ;;
     (_  (delve--info-create :text (format "Could not parse expression %s" elt)))))
 
-(defun delve-store--map-tokenized-tree (fn l)
+(defun delve-store--map-tree (fn l)
   "Apply FN to each list element of tree L."
   (-tree-map-nodes (lambda (l) (not (listp (car l))))  fn l))
 
@@ -131,7 +131,7 @@ Return nil if ELT does not reference any Org Roam node."
 (defun delve-store--get-ids-for-token-list (l)
   "Get all ids in the Delve token list L."
   (->> l
-    (delve-store--map-tokenized-tree #'delve-store--get-ids-for-token)
+    (delve-store--map-tree #'delve-store--get-ids-for-token)
     (flatten-tree)))
 
 (defun delve-store--prefetch-ids (ids)
@@ -149,7 +149,7 @@ associated value."
   "Create Delve objects from token list L."
   (let* ((ids    (delve-store--get-ids-for-token-list l))
          (table  (delve-store--prefetch-ids ids)))
-    (delve-store--map-tokenized-tree
+    (delve-store--map-tree
      (-partial #'delve-store--parse-element table)
      l)))
 
