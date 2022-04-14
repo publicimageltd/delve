@@ -116,7 +116,11 @@ Use ID-HASH to get the nodes by their ID."
     (_  (delve--info-create :text (format "Could not parse expression %s" elt)))))
 
 (defun delve-store--map-tree (fn l)
-  "Apply FN to each list element of tree L."
+  "Apply FN to each list element of tree L.
+Traverse L as a tree where each list can hold further list
+elements as 'branches' of the containing list.  When traversing,
+call FN when the node's value is a list which contains an element
+which is not anymore a list."
   (-tree-map-nodes (lambda (l) (not (listp (car l))))  fn l))
 
 (defun delve-store--get-ids-for-token (elt)
