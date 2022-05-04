@@ -37,6 +37,7 @@
 (require 'lister)
 (require 'lister-mode)
 (require 'button)
+(require 'bookmark)
 
 (require 'delve-transient)
 (require 'delve-data-types)
@@ -119,7 +120,7 @@ entries."
 (defvar delve--last-selected-buffer nil
   "Last buffer selected with `delve--select-collection-buffer'.")
 
-(defvar delve--storage-dir nil
+(defvar delve--last-storage-dir nil
   "Directory from last used storage file.")
 
 ;; * Buffer Local Variables
@@ -525,12 +526,12 @@ is nil."
   (when s (file-name-as-directory s)))
 
 (defun delve--set-storage-dir (&optional last-file-name)
-  "Make sure that `delve--storage-dir' has a value.
+  "Make sure that `delve--last-storage-dir' has a value.
 Optionally set the value to the directory part of LAST-FILE-NAME."
-  (setq delve--storage-dir (delve--file-as-dir
+  (setq delve--last-storage-dir (delve--file-as-dir
                             (if last-file-name
                                 (delve--file-as-dir (file-name-directory last-file-name))
-                              (or delve--storage-dir
+                              (or delve--last-storage-dir
                                   (car (-list delve-storage-paths)))))))
 
 (defun delve--fix-suffix (s suffix)
@@ -601,11 +602,11 @@ does not yet exist, create it."
     ;; Now collect the files
     (delve--all-files-in-paths (-list delve-storage-paths) delve-storage-suffix)))
 
-(defun delve--storage-p (file-name)
-  "Check if FILE-NAME represents an existing Delve storage file.
+(defun delve--storage-p (file-path)
+  "Check if FILE-PATH represents an existing Delve storage file.
 Just check the existence of the file, don't look at the contents."
   (-contains-p (delve--storage-files)
-               (expand-file-name file-name)))
+               (expand-file-name file-path)))
 
 (defun delve--storage-file-name-p (file-name)
   "Check if FILE-NAME is a valid storage file name.
@@ -702,7 +703,7 @@ to the end, in parentheses.  To remove SUFFIX, use
   "Get a Delve buffer containing the collection BUF-OR-NAME.
 BUF-OR-NAME must be a string or a buffer object.  If it is a
 buffer object, return it unchanged.  Else check if the string is
-a valid Delve storage file name and load it, or create a new
+the path to a Delve storage file and load it, or create a new
 Delve buffer using the string as its name.  Always return the
 newly created buffer object."
   (if (bufferp buf-or-name)
@@ -767,10 +768,11 @@ inserted.  For possible values for COLLECTION, see
 
 (defun delve-insert-nodes (collection nodes)
   "Insert NODES in COLLECTION after current item and move point.
-NODES is a list of Org Roam nodes.  Move point to the last item
-inserted.  For possible values for COLLECTION, see
-`delve--get-collection-buffer'.  Return the collection buffer."
-  (delve-insert-items collection (-map #'delve--zettel-create nodes)))
+NODES is a list of Org Roam nodes or a single node.  Move point
+to the last item inserted.  For possible values for COLLECTION,
+see `delve--get-collection-buffer'.  Return the collection
+buffer."
+  (delve-insert-items collection (-map #'delve--zettel-create (-list nodes))))
 
 (defun delve-insert-nodes-by-id (collection ids)
   "Insert nodes with IDS in COLLECTION after current item and move point.
@@ -779,8 +781,6 @@ IDS can be either a single ID string or a list of IDs.  For
   `delve--get-collection-buffer'.  Return the collection buffer."
   (let* ((ids    (-list ids))
          (nodes  (delve-query-nodes-by-id ids)))
-    (unless (eq (length nodes) (length ids))
-      (error "Could not get all nodes; maybe the DB is out of sync?"))
     (delve-insert-nodes collection nodes)))
 
 (defun delve--add-to-buffer (items prompt)
@@ -1651,9 +1651,9 @@ For the meaning of SYM, NEW, OP and BUF, see the info page for
       (while (progn
                (setq res (read-file-name (format "%sDelve store file name: "
                                                  (propertize info 'face 'warning))
-                                         delve--storage-dir nil nil initial)
+                                         delve--last-storage-dir nil nil initial)
                      initial nil
-                     delve--storage-dir (delve--file-as-dir (file-name-directory res)))
+                     delve--last-storage-dir (delve--file-as-dir (file-name-directory res)))
                (if (dir-p res)
                    (setq info (format "Not a file name '%s'\n" (abbreviate-file-name res)))
                  (unless (delve--storage-file-name-p res)
@@ -1723,7 +1723,7 @@ BUF is not yet visiting any file, ask for a file name."
 If the user selects a non-storage file, pass to `find-file'."
   (interactive)
   (delve--set-storage-dir)
-  (let* ((file-name   (expand-file-name (read-file-name "Find Delve storage or other file: " delve--storage-dir))))
+  (let* ((file-name   (expand-file-name (read-file-name "Find Delve storage or other file: " delve--last-storage-dir))))
     (pcase file-name
       ((pred delve--storage-p)
        (progn
@@ -1739,6 +1739,31 @@ If the user selects a non-storage file, pass to `find-file'."
          (delve--set-storage-dir file-name)))
       (_
         (find-file file-name)))))
+
+;;; * Bookmark
+
+(defun delve--bookmark-jump-handler (bookmark)
+  "Open BOOKMARK pointing to a Delve collection file."
+  (let* ((filename (bookmark-prop-get bookmark 'filename)))
+    ;; either open existing buffer or create a new one
+    (let ((buf (or (--first (equal (delve-get-storage-file it)
+                                   filename)
+                            (delve-buffer-list))
+                   (delve--read-storage-file filename))))
+      (switch-to-buffer buf)
+      (delve--set-storage-dir filename))))
+
+(defun delve--bookmark-record ()
+  "Return a bookmark record for the current Delve buffer.
+To enable special Delve bookmark handling, set the local value of
+`bookmark-make-record-function' to this function."
+  (unless (delve--buffer-p)
+    (user-error "Non-Delve buffer not supported for Delve bookmarks"))
+  (unless delve-local-storage-file
+    (user-error "Only stored Delve collections can be bookmarked"))
+  `(,delve-local-header-info
+    (filename . ,delve-local-storage-file)
+    (handler . ,#'delve--bookmark-jump-handler)))
 
 ;;; * Delve Major Mode
 
@@ -1794,6 +1819,7 @@ If the user selects a non-storage file, pass to `find-file'."
   (lister-setup	(current-buffer) #'delve-mapper  #'delve--header-function)
   (add-to-invisibility-spec '(org-link))
   (lister-mode)
+  (setq-local bookmark-make-record-function 'delve--bookmark-record)
   (setq-local lister-mark-face-or-property 'delve-mark-face)
   (setq-local filter-buffer-substring-function #'delve--tokenize-filter))
 

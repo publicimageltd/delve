@@ -70,6 +70,7 @@ automated tests. There are also plans for a closer integration with
  - Insert backlinks or fromlinks of a specific node.
  - Hide away nodes by creating "piles".
  - Move marked nodes into a new collection.
+ - Bookmark stored collections for quick access.
 
 * Installation
 
@@ -159,7 +160,11 @@ can customize it:
 Note that if you provide multiple paths, you will have to make sure by
 yourself that these directories do actually exist.
 
-*Note* for the change to =0.9.4=: If you had used =Delve= prior to v =0.9.4=,
+All stored files can be /bookmarked/. Simply set a bookmark in the
+visiting buffer. Calling the bookmark will jump to an existing buffer
+containing that collection or load it.
+
+*Changed at =0.9.4=:* If you had used =Delve= prior to v =0.9.4=,
 you might want to convert all existing files in the storage directory
 to the new file name format. You can use =M-x
 delve-convert-storage-directory= for that. The function is interactive
@@ -348,6 +353,44 @@ the prefix map:
     (setq delve-minor-mode-prefix-key (kbd "C-c d"))
 #+end_src
 
+*** Collecting vs. Inspecting
+
+=Delve= offers two distinct ways of collecting nodes, corresponding to
+different workflows. 
+
+One variant is that you collect nodes while browsing through your note
+files, that is, you visit =Org Roam= files and think 'Yes, that's
+interesting, I will use it later!' You want to copy this node into a
+list and then move on looking through your notes. For this, =Delve
+Minor Mode= commands which have the word =collect= in their function name
+are your friends. Per default, they add the nodes to the =last selected
+Delve buffer= in the background, not disturbing your evaluation of th
+nodes. 
+
+For these collecting commands, use prefix key (usually =C-u=) to
+finetune the selection of the target =Delve= buffer. If you call the
+command with /no/ prefix key (the default), =Delve= will use the last
+selected buffer or ask you to select one if there is none yet (e.g. by
+selecting a collection stored into a file). Using /one/ prefix (=C-u=)
+will unconditionally prompt you to select the target collection. Using
+/two/ prefixes (=C-u C-u=) will create a new buffer for you. Note that in
+this case, since you do not explicitly select these automatically
+generated buffer, it will not be recognized as the "last selected
+buffer" for the following operations.
+
+The second variant is that you want to collect nodes in order to
+explore their relations to other nodes within a =Delve= buffer. That is,
+you encounter an interesting node and think: 'Hey, I want to look at
+this node's backlinks, and their backlinks, and just generally check
+where this node leads me too!' In this case, you want to switch
+immediately to the buffer in which you have just collected the nodes.
+Functions offering this kind of functionality have the word =inspect= in
+their function name. They add the nodes to an =automatically created
+Delve buffer= and then switch to it. Additionally, this buffer is
+marked as the "last selected buffer" so that all collection commands
+recognize it.
+
+*** Minor Mode Keys
 | Command / Keys | Function                                                     |
 |----------------+--------------------------------------------------------------|
 | M-n .          | Create ID link for the current heading                       |
@@ -383,7 +426,8 @@ This is a list of stuff I intend to add (soonish):
 * Changelog
 
 ** Current 
- 
+
+  - Bookmarks. 
   - Lift storage system restriction to one predefined directory; force
     all storage files to end in =.delve=.
   - Toggle between extended view (default) and a shorter one.

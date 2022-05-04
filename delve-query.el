@@ -211,11 +211,14 @@ Optionally restrict to those nodes with an id in IDS."
 
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST sorted by the node's title."
-  (with-temp-message (format "Querying database for %d nodes..." (length id-list))
-    (delve-query-do-super-query
-     (concat delve-query--super-query
-             (format "HAVING id IN (%s) ORDER BY title"
-                     (delve-query--scalar-strings id-list))))))
+  (let ((nodes (with-temp-message (format "Querying database for %d nodes..." (length id-list))
+                 (delve-query-do-super-query
+                  (concat delve-query--super-query
+                          (format "HAVING id IN (%s) ORDER BY title"
+                                  (delve-query--scalar-strings id-list)))))))
+    (unless (eq (length nodes) (length id-list))
+      (error "Could not get all nodes; maybe the DB is out of sync?"))
+    nodes))
 
 (defun delve-query-node-by-id (id)
   "Return node with ID."
