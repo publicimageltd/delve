@@ -1742,6 +1742,7 @@ If the user selects a non-storage file, pass to `find-file'."
 
 ;;; * Bookmark
 
+;;;###autoload
 (defun delve--bookmark-jump-handler (bookmark)
   "Open BOOKMARK pointing to a Delve collection file."
   (let* ((filename (bookmark-prop-get bookmark 'filename)))
@@ -1825,6 +1826,7 @@ To enable special Delve bookmark handling, set the local value of
 
 ;;; * Main Entry Point
 
+;;;###autoload
 (defun delve (&optional jump-to-last-buffer)
   "Visit a Delve collection.
 With prefix argument JUMP-TO-LAST-BUFFER, directly switch to the
