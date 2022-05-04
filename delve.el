@@ -1687,14 +1687,21 @@ Return BUF."
     ;; link buffer to file:
     (delve--setup-file-buffer buf file-name)))
 
+(defun delve--parse-list-from-file (l file-name)
+  "Parse list of Delve objects L with error handling.
+Pass FILE-NAME to inform the user if an error occurs."
+  (condition-case nil
+      (with-temp-message "Creating data objects..."
+        (delve-store--parse-list l))
+    (error (user-error "Could not parse file %s" file-name))))
+
 ;;; TODO Write test
 (defun delve--read-storage-file (file-name)
   "Return a new Delve buffer read from FILE-NAME."
   (unless (file-exists-p file-name)
     (error "File not found %s" file-name))
   (let* ((l          (delve-store--read file-name))
-         (delve-list (with-temp-message "Creating data objects..."
-                       (delve-store--parse-list l)))
+         (delve-list (delve--parse-list-from-file l file-name))
          (buf-name   (format "Zettel imported from '%s'" (file-name-nondirectory file-name))))
     ;; link buffer to file:
     (delve--setup-file-buffer (delve--new-buffer buf-name delve-list) file-name)))
