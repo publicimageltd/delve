@@ -1595,10 +1595,12 @@ collecting."
   ;; feedback how many items have been moved
   (lister-refresh-at ewoc :point))
 
-(defun delve--key--toggle-view ()
-  "Toggle between compact or default view of nodes."
-  (interactive)
-  (setq delve-local-compact-view (not delve-local-compact-view))
+(define-minor-mode delve-compact-view-mode
+  "Minor mode for presenting Delve items in a more compact way."
+  :lighter "▤"
+  :group 'delve
+  (delve--assert-buf)
+  (setq delve-local-compact-view delve-compact-view-mode)
   (lister-save-current-node lister-local-ewoc
       (lister-refresh-list lister-local-ewoc)))
 
@@ -1777,7 +1779,7 @@ To enable special Delve bookmark handling, set the local value of
     (define-key map [remap write-file]               #'delve-write-buffer)
     (define-key map [remap find-file]                #'delve-find-storage-file)
     (define-key map (kbd "g")                        #'delve--key--sync)
-    (define-key map (kbd "v")                        #'delve--key--toggle-view)
+    (define-key map (kbd "v")                        #'delve-compact-view-mode)
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
     (define-key map [remap yank]                     #'delve--key--yank)

@@ -100,6 +100,8 @@ Here's an example using =straight.el=:
     :config
     ;; set meaningful tag names for the dashboard query
     (setq delve-dashboard-tags '("Tag1" "Tag2"))
+    ;; optionally turn on compact view as default
+    (add-hook #'delve-mode-hook #'delve-compact-view-mode)
    ;; turn on delve-minor-mode when org roam file is opened:
     (delve-global-minor-mode))
 #+end_src
@@ -224,7 +226,7 @@ Use the usual nagivation commands.
 As with most commands inserting stuff, pressing =C-u= before executing
 the command offers you to add that result into another collection.
 
-*** Preview of visit the node at point
+*** Preview or visit the node at point
 
 [[./screenshots/node-with-preview.png]]
 
