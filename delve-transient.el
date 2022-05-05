@@ -49,7 +49,7 @@
    (pretty-choices :initarg :pretty-choices) ;; display value
    (allow-nil      :initarg :allow-nil :initform t) ;; allow unsetting?
    (always-read    :initform t)
-   (reader         :initform delve-transient--toggle-reader))
+   (reader         :initform #'delve-transient--toggle-reader))
   "Transient switch for mutually exclusive values.
 The transient returns the value from `:choices', but presents to
 the user the corresponding value (same index) from

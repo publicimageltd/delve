@@ -26,6 +26,7 @@
 
 ;;; Code:
 (require 'delve)
+(require 'delve-transient)
 
 ;; * Variables
 
@@ -101,28 +102,27 @@ automatically generated title using the additional argument as a
 prefix string."
   (pcase scheme
     (`(:select ,prompt) (delve--select-collection-buffer prompt))
-    (`(:last    ,prompt) (or (and delve--last-selected-buffer
+    (`(:last    ,prompt) (if (and delve--last-selected-buffer
                                   (buffer-live-p delve--last-selected-buffer))
-                            (delve-minor-mode--get-collection `(:select ,prompt))))
+                             delve--last-selected-buffer
+                           (delve-minor-mode--get-collection `(:select ,prompt))))
     (`(:auto)           (delve-minor-mode--get-collection `(:auto "")))
     (`(:auto   ,prefix) (delve-minor-mode--auto-collection-buffer prefix))
     (_ (error "Unknown scheme %S" scheme))))
 
-(defun delve-minor-mode--get-collection-by-prefix (num-prefix prompt auto-prefix)
-  "Return a collection buffer according to numeric NUM-PREFIX.
-With NUM-PREFIX set to nil or 1, add node to the last selected
-collection.  With NUM-PREFIX 4, prompt for the collection.  With
-NUM-PREFIX set to 16, create a new collection on the fly.
-
-For interactive selection, use PROMPT; when creating buffers on
-the fly, prefix them with AUTO-PREFIX."
+(defun delve-minor-mode--get-collection-by-transient-args (args prompt auto-prefix)
+  "Return a collection buffer using transient argument list ARGS.
+ARGS must be a list with a string expressing the key-value pair
+'--target=X', where X must be either `auto', `last' or `select'.
+PROMPT is used when the user is asked to select a collection;
+AUTO-PREFIX is prefixed when a buffer is created on the fly.  See
+`delve-minor-mode--get-collection'."
   (delve-minor-mode--get-collection
-   (cl-case (or num-prefix 1)
-     (1      `(:last ,prompt))
-     (4      `(:select ,prompt))
-     (16     `(:auto ,auto-prefix))
-     (t      (error "Cannot parse prefix argument %S" num-prefix)))))
-
+   (pcase (plist-get (delve-transient--args-to-plist args) :target)
+     (`"last"   `(:last ,prompt))
+     (`"select" `(:select ,prompt))
+     (`"auto"   `(:auto ,auto-prefix))
+     (_         (error "Could not parse ARGS list %S" args)))))
 
 ;; * Collecting Nodes
 
@@ -158,72 +158,111 @@ Throw an error if there are no backlinks."
 
 ;; ...now all interactive stuff:
 
-(defun delve-minor-mode-collect (&optional prefix)
-  "Add node at point to a Delve collection buffer.
+;; We define each command as a transient suffix using the list
+;; ARGS to determine the target buffer.  To provide these commands as
+;; separate keys (in case someone wants to use them directly, without
+;; calling the transient), simply wrap these transient suffixes in an
+;; interactive function, e.g.
+;;
+;; (defun delve-minor-mode--key--collect (prefix)
+;;   "Key wrapper for transient suffix `delve-minor-mode--do-collect'.
+;; Use PREFIX to toggle the target buffer."
+;;   (interactive "P")
+;;   (delve-minor-mode--do-collect (pcase prefix
+;;                                   (`nil "--target=last")
+;;                                   (`(1) "--target=select")
+;;                                   (`(4) "--target=auto"))))
+
+
+;; NOTE Currently the target option 'select' is not used; if the UI
+;; hardens, consider removing it (also in the core function
+;; ...get-collection..)
+
+(transient-define-suffix delve-minor-mode--do-collect (&optional args)
+  "Add node at point to a Delve buffer specified by ARGS.
+Specify the target buffer by using ARGS, a list with a string
+expressing the key-value pair '--target=X', where X must be
+either `auto', `last' or `select'.
+
 Use the ID property of the containing org entry or the node of
 the whole file document.  If the file has no ID either, throw an
-error.
-
-Without interactive PREFIX, add node to the last selected
-collection.  With single PREFIX 4 , prompt for the collection.
-With double PREFIX 16, create a new collection on the fly."
-  (interactive "p")
-  (let* ((prompt "Add node to buffer or collection: ")
-         (node   (delve-minor-mode--get-this-node))
-         (buf    (delve-minor-mode--get-collection-by-prefix prefix prompt "Collection from")))
+error."
+  (interactive (list (transient-args transient-current-command)))
+  ;; default if not called from a transient
+  (when (or (not args) (equal args '(nil)))
+    (setq args '("--target=last")))
+  ;; and action:
+  (let* ((buf    (delve-minor-mode--get-collection-by-transient-args
+                  args
+                  "Add node to buffer or collection: "
+                  "Collection from "))
+         (node   (delve-minor-mode--get-this-node)))
     (delve-insert-nodes buf node)
     (message "Zettel added to '%s'" (buffer-name buf))))
 
-(defun delve-minor-mode-collect-all (&optional prefix)
+(transient-define-suffix delve-minor-mode--do-collect-all (&optional args)
   "Collect all headline nodes with an ID into a Delve buffer.
-
-Without interactive PREFIX, add node to the last selected
-collection.  With single PREFIX 4 , prompt for the collection.
-With double PREFIX 16, create a new collection on the fly."
-  (interactive "p")
-  (when (eq major-mode 'org-roam-mode)
-    (user-error "This command cannot be used in Org Roam Mode buffers"))
+Select target buffer using ARGS.  ARGS must be a list with a
+string expressing the key-value pair '--target=X', where X must
+be either `auto', `last' or `select'."
+  (interactive (list (transient-args transient-current-command)))
+  ;; default if not called from a transient
+  (when (or (not args) (equal args '(nil)))
+    (setq args '("--target=last")))
+  ;; and action:
   (let* ((nodes (delve-minor-mode--get-all-nodes))
          (n     (length nodes))
          (prompt (format "Add %d nodes to buffer or collection: " n))
-         (buf   (delve-minor-mode--get-collection-by-prefix prefix prompt "Collection from")))
+         (buf   (delve-minor-mode--get-collection-by-transient-args
+                 args
+                 prompt
+                 "Collection from")))
     (delve-insert-nodes buf nodes)
     (message "%d zettels added to '%s'" n (buffer-name buf))))
 
-(defun delve-minor-mode-collect-backlinks (&optional prefix)
+(transient-define-suffix delve-minor-mode--do-collect-backlinks (&optional args)
   "Collect all backlinks from current node into a Delve buffer.
-
-Without interactive PREFIX, add nodes to the last selected
-collection.  With single PREFIX 4 , prompt for the collection.
-With double PREFIX 16, create a new collection on the fly."
-  (interactive "p")
+Select target buffer using ARGS.  ARGS must be a list with a
+string expressing the key-value pair '--target=X', where X must
+be either `auto', `last' or `select'."
+  (interactive (list (transient-args transient-current-command)))
+  ;; default if not called from a transient
+  (when (or (not args) (equal args '(nil)))
+    (setq args '("--target=last")))
+  ;; and action:
   (let* ((backlinks  (delve-minor-mode--get-backlinks))
          (n (length backlinks))
          (prompt (format "Add %d backlinks to buffer or collection: " n))
-         (buf   (delve-minor-mode--get-collection-by-prefix prefix prompt "Backlinks from")))
+         (buf   (delve-minor-mode--get-collection-by-transient-args
+                 args
+                 prompt
+                 "Backlinks from")))
     (delve-insert-nodes buf backlinks)
     (message "%d backlinks added to '%s'" n (buffer-name buf))))
 
 ;; * Inspecting Nodes
 
-(defun delve-minor-mode-inspect-backlinks ()
+(transient-define-suffix delve-minor-mode--do-inspect-backlinks ()
   "Switch to a new Delve buffer with all backlinks from this node."
+  (interactive)
   (let* ((backlinks  (delve-minor-mode--get-backlinks))
          (buf   (delve-minor-mode--get-collection '(:auto "Backlinks from"))))
       (delve-insert-nodes buf backlinks)
       (setq delve--last-selected-buffer buf)
       (switch-to-buffer buf)))
 
-(defun delve-minor-mode-inspect-this-node ()
+(transient-define-suffix delve-minor-mode--do-inspect-this-node ()
   "Switch to a new Delve buffer with the node at point."
+  (interactive)
   (let* ((node (delve-minor-mode--get-this-node))
          (buf  (delve-minor-mode--get-collection '(:auto "Collected node"))))
     (delve-insert-nodes buf node)
     (setq delve--last-selected-buffer buf)
     (switch-to-buffer buf)))
 
-(defun delve-minor-mode-inspect-all ()
+(transient-define-suffix delve-minor-mode--do-inspect-all ()
   "Switch to a new Delve buffer with all nodes."
+  (interactive)
   (let* ((nodes (delve-minor-mode--get-all-nodes))
          (buf   (delve-minor-mode--get-collection '(:auto "Collected nodes"))))
     (delve-insert-nodes buf nodes)
@@ -277,25 +316,78 @@ Return a list with the Ewoc list node and the containing buffer."
   (let ((org-use-tag-inheritance nil))
     (call-interactively 'org-roam-tag-remove)))
 
-;; * Mode definitions
+;; * Transients
 
-;; TODO Use transient instead
+(defclass delve-minor-mode--target-choice-class (delve-transient-switches)
+  ((choices        :initform '("last" "auto"))
+   (pretty-choices :initform '("current" "on the fly"))
+   (allow-nil      :initform nil))
+  "Transient infix option class for selecting the target collection.")
+
+;; We derive a new class with its own display method:
+(defclass delve-minor-mode--target-buffer-variable-class (transient-lisp-variable)
+  ((reader         :initform (lambda (&rest _) (delve--select-collection-buffer "Select or create target collection: "))))
+  "Transient infix class for specifying the target collection by value.")
+
+(cl-defmethod transient-format-value ((obj delve-minor-mode--target-buffer-variable-class))
+  "Display the value of OBJ as a  buffer variable."
+  (let ((val (oref obj value)))
+    (when val
+      (propertize (buffer-name (oref obj value))
+              'face 'transient-value))))
+
+(transient-define-infix delve-minor-mode--target-infix ()
+  "Target buffer."
+  :class 'delve-minor-mode--target-buffer-variable-class
+  :variable 'delve--last-selected-buffer)
+
+(transient-define-prefix delve-minor-mode-collect-actions ()
+  "Transient prefix for collecting Org Roam nodes using Delve."
+  ["Target"
+   ("c"  "Current target buffer" delve-minor-mode--target-infix)
+   ("t"  "Collect into..." "--target=" :class delve-minor-mode--target-choice-class)]
+  [["Collect"
+    ("n" "Node at point"  delve-minor-mode--do-collect)
+    ("a" "All nodes"      delve-minor-mode--do-collect-all)
+    ("b" "Backlinks"      delve-minor-mode--do-collect-backlinks)]
+   ["Find collected node"
+    ("f" "Find node at point"  delve-minor-mode-find-node)]]
+   [("q" "Quit" transient-quit-one)])
+
+(transient-define-prefix delve-minor-mode-inspect-actions ()
+  "Transient prefix for inspecting Org Roam nodes using Delve."
+  ["Inspect"
+    ("n" "Node"      delve-minor-mode--do-inspect-this-node)
+    ("a" "All nodes" delve-minor-mode--do-inspect-all)
+    ("b" "Backlinks" delve-minor-mode--do-inspect-backlinks)
+    ("q" "Quit" transient-quit-one)])
+
+(transient-define-prefix delve-minor-mode-edit-actions ()
+  "Transient prefix for editing Org Roam nodes using Delve."
+   ["Edit"
+    ("+" "Add tag"    delve-minor-mode-tag-add)
+    ("-" "Remove tag" delve-minor-mode-tag-remove)
+    ("." "Set ID"     org-id-get-create)
+    ("q" "Quit" transient-quit-one)])
+
+(transient-define-prefix delve-minor-mode-actions ()
+  "Transient top prefix for all actions."
+  [["Add node to a collection"
+    ("c" "Collect node(s)"  delve-minor-mode-collect-actions)
+    ("i" "Inspect node(s)"  delve-minor-mode-inspect-actions)]
+   ["Edit node(s)"
+    ("e" "Edit node(s)"     delve-minor-mode-edit-actions)]
+   ["           "  ;; fake column
+    ""]
+   ["Quit"
+    ("q" "Quit" transient-quit-one)]])
+
+;;; * Minor Mode Definition
+
 (defvar delve-minor-mode-map
-  (let ((prefix (define-prefix-command 'delve-mm-prefix-map nil "Delve")))
-    ;; add space to each key description so that the key is also printed in
-    ;; the echo area when pressing the prefix key
-    (define-key prefix "b" '(" collect backlinks"           . delve-minor-mode-collect-backlinks))
-    (define-key prefix "l" '(" last used collection buffer" . delve-minor-mode-visit-last-collection))
-    (define-key prefix "c" '(" collect this node"     . delve-minor-mode-collect))
-    (define-key prefix "a" '(" collect all nodes" . delve-minor-mode-collect-all))
-    (define-key prefix "f" '(" find this node"   . delve-minor-mode-find-node))
-    (define-key prefix "+" '(" add tag"     . delve-minor-mode-tag-add))
-    (define-key prefix "-" '(" remove tag"  . delve-minor-mode-tag-remove))
-    (define-key prefix "." '(" set ID"      . org-id-get-create))
-    ;;
-    (let ((map (make-sparse-keymap)))
-      (define-key map delve-minor-mode-prefix-key prefix)
-      map))
+  (let ((map (make-sparse-keymap)))
+    (define-key map delve-minor-mode-prefix-key #'delve-minor-mode-actions)
+    map)
   "Local map for the delve minor mode.")
 
 (define-minor-mode delve-minor-mode

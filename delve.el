@@ -939,13 +939,15 @@ one of the args is nil."
 (transient-define-prefix delve--key--sort ()
   "Sort"
   [["First sorting criterion"
-    ("s" "Sort by" "--sort1="  :class delve--transient-cmp-switches
+    ("s" "Sort by" "--sort1="
+     :class delve--transient-cmp-switches
      :allow-nil nil)
-    ("o" "Order"   "--order1=" :class delve--transient-cmp-order
+    ("o" "Order"   "--order1="
+     :class delve--transient-cmp-order
      :allow-nil nil)]]
    [["Second sorting criterion"
      ("S" "Sort by" "--sort2="  :class delve--transient-cmp-switches)
-     ("O" "Order" "--order2=" :class delve--transient-cmp-order)]]
+     ("O" "Order" "--order2="   :class delve--transient-cmp-order)]]
   [["Actions on (sub-)list"
     ("r" "Reverse" delve--key--reverse)
     ("x" "Sort" delve--do-sort)]
