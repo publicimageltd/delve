@@ -36,8 +36,11 @@
 (require 'seq)
 (require 'lister)
 (require 'lister-mode)
+
 (require 'button)
 (require 'bookmark)
+(require 'cursor-sensor) ;; see `delve--get-hl-line-range'
+(require 'face-remap)    ;; see `delve--prepare-preview'
 
 (require 'delve-transient)
 (require 'delve-data-types)
@@ -46,7 +49,6 @@
 (require 'delve-store)
 (require 'delve-edit)
 (require 'delve-export)
-(require 'cursor-sensor) ;; see `delve--get-hl-line-range'
 
 ;; * Silence Byte Compiler
 
@@ -149,11 +151,6 @@ entries."
 (defface delve-mark-face
   '((t (:inherit highlight)))
   "Face for highlighting manually marked items."
-  :group 'delve-faces)
-
-(defface delve-preview-face
-  '((t (:inherit variable-pitch)))
-  "Face for displaying preview (for non-monospaced display)."
   :group 'delve-faces)
 
 (defface delve-path-face
@@ -365,15 +362,16 @@ Return the prepared string."
              (links (org-element-map tree 'link
                       #'delve--collect-link)))
         (font-lock-ensure)
-        ;; FIXME This wipes out any different variable/monospace fonts,
-        ;;       replacing it by one single font. It also ignores
-        ;;       buffer specific face remappings, such as variable-pitch-mode.
-        (add-face-text-property (point-min) (point-max) 'delve-preview-face)
+        ;; use org-mode's special face remapping, if it exists:
+        (when buffer-face-mode
+          (add-face-text-property (point-min) (point-max)
+                                  buffer-face-mode-face))
         ;; If buffer has too many lines, inhibit setting the
         ;; `intangible' property so that it can be read properly:
         (when (> (count-lines (point-min) (point-max))
                  (/ (window-body-height) 3))
           (add-text-properties (point-min) (point-max)  '(field t)))
+        ;; now buttonize the linke:
         (cl-dolist (link links)
           (delve--buttonize-link link)))
       (buffer-string))))
