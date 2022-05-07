@@ -46,6 +46,7 @@
 (require 'delve-store)
 (require 'delve-edit)
 (require 'delve-export)
+(require 'cursor-sensor) ;; see `delve--get-hl-line-range'
 
 ;; * Silence Byte Compiler
 
@@ -1597,16 +1598,19 @@ collecting."
   ;; feedback how many items have been moved
   (lister-refresh-at ewoc :point))
 
+;; * Compact View Minor Mode
+
 (define-minor-mode delve-compact-view-mode
   "Minor mode for presenting Delve items in a more compact way."
   :lighter "▤"
   :group 'delve
   (delve--assert-buf)
   (setq delve-local-compact-view delve-compact-view-mode)
+;;  (hl-line-mode (if delve-compact-view-mode +1 -1))
   (lister-save-current-node lister-local-ewoc
       (lister-refresh-list lister-local-ewoc)))
 
-;; Delete Items
+;; * Delete Items
 
 (defun delve--key--multi-delete ()
   "Delete all marked items or the single item at point.
@@ -1779,6 +1783,28 @@ To enable special Delve bookmark handling, set the local value of
 
 ;;; * Delve Major Mode
 
+;; Help hl-line-mode to find the right range
+
+(defun delve--get-hl-line-range ()
+  "Return cons cell for highlighting a lister item in BUF."
+  ;; TODO Report this to the emacs-devel list as a bug
+  ;; Dirty Hack: hl-line-highlight is called before
+  ;; pre-redisplay-functions, which is the hook used by
+  ;; `cursor-intangible-mode'. So hl-line-highlight refers to a
+  ;; position which will be changed afterwards if point is on an
+  ;; intangible item. Thus we call here already this function which is
+  ;; added to pre-redisplay-functions by `cursor-intangible-mode'.
+  (when cursor-intangible-mode (cursor-sensor--move-to-tangible (selected-window)))
+  (lister-with-node lister-local-ewoc :point node
+    (when (lister--item-visible (ewoc-data node))
+      (cons (marker-position (lister--item-beg (ewoc-data node)))
+            (marker-position (lister--item-end (ewoc-data node)))))))
+
+;; (defun delve--debug ()
+;;   (message "Overlay %S;\nPoint: %d Beg-end: %S"
+;;            hl-line-overlay (point)
+;;            (delve--get-hl-line-range)))
+ 
 ;; * Delve Keymap
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
@@ -1831,6 +1857,7 @@ To enable special Delve bookmark handling, set the local value of
   (lister-setup	(current-buffer) #'delve-mapper  #'delve--header-function)
   (add-to-invisibility-spec '(org-link))
   (lister-mode)
+  (setq-local hl-line-range-function #'delve--get-hl-line-range)
   (setq-local bookmark-make-record-function 'delve--bookmark-record)
   (setq-local lister-mark-face-or-property 'delve-mark-face)
   (setq-local filter-buffer-substring-function #'delve--tokenize-filter))
