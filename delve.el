@@ -369,6 +369,11 @@ Return the prepared string."
         ;;       replacing it by one single font. It also ignores
         ;;       buffer specific face remappings, such as variable-pitch-mode.
         (add-face-text-property (point-min) (point-max) 'delve-preview-face)
+        ;; If buffer has too many lines, inhibit setting the
+        ;; `intangible' property so that it can be read properly:
+        (when (> (count-lines (point-min) (point-max))
+                 (/ (window-body-height) 3))
+          (add-text-properties (point-min) (point-max)  '(field t)))
         (cl-dolist (link links)
           (delve--buttonize-link link)))
       (buffer-string))))
