@@ -1052,6 +1052,12 @@ to 5 characters."
   "Check if ITEM is one of TYPES."
   (memq (type-of item) types))
 
+(defun delve--marked-items-p ()
+  "Check if current buffer has marked items or active regions."
+  (delve--assert-buf nil "Command must be called in a Delve buffer")
+  (or (lister-items-marked-p lister-local-ewoc)
+      (use-region-p)))
+
 (defun delve--current-item (&optional types ewoc pos)
   "Get the item bound to the current Lister node.
 Use the current buffer or the buffer of EWOC, if non-nil.  TYPES
@@ -1809,8 +1815,32 @@ To enable special Delve bookmark handling, set the local value of
 ;;   (message "Overlay %S;\nPoint: %d Beg-end: %S"
 ;;            hl-line-overlay (point)
 ;;            (delve--get-hl-line-range)))
- 
+
+;; * Transient Commands
+
+(transient-define-prefix delve--node-key
+  "Transient for doing stuff with node(s)."
+  [["Insert"
+    ("n" "New node(s) using completion"     delve--key--insert-node)
+    ("t" "New node(s) prefiltered by tag"   delve--key--insert-node-by-tags)
+    ("b" "Backlinks to the node at point"   delve--key--insert-backlink)
+    ("f" "Links from the node at point to other nodes" delve--key--insert-fromlink)]
+   ["Edit"
+    ("+" delve--key--add-tags
+     :description (lambda ()
+                        (concat "Add tag(s)"
+                                (when (delve--marked-items-p) " in region"))))
+    ("-" delve--key--remove-tags
+     :description (lambda ()
+                    (concat "Remove tag(s)"
+                            (when (delve--marked-items-p) " in region"))))]
+   ["Visit"
+    ("o" "Open Org Roam File for node" delve--key--open-zettel)]
+   ["Quit"
+    ("q" "Quit" transient-quit-one)]])
+
 ;; * Delve Keymap
+
 (defvar delve-mode-map
   (let ((map (make-sparse-keymap)))
     ;; Buffer as a whole:
@@ -1824,12 +1854,7 @@ To enable special Delve bookmark handling, set the local value of
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
     (define-key map [remap yank]                     #'delve--key--yank)
     ;; Insert node(s):
-    (let ((prefix (define-prefix-command 'delve--key--insert-prefix nil "Insert")))
-      (define-key prefix "n" '(" node"     . delve--key--insert-node))
-      (define-key prefix "t" '(" by tag"   . delve--key--insert-node-by-tags))
-      (define-key prefix "b" '(" backlink" . delve--key--insert-backlink))
-      (define-key prefix "f" '(" fromlink" . delve--key--insert-fromlink))
-      (define-key map (kbd "n") prefix))
+    (define-key map (kbd "n")                        #'delve--node-key)
     ;; Insert other stuff:
     (define-key map (kbd "h")                        #'delve--key--insert-heading)
     ;; Work with marks:
