@@ -1797,7 +1797,9 @@ To enable special Delve bookmark handling, set the local value of
   ;; position which will be changed afterwards if point is on an
   ;; intangible item. Thus we call here already this function which is
   ;; added to pre-redisplay-functions by `cursor-intangible-mode'.
-  (when cursor-intangible-mode (cursor-sensor--move-to-tangible (selected-window)))
+  (when (and cursor-intangible-mode
+             (get-buffer-window))
+    (cursor-sensor--move-to-tangible (get-buffer-window)))
   (lister-with-node lister-local-ewoc :point node
     (when (lister--item-visible (ewoc-data node))
       (cons (marker-position (lister--item-beg (ewoc-data node)))
