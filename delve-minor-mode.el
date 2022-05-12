@@ -350,7 +350,7 @@ Return a list with the Ewoc list node and the containing buffer."
     ("n" "Node at point"  delve-minor-mode--do-collect)
     ("a" "All nodes"      delve-minor-mode--do-collect-all)
     ("b" "Backlinks"      delve-minor-mode--do-collect-backlinks)]
-   ["Find collected node"
+   ["Find node in collection"
     ("f" "Find node at point"  delve-minor-mode-find-node)]]
    [("q" "Quit" transient-quit-one)])
 
@@ -373,10 +373,10 @@ Return a list with the Ewoc list node and the containing buffer."
 (transient-define-prefix delve-minor-mode-actions ()
   "Transient top prefix for all actions."
   [["Add node to a collection"
-    ("c" "Collect node(s)"  delve-minor-mode-collect-actions)
+    ("c" "Collect or find node(s)"  delve-minor-mode-collect-actions)
     ("i" "Inspect node(s)"  delve-minor-mode-inspect-actions)]
    ["Edit node(s)"
-    ("e" "Edit node(s)"     delve-minor-mode-edit-actions)]
+    ("e" "Edit node at point"     delve-minor-mode-edit-actions)]
    ["           "  ;; fake column
     ""]
    ["Quit"
