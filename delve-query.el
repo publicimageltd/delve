@@ -140,7 +140,7 @@ and return nil."
   (org-roam-node-list))
 
 (defun delve-query-do-super-query (query)
-  "Call one big SQL QUERY and return results as nodes.
+  "Call one big SQL QUERY and return results as Org Roam node structs.
 QUERY must be `delve-query--super-query' or a subset.  See the
 query `delve-query--super-query' for allowed fields."
   (cl-loop for row in (delve-query query)
@@ -217,7 +217,10 @@ Optionally restrict to those nodes with an id in IDS."
                           (format "HAVING id IN (%s) ORDER BY title"
                                   (delve-query--scalar-strings id-list)))))))
     (unless (eq (length nodes) (length id-list))
-      (error "Could not get all nodes; maybe the DB is out of sync?"))
+      ;; make sure inequality is not due to aliased nodes with same ID
+      (when (-difference (-uniq (mapcar #'org-roam-node-id nodes))
+                         (-uniq id-list))
+          (message "delve: Could not get all requested IDs, maybe DB is out of sync?")))
     nodes))
 
 (defun delve-query-node-by-id (id)
@@ -260,4 +263,4 @@ Optionally restrict to those nodes with an id in IDS."
     (delve-query-nodes-by-id (flatten-tree ids))))
 
 (provide 'delve-query)
-;;; delve-query.el  ends here
+;;; delve-query.el ends here
