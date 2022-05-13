@@ -257,7 +257,7 @@ Most functions which work with "marked nodes" also accept regions.
 *** Choosing and inserting nodes 
 
 Per default, offer to insert a node from a given list of nodes per
-completion. If =counsel= is installed, all of the following commands
+completion. If =consult= is installed, all of the following commands
 allow to insert multiple nodes at once. Support for other completion
 packages is lacking, contributions are welcome.
 
@@ -339,7 +339,6 @@ Press =g= to refresh after editing.
 The key =s= gives access to some sorting commands, which are presented
 as a transient menu. Sorting (or reversing) applies to the current
 sublist at point. If there is no sublist, the whole list is sorted.
-
 
 ** Delve Minor Mode
 
