@@ -392,14 +392,37 @@ marked as the "last selected buffer" so that all collection commands
 recognize it.
 
 *** Minor Mode Keys
+
+`M-n' opens a transient offering the user to either edit, inspect or
+collect the node at point. The functions finally reached through the
+transients can easily be bound separately. Have a look at how the
+transients are defined or post an issue.
+
+For editing the node at point:
+
 | Command / Keys | Function                                                     |
 |----------------+--------------------------------------------------------------|
-| M-n .          | Create ID link for the current heading                       |
-| M-n +          | Add tag to the heading at point                              |
-| M-n -          | Remove tag from the heading at point                         |
-| M-n c          | Add node at point to a Delve collection                      |
-| M-n a          | Add all nodes of current Org Roam file to a Delve collection |
-| M-n f          | Find the node at point in currently open Delve buffers       |
+| M-n e.         | Create ID link for the current heading                       |
+| M-n e+         | Add tag to the heading at point                              |
+| M-n e-         | Remove tag from the heading at point                         |
+
+For collecting the node at point:
+
+| Command / Keys | Function                                                     |
+|----------------+--------------------------------------------------------------|
+| M-n cn         | Add node at point to a Delve collection                      |
+| M-n ca         | Add all nodes of current Org Roam file to a Delve collection |
+| M-n cb         | Collect backlinks from current node                          |
+| M-n cf         | Find the node at point in currently open Delve buffers       |
+
+For inspecting:
+
+| Command / Keys | Function                                                     |
+|----------------+--------------------------------------------------------------|
+| M-n in         | Add node to an automatically created collection and open it  |
+| M-n ia         | Inspect all nodes of the current Org Roam file               |
+| M-n ib         | Inspect backlinks                                            |
+
 
 It is planned to enable the collection keys also in =Org Roam Mode=
 buffers (TODO).
