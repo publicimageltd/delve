@@ -2,7 +2,7 @@
 
 **  So what is Delve?
 
-=Delve= (currently version =0.9.3=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
+=Delve= (currently version =0.9.4=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
 provides tools to collect, inspect and edit Org Roam Nodes in a
 separate application buffer. It helps you to quickly establish and
 maintain a project-specific subset of Org Roam Nodes, e.g. when
@@ -426,7 +426,7 @@ This is a list of stuff I intend to add (soonish):
 
 * Changelog
 
-** Current 
+** 0.9.4 
 
   - Bookmarks. 
   - Lift storage system restriction to one predefined directory; force
