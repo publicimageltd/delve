@@ -344,9 +344,10 @@ sublist at point. If there is no sublist, the whole list is sorted.
 
 If you enable the =delve-global-minor-mode=, a =delve-minor-mode= will be
 locally enabled when visting an Org Roam file. This binds some keys
-which facilitate 'collecting' stuff. All keys are on a prefix map
-which defaults to =M-n=. You can change the bindings by just setting
-the prefix map:
+which facilitate 'collecting' stuff. All keys are on a transient prefix 
+which defaults to =M-n=. You can change the binding for this transient
+by setting the variable =delve-minor-mode-prefix-key= manually (or using
+customize).
 
 #+begin_src emacs-lisp
   ;; set this /before/ loading Delve!, e.g. in the :init section of a
