@@ -1058,21 +1058,29 @@ to 5 characters."
   (or (lister-items-marked-p lister-local-ewoc)
       (use-region-p)))
 
-(defun delve--current-item (&optional types ewoc pos)
-  "Get the item bound to the current Lister node.
+(defun delve--current-item (types &optional ewoc pos)
+  "Return item in current buffer if it belongs to TYPES.
+Use current buffer unless EWOC and POS is given.  TYPES is a list
+of types allowed for, or a single type symbol, or nil if any type
+is acceptable.  POS can be any kind of position accepted by
+`lister--parse-position' and defaults to `:point'."
+  (let ((ewoc (or ewoc lister-local-ewoc)))
+    (delve--assert-buf ewoc "Command must be called in a Delve buffer")
+    (let ((item (lister-get-data-at ewoc (or pos :point))))
+      (when (or (not types)
+                (apply #'delve--type-p item (-list types)))
+        item))))
+
+(defun delve--current-item-or-error (&optional types ewoc pos)
+  "Get the item bound to the current Lister node or throw an error.
 Use the current buffer or the buffer of EWOC, if non-nil.  TYPES
 is a type symbol or a list of type symbols.  If the item is not
 of type TYPES, throw an error.  Use the position at point in EWOC
 or POS, if supplied.  Skip any typechecking if TYPES is nil."
-  (let ((ewoc (or ewoc lister-local-ewoc)))
-    (delve--assert-buf ewoc "Command must be called in a Delve buffer")
-    (let ((item (lister-get-data-at ewoc (or pos :point))))
-      (if (or (not types)
-              (apply #'delve--type-p item (-list types)))
-          item
-        (error "The item at point is not of the right type for that command")))))
+  (or (delve--current-item types ewoc pos)
+      (error "The item at point is not of the right type for that command")))
 
-;; TODO Refactor: delve--current-item nearly does the same
+;; TODO Refactor: delve--current-item-or-error nearly does the same
 (defun delve--current-item-or-marked (&optional types)
   "Get either all marked items or the item at point, marking it.
 Use the current buffer.  Always return a list.  TYPES is a type
@@ -1177,7 +1185,7 @@ Optional argument PREFIX is currently not used."
 (defun delve--key--open-zettel (zettel &optional prefix)
   "Open the ZETTEL at point.
 Optional argument PREFIX is currently not used."
-  (interactive (list (delve--current-item 'delve--zettel)))
+  (interactive (list (delve--current-item-or-error 'delve--zettel)))
   (ignore prefix)
   (org-roam-node-open (delve--zettel-node zettel)))
 
@@ -1316,7 +1324,7 @@ representation of the ZETTEL object as a title for the button."
   "Insert all backlinks to ZETTEL.
 With SELECT-TARGET, select target collection for the link list,
 else insert it as a sublist below point."
-  (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
+  (interactive (list (delve--current-item-or-error 'delve--zettel) current-prefix-arg))
   (let* ((nodes   (delve-query-backlinks-by-id (delve--zettel-id zettel)))
          (stub    (delve--zettel-create-link-info delve--backlink-format zettel))
          (zettels (delve--nodes-to-zettel nodes stub)))
@@ -1327,7 +1335,7 @@ else insert it as a sublist below point."
   "Insert fromlinks of current ZETTEL.
 With SELECT-TARGET, select target collection for the link list,
 else insert it as a sublist below point."
-  (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
+  (interactive (list (delve--current-item-or-error 'delve--zettel) current-prefix-arg))
   (let* ((nodes   (delve-query-fromlinks-by-id (delve--zettel-id zettel)))
          (stub    (delve--zettel-create-link-info delve--fromlink-format zettel))
          (zettels (delve--nodes-to-zettel nodes stub)))
@@ -1338,7 +1346,7 @@ else insert it as a sublist below point."
   "Insert all backlinks and fromlinks from ZETTEL.
 With SELECT-TARGET, select target collection for the link list,
 else insert it as a sublist below point."
-  (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
+  (interactive (list (delve--current-item-or-error 'delve--zettel) current-prefix-arg))
   (let* ((id       (delve--zettel-id zettel))
          (b-zettel (-some--> (delve-query-backlinks-by-id id)
                      (delve--nodes-to-zettel it (delve--zettel-create-link-info delve--backlink-format zettel))))
@@ -1351,7 +1359,7 @@ else insert it as a sublist below point."
   "Select and insert backlinks from current ZETTEL.
 With SELECT-TARGET, select target collection for the link list,
 else insert it as a sublist below point."
-  (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
+  (interactive (list (delve--current-item-or-error 'delve--zettel) current-prefix-arg))
   (let* ((all-nodes  (delve-query-backlinks-by-id (delve--zettel-id zettel)))
          (nodes      (delve--select-nodes all-nodes "Insert backlinks:"))
          (zettels    (delve--nodes-to-zettel nodes (delve--zettel-create-link-info delve--backlink-format zettel))))
@@ -1362,7 +1370,7 @@ else insert it as a sublist below point."
   "Select and insert fromlinks from current ZETTEL.
 With SELECT-TARGET, select target collection for the link list,
 else insert it as a sublist below point."
-  (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
+  (interactive (list (delve--current-item-or-error 'delve--zettel) current-prefix-arg))
   (let* ((all-nodes  (delve-query-backlinks-by-id (delve--zettel-id zettel)))
          (nodes      (delve--select-nodes all-nodes "Insert fromlinks:"))
          (zettels    (delve--nodes-to-zettel nodes (delve--zettel-create-link-info delve--fromlink-format zettel))))
@@ -1373,7 +1381,7 @@ else insert it as a sublist below point."
   "Insert all zettels in PILE, removing it.
 With SELECT-TARGET, select target for the results, else insert it
 as a sublist below point."
-  (interactive (list (delve--current-item '(delve--pile)) current-prefix-arg))
+  (interactive (list (delve--current-item-or-error '(delve--pile)) current-prefix-arg))
   (let ((pile-node (lister-get-node-at lister-local-ewoc :point)))
     (delve--insert-or-select (delve--pile-zettels pile) select-target)
     (unless select-target
@@ -1383,7 +1391,7 @@ as a sublist below point."
   "Insert results of QUERY.
 With SELECT-TARGET, select target for the results, else insert it
 as a sublist below point."
-  (interactive (list (delve--current-item '(delve--query)) current-prefix-arg))
+  (interactive (list (delve--current-item-or-error '(delve--query)) current-prefix-arg))
   (or (delve--insert-or-select (-map #'delve--zettel-create (funcall (delve--query-fn query))) select-target)
       (user-error "No matching items found")))
 
@@ -1391,7 +1399,7 @@ as a sublist below point."
   "Insert results from ITEM, either a query or a pile object.
 With SELECT-TARGET, select target for the results, else insert it
 as a sublist below point."
-  (interactive (list (delve--current-item '(delve--query delve--pile)) current-prefix-arg))
+  (interactive (list (delve--current-item-or-error '(delve--query delve--pile)) current-prefix-arg))
   (cl-typecase item
     (delve--pile (delve--key--insert-pile item select-target))
     (delve--query (delve--key--insert-query item select-target))))
@@ -1412,7 +1420,7 @@ as a sublist below point."
 (defun delve--key--toggle-preview (zettel &optional prefix)
   "Toggle the display of the preview of ZETTEL.
 With PREFIX, open ZETTEL's file in a buffer."
-  (interactive (list (delve--current-item 'delve--zettel) current-prefix-arg))
+  (interactive (list (delve--current-item-or-error 'delve--zettel) current-prefix-arg))
   (if prefix
       (delve--key--open-zettel zettel)
     (let ((preview (and (not (delve--zettel-preview zettel))
@@ -1424,7 +1432,7 @@ With PREFIX, open ZETTEL's file in a buffer."
 (defun delve--key--roam (zettel &optional prefix)
   "Open the Org Roam buffer for ZETTEL.
 Optional argument PREFIX is currently not used."
-  (interactive (list (delve--current-item 'delve--zettel)))
+  (interactive (list (delve--current-item-or-error 'delve--zettel)))
   (ignore prefix)
   (org-roam-buffer-display-dedicated (delve--zettel-node zettel)))
 
@@ -1434,7 +1442,7 @@ With PREFIX, expand all hidden subtrees in the EWOC's buffer."
   (interactive (list lister-local-ewoc current-prefix-arg))
   (if (lister-sublist-below-p ewoc :point)
       (lister-mode-cycle-sublist ewoc :point prefix)
-    (let ((item (delve--current-item)))
+    (let ((item (delve--current-item-or-error)))
       (cl-typecase item
         (delve--query  (delve--key--insert-query item prefix))
         (delve--pile   (delve--key--insert-pile  item prefix))
@@ -1555,7 +1563,7 @@ collection."
 (defun delve--key--insert-node-by-tags ()
   "Insert nodes matching user selected tags."
   (interactive)
-  (let* ((tags (completing-read-multiple " Limit to nodes matching tags:"
+  (let* ((tags (completing-read-multiple " Select nodes matching tag(s):"
                                          (delve-query-tags)))
          (nodes (delve--select-nodes (delve-query-nodes-by-tags tags) "Insert nodes:")))
     (delve-insert-nodes (current-buffer) nodes)
@@ -1820,14 +1828,24 @@ To enable special Delve bookmark handling, set the local value of
 
 ;; * Transient Commands
 
-(transient-define-prefix delve--node-key
+(transient-define-prefix delve--node-transient-key
   "Transient for doing stuff with node(s)."
-  [["Insert"
-    ("n" "New node(s) using completion"     delve--key--insert-node)
-    ("t" "New node(s) prefiltered by tag"   delve--key--insert-node-by-tags)
-    ("b" "Backlinks to the node at point"   delve--key--insert-backlink)
-    ("f" "Links from the node at point to other nodes" delve--key--insert-fromlink)]
-   ["Edit"
+  [["Select and insert"
+    ("n" "New node(s)"                      delve--key--insert-node)
+    ("T" "New node(s) having #tag"          delve--key--insert-node-by-tags)]
+   ["Insert all"
+    ("b" "All backlinks of node at point"   delve--key--insert-backlink)
+    ("f" "All links from current node"      delve--key--insert-fromlink)
+    ("t" "All links matching tag(s)"        delve--key--insert-tagged)
+    ("i" delve--key--insert-query-or-pile
+     :description (lambda ()
+                    (pcase (delve--current-item '(delve--query delve--pile))
+                      ((cl-type delve--query) "Results from query at point")
+                      ((cl-type delve--pile)  "Nodes from current pile, dissolving it")
+                      (_ "Cannot be used here")))
+     :if (lambda () (delve--current-item '(delve--query delve--pile)))
+     )]]
+  [["Edit"
     ("+" delve--key--add-tags
      :description (lambda ()
                         (concat "Add tag(s)"
@@ -1836,9 +1854,24 @@ To enable special Delve bookmark handling, set the local value of
      :description (lambda ()
                     (concat "Remove tag(s)"
                             (when (delve--marked-items-p) " in region"))))]
-   ["Visit"
+   ["Marked nodes"
+    :if (lambda () (delve--marked-items-p))
+    ("c" delve--key--collect-into-buffer
+     :description "Add marked items to (new) collection")
+    ("p" delve--key--collect-into-pile
+     :description "Move marked items into a pile")
+    ("<DEL>" delve--key--multi-delete
+     :description "Delete all marked items")
+    ("U" lister-mode-unmark-all
+     :description "Unmark all"
+     :if-non-nil lister-mode)]
+   ]
+  [["Visit"
+    :if (lambda () (delve--current-item 'delve--zettel))
     ("o" "Open Org Roam file with this node" delve--key--open-zettel)]
-   ["Quit"
+   ["Structure"
+    ("h" "Insert heading" delve--key--insert-heading)]]
+  [["Quit"
     ("q" "Quit" transient-quit-one)]])
 
 ;; * Delve Keymap
@@ -1856,7 +1889,7 @@ To enable special Delve bookmark handling, set the local value of
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
     (define-key map [remap yank]                     #'delve--key--yank)
     ;; Insert node(s):
-    (define-key map (kbd "n")                        #'delve--node-key)
+    (define-key map (kbd "n")                        #'delve--node-transient-key)
     ;; Insert other stuff:
     (define-key map (kbd "h")                        #'delve--key--insert-heading)
     ;; Work with marks:
@@ -1875,6 +1908,7 @@ To enable special Delve bookmark handling, set the local value of
     ;; Insert Queries or Piles:
     (define-key map (kbd "i")                        #'delve--key--insert-query-or-pile)
     (define-key map (kbd "t")                        #'delve--key--insert-tagged)
+    (define-key map (kbd "T")                        #'delve--key--insert-node-by-tags)
     ;; Sorting / Reordering:
     (define-key map (kbd "s")                        #'delve--key--sort)
     ;; Remote Editing:
