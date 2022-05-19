@@ -57,7 +57,7 @@ as its key and an integer count as value."
 
   (describe "delve--set-storage-dir"
     (before-each
-     (setq delve--storage-dir nil))
+     (setq delve--last-storage-dir nil))
     (it "uses first value of delve-storage-paths (list)"
       (let ((delve-storage-paths '("foo" "bar")))
         (expect (delve--set-storage-dir)
