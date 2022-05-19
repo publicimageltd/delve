@@ -1,4 +1,4 @@
-;; delve-minor-mode.el --- minor mode for optimized integration of delve and org roam  -*- lexical-binding: t; -*-
+;; delve-minor-mode.el --- minor mode for optimized integration of Delve and Org Roam  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021
 
@@ -398,14 +398,14 @@ Return a list with the Ewoc list node and the containing buffer."
   :require 'delve)
 
 (defun delve--maybe-activate-minor-mode ()
-  "Turn on delve minor mode if current buffer is in org roam."
+  "Turn on delve minor mode if current buffer is in Org Roam."
   (interactive)
   (when (and (buffer-file-name)
              (org-roam-file-p))
     (delve-minor-mode +1)))
 
 (defun delve-minor-mode--mass-activate (&optional deactivate)
-  "Activate or deactivate Delve minor mode in all org roam buffers.
+  "Activate or deactivate Delve minor mode in all Org Roam buffers.
 Activate the mode unless DEACTIVATE is non-nil."
   (mapcar (lambda (buf)
             (with-current-buffer buf
@@ -416,7 +416,7 @@ Activate the mode unless DEACTIVATE is non-nil."
 
 ;;;###autoload
 (define-minor-mode delve-global-minor-mode
-  "Add some Delve functionality in org roam files."
+  "Add some Delve functionality in Org Roam files."
   :lighter ""
   :global t
   :group 'delve

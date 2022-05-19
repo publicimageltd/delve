@@ -36,7 +36,7 @@
   (after-all
     (delve-test-teardown-db))
 
-  (it "org roam db has all IDs"
+  (it "Org Roam DB has all IDs"
     (let* ((db-ids (cl-loop for node-id in (org-roam-db-query [:select id :from nodes])
                             append node-id))
            (file-ids (delve-test-collect-ids)))

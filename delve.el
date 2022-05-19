@@ -1,4 +1,4 @@
-;;; delve.el --- Delve into the depths of your org roam zettelkasten       -*- lexical-binding: t; -*-
+;;; delve.el --- Delve into the depths of your Org Roam zettelkasten       -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2020-2021
 
@@ -180,7 +180,7 @@ entries."
 
 (defface delve-title-face
   '((t (:inherit org-roam-title)))
-  "Face for displaying org roam page titles in a Delve list."
+  "Face for displaying Org Roam page titles in a Delve list."
   :group 'delve-faces)
 
 (defface delve-pile-name-face
@@ -966,7 +966,7 @@ one of the args is nil."
 ;; * Remote Editing - Background Utilites
 
 (defun delve--sync-zettel (zettels)
-  "Force sync of all ZETTELS with the org roam db.
+  "Force sync of all ZETTELS with the Org Roam db.
 First update the db, then reload the ZETTELS.  Do not redisplay
 anything; that's up to the calling function."
   (when-let* ((filelist (-map #'delve--zettel-file zettels)))
@@ -1422,7 +1422,7 @@ With PREFIX, open ZETTEL's file in a buffer."
       (lister-refresh-at lister-local-ewoc :point))))
 
 (defun delve--key--roam (zettel &optional prefix)
-  "Open the org roam buffer for ZETTEL.
+  "Open the Org Roam buffer for ZETTEL.
 Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item 'delve--zettel)))
   (ignore prefix)
@@ -1472,7 +1472,7 @@ With PREFIX, expand all hidden subtrees in the EWOC's buffer."
 ;; Force refresh
 
 (defun delve--key--sync (ewoc &optional prefix)
-  "In EWOC, sync all zettel out of sync with the org roam database.
+  "In EWOC, sync all zettel out of sync with the Org Roam database.
 With PREFIX, force sync all marked zettel or, if none is marked,
 the zettel at point."
   (interactive (list lister-local-ewoc current-prefix-arg))
@@ -1835,7 +1835,7 @@ To enable special Delve bookmark handling, set the local value of
                     (concat "Remove tag(s)"
                             (when (delve--marked-items-p) " in region"))))]
    ["Visit"
-    ("o" "Open Org Roam File for node" delve--key--open-zettel)]
+    ("o" "Open Org Roam file with this node" delve--key--open-zettel)]
    ["Quit"
     ("q" "Quit" transient-quit-one)]])
 
@@ -1883,7 +1883,7 @@ To enable special Delve bookmark handling, set the local value of
 
 (define-derived-mode delve-mode
   fundamental-mode "Delve"
-  "Major mode for browsing your org roam zettelkasten."
+  "Major mode for browsing your Org Roam zettelkasten."
   (lister-setup	(current-buffer) #'delve-mapper  #'delve--header-function)
   (add-to-invisibility-spec '(org-link))
   (lister-mode)

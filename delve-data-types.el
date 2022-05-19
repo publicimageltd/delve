@@ -47,7 +47,7 @@
 (cl-defstruct (delve--zettel
                (:include delve--item)
                (:constructor delve--zettel-create (node)))
-  "A Zettel item storing an org roam node."
+  "A Zettel item storing an Org Roam node."
   node preview out-of-sync info)
 
 ;; Some shortcuts to the node element of a zettel:

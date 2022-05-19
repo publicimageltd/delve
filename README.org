@@ -93,7 +93,7 @@ Here's an example using =straight.el=:
     :straight (:repo "publicimageltd/delve"
                :host github
                :type git)
-    :after org-roam
+    :after org-roamg
     :bind
     ;; the main entry point, offering a list of all stored collections
     ;; and of all open Delve buffers:
@@ -103,7 +103,7 @@ Here's an example using =straight.el=:
     (setq delve-dashboard-tags '("Tag1" "Tag2"))
     ;; optionally turn on compact view as default
     (add-hook #'delve-mode-hook #'delve-compact-view-mode)
-   ;; turn on delve-minor-mode when org roam file is opened:
+   ;; turn on delve-minor-mode when Org Roam file is opened:
     (delve-global-minor-mode))
 #+end_src
 
@@ -458,7 +458,7 @@ This is a list of stuff I intend to add (soonish):
     all storage files to end in =.delve=.
   - Toggle between extended view (default) and a shorter one.
   - Rudimentary copy/paste.
-  - Yank copied or pasted Org Roam Node zettel into org buffers.
+  - Yank copied or pasted Org Roam node zettel into org buffers.
   - Bugfix because org-roam somwhere lost the function =org-roam-node-find-file-noselect=.
   - Sorting.
 

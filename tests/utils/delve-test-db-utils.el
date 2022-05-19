@@ -21,10 +21,10 @@
 
 ;;; Commentary:
 
-;; Provides utilities for testing interaction with an org roam
+;; Provides utilities for testing interaction with an Org Roam
 ;; database.  Adopted from https://github.com/d12frosted/vulpea.
 ;;
-;; For these functions to work, a separate directory with org roam
+;; For these functions to work, a separate directory with Org Roam
 ;; note files has to be provided.  It has to be accessible from this
 ;; file's location.  The path is set in the variable
 ;; "delve-note-files-directory".
@@ -60,7 +60,7 @@ is called or required, or the `load-path'.")
      (user-error "Could not create data base; canceled"))))
 
 (defun delve-test-temp-notes-dir ()
-  "Create a new directory name for a collection of org roam notes."
+  "Create a new directory name for a collection of Org Roam notes."
   (expand-file-name (make-temp-name "note-files-")
                     temporary-file-directory))
 
@@ -93,7 +93,7 @@ This requires `delve-test-setup-db' to have been called."
     ,res-var)))
 
 (defun delve-test--collect-ids-from-file (file)
-  "Collect all IDs in FILE without using org roam."
+  "Collect all IDs in FILE without using Org Roam."
   (delve-test-with-temp-org-file file
       (let ((info (org-element-parse-buffer)))
         (org-element-map info 'node-property
@@ -102,25 +102,25 @@ This requires `delve-test-setup-db' to have been called."
               (org-element-property :value elt)))))))
 
 (defun delve-test-collect-ids (&optional files)
-  "Collect all IDs from FILES without using org roam."
+  "Collect all IDs from FILES without using Org Roam."
   (cl-loop for file in (or files (delve-test-all-org-files))
            append (delve-test--collect-ids-from-file file)))
 
 (defun delve-test--collect-tags-from-file (file)
-  "Collect all tags in FILE without using org roam."
+  "Collect all tags in FILE without using Org Roam."
   (delve-test-with-temp-org-file file
     (mapcar #'substring-no-properties
             (flatten-tree (org-get-buffer-tags)))))
 
 (defun delve-test-collect-tags (&optional files)
-  "Collect all tags from FILES without using org roam."
+  "Collect all tags from FILES without using Org Roam."
   (seq-uniq
    (cl-loop for file in (or files (delve-test-all-org-files))
             append (flatten-tree (delve-test--collect-tags-from-file file)))
    #'equal))
 
 (defun delve-test-setup-db ()
-  "Provide a temporary org roam db to work with."
+  "Provide a temporary Org Roam DB to work with."
   (let* ((original-dir (delve-test-orig-notes-dir))
          (new-dir      (delve-test-temp-notes-dir))
          (inhibit-message t)
@@ -146,7 +146,7 @@ This requires `delve-test-setup-db' to have been called."
     (rename-file org-roam-directory target t)))
 
 (defun delve-test-teardown-db (&optional dont-backup)
-  "Close the temporary org roam db and make a backup copy.
+  "Close the temporary Org Roam DB and make a backup copy.
 Do not make a backup of the database if DONT-BACKUP is non-nil."
   (unless delve-test-environment
     (user-error "Nothing to tear down; no test environment given"))

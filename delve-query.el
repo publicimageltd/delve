@@ -1,4 +1,4 @@
-;;; delve-query.el --- Delve queries for the org roam database  -*- lexical-binding: t; -*-
+;;; delve-query.el --- Delve queries for the Org Roam database  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021
 
@@ -19,7 +19,7 @@
 
 ;;; Commentary:
 
-;; Provides functions to query the org roam db.
+;; Provides functions to query the Org Roam DB.
 
 ;;; Code:
 
@@ -48,7 +48,7 @@ Must match `org-roam-db-version'.")
   "If set, log all SQL queries issued by Delve.")
 
 (defvar delve-query-log-buffer "*Delve DB Interactions*"
-  "Buffer name for logging org roam queries.")
+  "Buffer name for logging Org Roam queries.")
 
 (defun delve-query-log-buffer ()
   "Get or create a log buffer."
@@ -69,7 +69,7 @@ NIL values are ignored.  Nested lists are flattened."
         (insert (propertize date-string 'face 'compilation-line-number) " " s "\n")))))
 
 (defun delve-query (sql &rest args)
-  "Call org roam SQL query (optionally using ARGS) in a safe way.
+  "Call Org Roam SQL query (optionally using ARGS) in a safe way.
 If `delve-query-catch-db-errors' is set, catch all errors, log them
 and return nil."
   ;; always check DB version
@@ -77,7 +77,7 @@ and return nil."
     (let ((msg (if (> org-roam-db-version delve-query-db-version)
                    "ahead"
                  "outdated")))
-      (error "Delve fatal error: org roam db version %d is %s, expected %d"
+      (error "Delve fatal error: Org Roam DB version %d is %s, expected %d"
              org-roam-db-version msg delve-query-db-version)))
   ;; now do the query:
   (condition-case err
