@@ -290,11 +290,6 @@ button."
     (apply #'insert-text-button label properties)
     (buffer-string)))
 
-(defun delve--tag-button (tag)
-  "Return TAG as a button object."
-  (delve--get-button tag
-    'action (lambda (_) (message "Do something with %s" tag))))
-
 (defun delve--string-join (strings &optional separator prefix)
   "Join all non-nil strings in STRINGS using SEPARATOR.
 Optionally add string PREFIX to each non-nil item."
@@ -302,6 +297,11 @@ Optionally add string PREFIX to each non-nil item."
     (when prefix
       (setq strings (--map (concat prefix it) strings)))
     (string-join strings separator)))
+
+(defun delve--tag-button (tag)
+  "Return TAG as a button object."
+  (delve--get-button tag
+    'action (lambda (_) (message "Do something with %s" tag))))
 
 ;; TODO Change that to buttons which open all links with that tag in a
 ;; new buffer?
@@ -1509,7 +1509,9 @@ insert into current buffer."
                                  (delve--select-collection-buffer "Select target collection")
                                (current-buffer)))
             (zettels (-map #'delve--zettel-create (delve-query-nodes-by-tags tags))))
-      (delve-insert-items buf zettels)
+      (progn
+        (delve-insert-items buf zettels)
+        (message "Inserted %s zettels matching %s" (length zettels) matching-string))
     (message "No zettels found matching %s" matching-string)))
 
 ;; Collect marked items
