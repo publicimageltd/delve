@@ -451,6 +451,9 @@ This is a list of stuff I intend to add (soonish):
 
 * Changelog
 
+** Current
+ - Add much more commands to the transient suffix key 'n'
+
 ** 0.9.4 
 
   - Bookmarks. 
