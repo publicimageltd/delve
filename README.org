@@ -93,6 +93,7 @@ Here's an example using =straight.el=:
     :straight (:repo "publicimageltd/delve"
                :host github
                :type git)
+    :after org-roam
     :bind
     ;; the main entry point, offering a list of all stored collections
     ;; and of all open Delve buffers:
