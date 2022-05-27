@@ -22,18 +22,17 @@ special user directory relative to the Emacs root directory. The new
 system accepts multiple storage directories. Since all storage files
 will be recognized by their extension =.delve=, you must change all
 existing storages by renaming the files. There is an interactive
-function to automate that; see [[#Storing collections in
-files][this section]].
+function to automate that; see [[#storing-collections-in-files][this section]].
 
 ** Table of Contents
- - [[#feature list][Quick overview: Features]]
+ - [[#feature-list][Quick overview: Features]]
  - [[#installation][Installation]] 
  - [[#the notion of a 'collection'][It's all about 'collections]]
- - [[#storing collections in files][Storing Collections in files]]
- - [[#how items are presented][How items are presented]]
- - [[#keybindings / usage][Keybindings / Usage]]
-  - [[##delve][Delve]]
-  - [[##delve minor mode][Delve Minor Mode]]
+ - [[#storing-collections-in-files][Storing Collections in files]]
+ - [[#how-items-are-presented][How items are presented]]
+ - [[#keybindings--usage][Keybindings / Usage]]
+  - [[#delve][Delve]]
+  - [[#delve-minor-mode][Delve Minor Mode]]
  - [[#customizations][Customizations]]
  - [[#upcoming][Upcoming]]
  - [[#changelog][Changelog]]
