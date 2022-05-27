@@ -27,7 +27,7 @@ function to automate that; see [[#storing-collections-in-files][this section]].
 ** Table of Contents
  - [[#feature-list][Quick overview: Features]]
  - [[#installation][Installation]] 
- - [[#the notion of a 'collection'][It's all about 'collections]]
+ - [[#the-notion-of-a-collection][It's all about collections]]
  - [[#storing-collections-in-files][Storing Collections in files]]
  - [[#how-items-are-presented][How items are presented]]
  - [[#keybindings--usage][Keybindings / Usage]]
