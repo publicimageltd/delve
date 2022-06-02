@@ -49,6 +49,7 @@
 (require 'delve-store)
 (require 'delve-edit)
 (require 'delve-export)
+(require 'delve-crm)
 
 ;; * Silence Byte Compiler
 
@@ -1132,31 +1133,26 @@ If no region is active, do nothing."
                                      (region-end)
                                      t)))
 
+;; TODO Use handmade crm now since consult-crm is deprecated
 (defun delve--select-nodes (nodes-or-node-fn prompt)
   "Let the user select multiple nodes from NODES-OR-NODE-FN.
 NODES-OR-NODE-FN can be either a list of nodes or a function
 which returns such a list.  PROMPT is padded with spaces and
 passed to completing read."
   (setq org-roam-node-read--cached-display-format nil)
-  ;; Standard completing-read-multiple can't work with node
-  ;; candidates, so check if alternatives are available:
-  (cl-letf (((symbol-function 'completing-read-multiple)
-             (cond
-              ((featurep 'consult) #'consult-completing-read-multiple)
-              (t #'completing-read))))
-    ;; ...collect and select:
-    (let* ((template       (org-roam-node--process-display-format org-roam-node-display-template))
-           (node-alist     (with-temp-message "Collecting nodes..."
-                             (--map (org-roam-node-read--to-candidate it template)
-                                    (if (listp nodes-or-node-fn)
-                                        nodes-or-node-fn
-                                      (funcall nodes-or-node-fn)))))
-           (prompt         (concat " " (string-trim prompt) " "))
-           (node-selected  (if node-alist
-                               (completing-read-multiple prompt node-alist)
-                             (user-error "No nodes to choose from"))))
-      (--map (alist-get it node-alist nil nil #'string=)
-             (-list node-selected)))))
+  (let* ((template       (org-roam-node--process-display-format org-roam-node-display-template))
+         (node-alist     (with-temp-message "Collecting nodes..."
+                           (--map (org-roam-node-read--to-candidate it template)
+                                  (if (listp nodes-or-node-fn)
+                                      nodes-or-node-fn
+                                    (funcall nodes-or-node-fn)))))
+         (prompt         (concat " " (string-trim prompt) " "))
+         (node-selected  (if node-alist
+                             ;;(completing-read prompt node-alist)
+                             (delve-crm-select prompt node-alist)
+                           (user-error "No nodes to choose from"))))
+    (--map (alist-get it node-alist nil nil #'string=)
+           (-list node-selected))))
 
 ;;; * Key commands working with the "item at point"
 
