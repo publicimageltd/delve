@@ -92,7 +92,9 @@ Here's an example using =straight.el=:
     :straight (:repo "publicimageltd/delve"
                :host github
                :type git)
-    :after org-roamg
+    :after (org-roam)
+    ;; this is necessary if use-package-always-defer is true
+    :demand t
     :bind
     ;; the main entry point, offering a list of all stored collections
     ;; and of all open Delve buffers:
