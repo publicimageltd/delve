@@ -656,12 +656,19 @@ Return the buffer object."
   (delve--query-create :info "Last modified nodes"
                        :fn #'delve-query-last-modified))
 
+(defun delve--create-todo-query ()
+  "Create an item returning all nodes marked \"TODO\"."
+  (delve--query-create :info "Nodes marked 'TODO'"
+                       :fn (lambda ()
+                             (delve-query-nodes-by-todo "TODO"))))
+
 (defun delve--new-dashboard ()
   "Return a new Delve dashboard buffer."
   (with-temp-message "Setting up dashboard..."
     (let* ((tag-queries (--map (delve--create-tag-query (-list it)) delve-dashboard-tags))
            ;; these are the actual items / queries which will populate the dashboard:
-           (items       (list  tag-queries
+           (items       (list  (delve--create-todo-query)
+                               tag-queries
                                (delve--create-unlinked-query)
                                (delve--create-last-modified-query)))
            (buf         (delve--new-buffer delve-dashboard-name (flatten-tree items))))

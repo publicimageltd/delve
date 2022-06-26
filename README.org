@@ -455,6 +455,7 @@ This is a list of stuff I intend to add (soonish):
 ** Current
 
  - Add new Dashboard query '10 last modified nodes'
+ - Add new Dashboard query 'TODO items'
  - Use hand-made =completing-read-multiple= (found in
    https://github.com/emacs-citar/citar/compare/simple-crm) since
    =consult='s is now deprecated (see  https://github.com/minad/consult/commit/b15c81f7766a8981f2f022fc47bbeb7000696caf).

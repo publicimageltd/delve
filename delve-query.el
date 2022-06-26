@@ -209,6 +209,13 @@ Optionally restrict to those nodes with an id in IDS."
                        (vconcat base-query `[:where (in node_id ,(seq-into ids 'vector))]))))
     (seq-sort #'string< (seq-uniq (mapcar #'car (delve-query query))))))
 
+(defun delve-query-nodes-by-todo (todo-state)
+  "Return all nodes having TODO-STATE, sorted by title."
+  (delve-query-do-super-query
+   (concat delve-query--super-query
+           (format "HAVING todo=%s ORDER BY title"
+                   (delve-query--scalar-string todo-state)))))
+
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST sorted by the node's title."
   (let ((nodes (with-temp-message (format "Querying database for %d nodes..." (length id-list))
