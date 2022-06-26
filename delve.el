@@ -482,15 +482,16 @@ Return the prepared string."
 (defun delve-mapper (item)
   "Transform ITEM into a list of printable strings."
   (let* ((typestring  (delve--type-as-string item))
-         (datastrings (cl-typecase item
-                        (delve--zettel  (delve--zettel-strings item))
-                        (delve--pile    (delve--pile-strings item))
-                        (delve--query   (delve--query-strings item))
-                        ;; always check the basic type "delve--note" last!
-                        (delve--heading (delve--heading-strings item))
-                        (delve--info    (delve--info-strings item))
-                        (delve--note    (delve--note-strings item))
-                        (t (list "no printer available for that item type")))))
+         (datastrings (or (cl-typecase item
+                            (delve--zettel  (delve--zettel-strings item))
+                            (delve--pile    (delve--pile-strings item))
+                            (delve--query   (delve--query-strings item))
+                            ;; always check the basic type "delve--note" last!
+                            (delve--heading (delve--heading-strings item))
+                            (delve--info    (delve--info-strings item))
+                            (delve--note    (delve--note-strings item))
+                            (t (list "no printer available for that item type")))
+                          (list (format "Error: Mapper for item type %s returned NIL" item)))))
     ;; hanging indent:
     (let* ((datastrings (flatten-tree datastrings))
            (pad         (make-string (length typestring) ? ))
