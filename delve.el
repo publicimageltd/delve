@@ -1396,7 +1396,9 @@ as a sublist below point."
 With SELECT-TARGET, select target for the results, else insert it
 as a sublist below point."
   (interactive (list (delve--current-item-or-error '(delve--query)) current-prefix-arg))
-  (or (delve--insert-or-select (-map #'delve--zettel-create (funcall (delve--query-fn query))) select-target)
+  (or (delve--insert-or-select (-map #'delve--zettel-create
+                                     (funcall (delve--query-fn query)))
+                               select-target)
       (user-error "No matching items found")))
 
 (defun delve--key--insert-query-or-pile (item &optional select-target)
