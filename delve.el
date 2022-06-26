@@ -650,12 +650,19 @@ Return the buffer object."
   (delve--query-create :info "Unlinked nodes"
                        :fn #'delve-query-unlinked))
 
+(defun delve--create-last-modified-query ()
+  "Create an item searching for the 10 last modified nodes."
+  (delve--query-create :info "Last modified nodes"
+                       :fn #'delve-query-last-modified))
+
 (defun delve--new-dashboard ()
   "Return a new Delve dashboard buffer."
   (with-temp-message "Setting up dashboard..."
     (let* ((tag-queries (--map (delve--create-tag-query (-list it)) delve-dashboard-tags))
+           ;; these are the actual items / queries which will populate the dashboard:
            (items       (list  tag-queries
-                               (delve--create-unlinked-query)))
+                               (delve--create-unlinked-query)
+                               (delve--create-last-modified-query)))
            (buf         (delve--new-buffer delve-dashboard-name (flatten-tree items))))
       (lister-goto (lister-get-ewoc buf) :first)
       buf)))

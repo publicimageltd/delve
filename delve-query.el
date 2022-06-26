@@ -262,5 +262,12 @@ Optionally restrict to those nodes with an id in IDS."
    UNION SELECT dest AS id FROM links WHERE type='\"id\"')")))
     (delve-query-nodes-by-id (flatten-tree ids))))
 
+(defun delve-query-last-modified (&optional limit)
+  "Get LIMIT last modified Org Roam nodes.
+If LIMIT is unspecified, return the last 10 modified nodes."
+  (-take (or limit 10)
+         (-sort (-on (-compose #'not #'time-less-p) #'org-roam-node-file-mtime)
+                (delve-query-node-list))))
+
 (provide 'delve-query)
 ;;; delve-query.el ends here
