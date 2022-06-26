@@ -820,40 +820,71 @@ using it for sorting."
 
 (cl-defstruct (delve-dual-cmp (:constructor delve-dual-cmp--create))
   "Structure holding two comparator functions for sorting in
-ascending and descending order, and a description for user
-selection."
-  comp-asc comp-desc desc)
+ascending and descending order, and a description of the sorting
+criterion for the user."
+  comp-asc comp-desc
+  criterion-name ascending-name descending-name)
 
-(defmacro delve--build-dual-cmp (name desc sort-fn-asc sort-fn-desc slot-fn &optional map-fn)
-  "Define a dual comperator object NAME with DESC.
-A dual comperator object holds two comparator functions.
+(defmacro delve--build-dual-cmp (name criterion-name
+                                      sort-fn-asc ascending-name
+                                      sort-fn-desc descending-name
+                                      slot-fn
+                                      &optional map-fn)
+  "Define a dual comperator object NAME.
+A dual comperator object holds two comparator functions.  NAME is
+the name of the variable which holds the comperator object.
+
+CRITERION-NAME is a telling description of the sorting criterion
+for the user (e.g. 'title').
+
 SORT-FN-ASC sort is responsible for sorting in ascending order
-and SORT-FN-DESC for the other direction.  For the meaning of
+and SORT-FN-DESC for the other direction.  ASCENDING-NAME and
+DESCENDING-NAME give a user readable description of the sorting
+result, e.g. 'from A to Z'.
+
+For the meaning of
 SLOT-FN and MAP-FN, see `delve--cmp-fn'."
   (declare (indent 1))
   `(defvar ,name
      (delve-dual-cmp--create :comp-asc (delve--cmp-fn ,sort-fn-asc ,slot-fn ,map-fn)
                              :comp-desc (delve--cmp-fn ,sort-fn-desc ,slot-fn ,map-fn)
-                             :desc ,desc)
-     ,(concat "Structure holding a dual comporator to sorty by " (downcase desc))))
+                             :criterion-name ,criterion-name
+                             :ascending-name ,ascending-name
+                             :descending-name ,descending-name)
+     ,(concat "Structure holding a dual comporator to sort by " (downcase criterion-name))))
 
 ;; * Define the comparators for sorting
 
 (delve--build-dual-cmp delve-2cmp--title
   "title"
-  #'string< #'string> #'delve--zettel-title)
+  #'string< "from A to Z"
+  #'string> "from Z to A"
+  #'delve--zettel-title)
 
 (delve--build-dual-cmp delve-2cmp--tag-n
   "number of tags"
-  #'< #'> #'delve--zettel-tags #'length)
+  #'< "most tags first"
+  #'> "no tags first"
+  #'delve--zettel-tags
+  #'length)
 
 (delve--build-dual-cmp delve-2cmp--level
   "nesting level"
-  #'< #'> #'delve--zettel-level)
+  #'< "deeply nested first"
+  #'> "top nodes first"
+  #'delve--zettel-level)
 
 (delve--build-dual-cmp delve-2cmp--file-title
   "file title"
-  #'string< #'string> #'delve--zettel-filetitle)
+  #'string< "from A to Z"
+  #'string> "from Z to A"
+  #'delve--zettel-filetitle)
+
+(delve--build-dual-cmp delve-2cmp--file-mtime
+  "modification time"
+  (-compose #'not #'time-less-p) "last modified first"
+  #'time-less-p             "last modified last"
+  #'delve--zettel-mtime)
 
 ;; * Utilities to use comparators in transients
 
@@ -861,7 +892,8 @@ SLOT-FN and MAP-FN, see `delve--cmp-fn'."
   '(delve-2cmp--title
     delve-2cmp--file-title
     delve-2cmp--level
-    delve-2cmp--tag-n)
+    delve-2cmp--tag-n
+    delve-2cmp--file-mtime)
   "*Internal* All comperator names, as symbols.")
 
 (defvar delve--all-2cmps
@@ -870,15 +902,17 @@ SLOT-FN and MAP-FN, see `delve--cmp-fn'."
 
 (defun delve--cmp-info (dual-cmp slot-name)
   "Return informative string about the comparator DUAL-CMP.
-SLOT-NAME.  SLOT-NAME must be either \"comp-asc\" or
-\"comp-desc\", designating the respective slot in the dual
-comperator object. Return nil if one of the
-args is nil."
+SLOT-NAME must be either \"comp-asc\" or \"comp-desc\",
+designating the respective slot in the dual comperator
+object. Return nil if one of the args is nil."
   (when (and dual-cmp slot-name)
-    (format "by %s (%s)" (delve-dual-cmp-desc dual-cmp)
+    (format "by %s (%s)"
+            ;; sorting criterion: by nesting level; by title; etc.
+            (delve-dual-cmp-criterion-name dual-cmp)
+            ;; comparator description:
             (if (equal slot-name "comp-desc")
-                "from Z to A"
-              "from A to Z"))))
+                (delve-dual-cmp-descending-name dual-cmp)
+              (delve-dual-cmp-ascending-name dual-cmp)))))
 
 (defun delve--get-dual-cmp-by-string (cmp-string)
   "Return a dual comparator object using CMP-STRING.
@@ -908,7 +942,7 @@ one of the args is nil."
 
 (defclass delve--transient-cmp-switches (delve-transient-switches)
   ((choices        :initform (-map #'symbol-name delve--all-2cmps-symbols))
-   (pretty-choices :initform (-map #'delve-dual-cmp-desc delve--all-2cmps)))
+   (pretty-choices :initform (-map #'delve-dual-cmp-criterion-name delve--all-2cmps)))
   "Transient switch with preset values for choosing a comparator.")
 
 (defclass delve--transient-cmp-order (delve-transient-switches)
@@ -920,7 +954,7 @@ one of the args is nil."
   (interactive (list (transient-args transient-current-command)))
   (when (equal args '(nil))
     (error "No arguments defined for sorting?"))
-
+  
   (let* ((plist (delve-transient--args-to-plist args))
          (sort1  (plist-get plist :sort1))
          (sort2  (plist-get plist :sort2))
