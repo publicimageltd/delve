@@ -711,11 +711,9 @@ to the end, in parentheses.  To remove SUFFIX, use
 
 (defun delve--remove-candidate-suffix (cand)
   "Remove suffix in parentheses from CAND."
-  (replace-regexp-in-string (rx string-start
-                                (zero-or-more space)
-                                (group (*? nonl))
-                                (zero-or-more space)
-                                "(" (one-or-more nonl) ")")
+  (replace-regexp-in-string (rx (one-or-more space)
+                                "(" (+ (not ")")) ")"
+                                string-end)
                             "\\1"
                             cand))
 
