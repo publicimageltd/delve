@@ -448,7 +448,7 @@ This is a list of stuff I intend to add (soonish):
  - +Remote editing on all marked lists.+
  - Make minor mode collection functions also work in org roam mode buffer.
  - +Add 'modified' flag and show it in the header.+
- - Add sorting according to title and mtime.
+ - +Add sorting according to title and mtime.+
 
 * Changelog
 
