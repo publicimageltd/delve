@@ -86,7 +86,14 @@ and return nil."
           (delve-query-log (format "%s" sql)
                            (when args (format " -- Args=%s" args))))
         (setq time
-              (benchmark-run (setq res (apply #'org-roam-db-query sql (flatten-tree args)))))
+              (benchmark-run
+                  (setq res
+                        (apply #'org-roam-db-query
+                               ;; emacsql calls the string sql as
+                               ;; first argument, so escape all %
+                               ;; signs if passing it:
+                               (if (stringp sql) (emacsql-escape-format sql) sql)
+                               (flatten-tree args)))))
         (when delve-query-log-queries
           (delve-query-log (format " -- query returns %d items in %.2f seconds."
                                  (length res)
@@ -94,11 +101,7 @@ and return nil."
         res)
     (error (if (not delve-query-catch-db-errors)
                (signal (car err) (cdr err))
-             (delve-query-log (error-message-string err))))))
-
-(defun delve-query-quote-string (s)
-  "Quote string S for use as an emacsSQL argument."
-  (concat "\"" s "\""))
+             (delve-query-log (format "delve-query error: %s" (error-message-string err)))))))
 
 ;;; * Some queries
 
@@ -167,38 +170,60 @@ query `delve-query--super-query' for allowed fields."
                                                     :refs refs))
                             all-titles))))
 
-(defun delve-query--scalar-string (string)
-  "Return STRING as a quoted scalar string."
-  (thread-first string
-    (emacsql-quote-identifier)
-    (emacsql-quote-scalar)))
+(defun delve-query--quote-string (string &optional add-wildcards add-double-quotes)
+  "Return STRING as a quoted string to be used in SQL queries.
+Wrap STRING in single quotes.  If ADD-DOUBLE-QUOTES is non-nil,
+wrap STRING first in double quotes, then add wildcards, then add
+single quotes.  Use ADD-WILDCARDS to add '%' to the left and the
+right for use with the SQL Like operator.  In this case, also
+escape any SQL wildcard characters in STRING using a regular
+slash (which has to be added to the SQL clause via the ESCAPE
+statement)."
+  (->> string
+       ;; Welcome to the quoting hell!
+       ;; first we double all single quotes since the result will be
+       ;; enclosed in single quotes
+       (replace-regexp-in-string "'" "''")
+       ;; now escape all double quotes, since this is how they are
+       ;; stored in the DB, e.g. "\"quoted\"".
+       (string-replace "\"" "\\\"")
+       ;; if this will be used in a LIKE operator, we have to escape
+       ;; all existing percent signs and underscores. We can't use a
+       ;; backslash as escape character, since it is also used by the
+       ;; LISP reader; so we use a regular slash. Don't forget to add
+       ;; the ESCAPE clause to your query!
+       (if add-wildcards
+           (->> string
+                (string-replace "/" "//")
+                (string-replace "%" "/%")
+                (string-replace "_" "/_")))
+       ;; add double quotes
+       (format (if add-double-quotes "\"%s\"" "%s"))
+       ;; finally enclose the result in single quotes,
+       ;; optionally wrapping it in wildcards.
+       (format (if add-wildcards "'%%%s%%'" "'%s'"))))
 
-(defun delve-query--scalar-strings (strings)
-  "Return STRINGS as a string with quoted scalar values."
-  (string-join (mapcar #'delve-query--scalar-string
-                       strings)
-               ", "))
+(defun delve-query--quote-strings (strings sep add-wildcards)
+  "Concatenate all STRINGS using SEP, wrapping each in double quotes.
+Additionally wrap the double quoted string in percent signs (SQL
+wildcards) when ADD-WILDCARDS is non-nil.
+
+As a rule of thumb, always add wildcards when using the LIKE
+operator in your SQL query, else not."
+  (string-join (--map (delve-query--quote-string it add-wildcards t) strings)
+               sep))
 
 (defun delve-query-nodes-by-tags (tag-list)
   "Return all nodes with tags TAG-LIST."
   (when tag-list
     (delve-query-do-super-query
      (concat "SELECT * FROM ( " delve-query--super-query " ) "
-             (format "WHERE tags LIKE %s ORDER BY title"
-                     (string-join (mapcar (lambda (s)
-                                            (thread-last s
-                                              ;; FIXME this does not work
-                                              ;; for \" as intended
-                                              ;; (e.g. tag "\"test\"")
-                                              (emacsql-quote-identifier)
-                                              ;; emacsql-parse passes SQL to
-                                              ;; #'format, so double % to avoid
-                                              ;; interpretation as format char
-                                              (format "%%%%%s%%%%")
-                                              ;; surround with '...'
-                                              (emacsql-quote-scalar)))
-                                          tag-list)
-                                  " AND tags LIKE "))))))
+             (format "WHERE tags LIKE %s ESCAPE '/' ORDER BY title"
+                     ;; Column 'TAGS' is a list of items '("a"
+                     ;; "b""c")', so enclose the tag in double quotes
+                     ;; to ensure an exact match and add then the
+                     ;; wildcard
+                     (delve-query--quote-strings tag-list " AND TAGS LIKE " t))))))
 
 (defun delve-query-tags (&optional ids)
   "Return all tags as a sorted list of strings.
@@ -214,7 +239,9 @@ Optionally restrict to those nodes with an id in IDS."
   (delve-query-do-super-query
    (concat delve-query--super-query
            (format "HAVING todo=%s ORDER BY title"
-                   (delve-query--scalar-string todo-state)))))
+                   ;; Column 'TODO' is a list of items, so wrap
+                   ;; todo-state in double quotes to ensure an exact match
+                   (delve-query--quote-string todo-state nil t)))))
 
 (defun delve-query-nodes-by-id (id-list)
   "Return all nodes in ID-LIST sorted by the node's title."
@@ -222,7 +249,9 @@ Optionally restrict to those nodes with an id in IDS."
                  (delve-query-do-super-query
                   (concat delve-query--super-query
                           (format "HAVING id IN (%s) ORDER BY title"
-                                  (delve-query--scalar-strings id-list)))))))
+                                  ;; No need for SQL wildcards here;
+                                  ;; simple quoting is enough.
+                                  (delve-query--quote-strings id-list ", " nil)))))))
     (unless (eq (length nodes) (length id-list))
       ;; make sure inequality is not due to aliased nodes with same ID
       (when (-difference (-uniq (mapcar #'org-roam-node-id nodes))
@@ -234,7 +263,6 @@ Optionally restrict to those nodes with an id in IDS."
   "Return node with ID."
   (car (delve-query-nodes-by-id (list id))))
 
-;;; TODO Write tests
 (defun delve-query--ids-linking-to (id)
   "Get all ids linking to ID (backlinks)."
   (flatten-tree (delve-query [:select [ source ]
@@ -243,7 +271,6 @@ Optionally restrict to those nodes with an id in IDS."
                                       :and (= type "id")]
                              id)))
 
-;;; TODO Write tests
 (defun delve-query--ids-linking-from (id)
   "Get all ids linking from node ID (fromlinks)."
   (flatten-tree (delve-query [:select [ dest ]
@@ -275,6 +302,16 @@ If LIMIT is unspecified, return the last 10 modified nodes."
   (-take (or limit 10)
          (-sort (-on (-compose #'not #'time-less-p) #'org-roam-node-file-mtime)
                 (delve-query-node-list))))
+
+(defun delve-query-by-title (title)
+  "Get all nodes matching TITLE.
+TITLE will be passed to an SQL query using `LIKE'."
+  (delve-query-do-super-query
+   (concat delve-query--super-query
+           (format "HAVING title LIKE %s ESCAPE '/' ORDER BY title"
+                   ;; Field 'title' is not a list (like 'tags'), so we
+                   ;; don't need no double quotes here.
+                   (delve-query--quote-string title t nil)))))
 
 (provide 'delve-query)
 ;;; delve-query.el ends here
