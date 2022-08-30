@@ -31,7 +31,7 @@
 
 ;;; Code:
 
-;;(require 'buttercup)
+(require 'buttercup)
 (require 'org)
 (require 'org-roam)
 (require 'org-id)
@@ -45,6 +45,10 @@
   "Name of the directory for the note files to create the db.
 The path has to be relative to the directory from where this file
 is called or required, or the `load-path'.")
+
+(defun delve-test--print (s)
+  "Print S as a colorized string via buttercup."
+  (buttercup--print "* %s.\n" (buttercup-colorize s 'yellow)))
 
 (defun delve-test-orig-notes-dir ()
   "Return directory containing test note files."
@@ -134,16 +138,18 @@ This requires `delve-test-setup-db' to have been called."
                                 (file-name-as-directory new-dir)
                                 "org-roam.db"))
     ;;
-    (org-roam-db-sync)))
+    (org-roam-db-sync)
+    ;;
+    (delve-test--print "Set up new test database")))
 
 (defun delve-test-move-temp-db (target)
   "Move the DB from the test environment to directory TARGET."
   (unless delve-test-environment
     (error "Nothing to copy, no test environment"))
-  (with-temp-message (format "Moving temporary database to %s" target)
+  (delve-test--print (format "Moving temporary database to %s" target))
     (when (file-exists-p target)
       (delete-directory target t))
-    (rename-file org-roam-directory target t)))
+    (rename-file org-roam-directory target t))
 
 (defun delve-test-teardown-db (&optional dont-backup)
   "Close the temporary Org Roam DB and make a backup copy.
@@ -155,7 +161,8 @@ Do not make a backup of the database if DONT-BACKUP is non-nil."
                     (format-time-string "note-files-db-at-%H_%M_%S")
                     temporary-file-directory)))
       (delve-test-move-temp-db new-dir)))
-  (setq delve-test-environment nil))
+  (setq delve-test-environment nil)
+  (delve-test--print "Test database has been removed"))
 
 (provide 'delve-test-db-utils)
 ;;; delve-test-db-utils.el ends here

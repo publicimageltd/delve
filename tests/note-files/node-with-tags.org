@@ -4,6 +4,14 @@
 #+TITLE: Node with tags
 #+FILETAGS: :all:
 
+* TODO likewise                                                       :meaty:
+:PROPERTIES:
+:ID:       945ab3e8-4292-479c-89ec-ebef8d3539a9
+:END:
+
+This entry has a similar tag to "meat", but should not be matched when
+searching for "meat".
+
 * Pig :meat:
 :PROPERTIES:
 :ID:       41ce628a-9631-4f51-92a3-1476ac9d4a61

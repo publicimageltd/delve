@@ -6,6 +6,6 @@
 
 This file links to Big Note with an ID link.
 
-Here's the link: [[id:eeec8f05-927f-4c61-b39e-2fb8228cf484][Link to Big Note]].
+Here's the link: [[id:eeec8f05-927f-4c61-b39e-2fb8228cf484][Link to Big Note]]
 
 
