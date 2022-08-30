@@ -1370,7 +1370,7 @@ else insert it as a sublist below point."
   (interactive (list (delve--current-item-or-error 'delve--zettel) current-prefix-arg))
   (let* ((nodes   (delve-query-backlinks-by-id (delve--zettel-id zettel)))
          (stub    (delve--zettel-create-link-info delve--backlink-format zettel))
-         (zettels (delve--nodes-to-zettel nodes stub)))
+         (zettels (and nodes (delve--nodes-to-zettel nodes stub))))
     (or (delve--insert-or-select zettels select-target)
         (message "No backlinks"))))
 
@@ -1381,7 +1381,7 @@ else insert it as a sublist below point."
   (interactive (list (delve--current-item-or-error 'delve--zettel) current-prefix-arg))
   (let* ((nodes   (delve-query-fromlinks-by-id (delve--zettel-id zettel)))
          (stub    (delve--zettel-create-link-info delve--fromlink-format zettel))
-         (zettels (delve--nodes-to-zettel nodes stub)))
+         (zettels (and nodes (delve--nodes-to-zettel nodes stub))))
     (or (delve--insert-or-select zettels select-target)
         (message "No tolinks to this zettel node"))))
 
