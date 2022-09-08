@@ -137,7 +137,7 @@ existing collection.
 into files. To store a collection, save any =Delve= buffer with =M-x
 delve-save-buffer= (or =C-x s= from within a =Delve= buffer). To open a
 collection (visit it in a new buffer), respectively use =M-x
-delve-open-storage-file= (or =C-x f= from within a =Delve= buffer). To save
+delve-find-storage-file= (or =C-x f= from within a =Delve= buffer). To save
 a buffer which is already linked to a new file, use =M-x
 delve-write-buffer= (or =C-x w= from within a =Delve= buffer).
 
