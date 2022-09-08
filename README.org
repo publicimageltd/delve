@@ -454,6 +454,7 @@ This is a list of stuff I intend to add (soonish):
 
 ** Current
 
+ - In =Delve= buffers, remap `rename-buffer` to edit the collection's title
  - Add new Dashboard query '10 last modified nodes'
  - Add new Dashboard query 'TODO items'
  - Use hand-made =completing-read-multiple= (found in

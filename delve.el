@@ -1928,6 +1928,7 @@ To enable special Delve bookmark handling, set the local value of
     (define-key map [remap save-buffer]              #'delve-save-buffer)
     (define-key map [remap write-file]               #'delve-write-buffer)
     (define-key map [remap find-file]                #'delve-find-storage-file)
+    (define-key map [remap rename-buffer]            #'delve--key--edit-title)
     (define-key map (kbd "g")                        #'delve--key--sync)
     (define-key map (kbd "v")                        #'delve-compact-view-mode)
     ;; Any item:
