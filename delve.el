@@ -107,6 +107,11 @@ entries."
   :group 'delve
   :type 'boolean)
 
+(defcustom delve-last-modified-limit 20
+  "Number of items for the Dashboard query 'last modified'."
+  :group 'delve
+  :type 'integer)
+
 ;;; * Global Variables
 
 (defvar delve-version "0.9"
@@ -654,7 +659,8 @@ Return the buffer object."
 (defun delve--create-last-modified-query ()
   "Create an item searching for the 10 last modified nodes."
   (delve--query-create :info "Last modified nodes"
-                       :fn #'delve-query-last-modified))
+                       :fn (apply-partially #'delve-query-last-modified
+                                            delve-last-modified-limit)))
 
 (defun delve--create-todo-query ()
   "Create an item returning all nodes marked \"TODO\"."
@@ -1798,7 +1804,7 @@ BUF is not yet visiting any file, ask for a file name."
 
 ;; TODO Test if it works after introducing delve-storage-paths
 (defun delve-find-storage-file ()
-  "Visit a Delve storage file or create a new Delve buffer.
+  "Open a Delve storage file or create a new Delve buffer.
 If the user selects a non-storage file, pass to `find-file'."
   (interactive)
   (delve--set-storage-dir)
@@ -1844,6 +1850,38 @@ To enable special Delve bookmark handling, set the local value of
   `(,delve-local-header-info
     (filename . ,delve-local-storage-file)
     (handler . ,#'delve--bookmark-jump-handler)))
+
+;;; * Register Delve as Org Link Protocol
+
+(require 'ol)
+
+(defun delve-open-storage-file (path)
+  "Visit Delve collection in PATH."
+  (switch-to-buffer (delve--read-storage-file path))
+  (delve--set-storage-dir path))
+
+(defun delve--store-org-link ()
+  "Return a link to the current buffer suitable for Org Mode."
+  (when (and (memq major-mode '(delve-mode))
+             delve-local-storage-file)
+    (org-link-store-props
+     :type "delve"
+     :link (concat "delve:" delve-local-storage-file)
+     :description delve-local-header-info)))
+
+(defun delve--register-org-link ()
+  "Register Org Links to Delve collections."
+  (org-link-set-parameters "delve"
+                           :follow #'delve-open-storage-file
+                           :store  #'delve--store-org-link))
+
+(defun delve--unregister-org-link ()
+  "Unregister Org Links to Delve collections."
+  (setq org-link-parameters
+        (cl-delete "delve" org-link-parameters
+                   :key #'car :test #'string=)))
+
+
 
 ;;; * Delve Major Mode
 

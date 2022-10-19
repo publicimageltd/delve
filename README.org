@@ -439,6 +439,11 @@ Dashboard queries are built. E.g., with the setting =(setq
 delve-dashboard-tags '("relevant"))=; the Dashboard will have a query
 for all Delve nodes tagged with the tag =relevant=.
 
+: delve-last-modified-limit
+
+Number of nodes to be displayed in the pre-configured Dashboard query
+'last modified items'. Defaults to 20.
+
 * Upcoming 
 
 This is a list of stuff I intend to add (soonish):
@@ -454,8 +459,11 @@ This is a list of stuff I intend to add (soonish):
 
 ** Current
 
+
  - In =Delve= buffers, remap `rename-buffer` to edit the collection's title
- - Add new Dashboard query '10 last modified nodes'
+ - Add new Dashboard query 'last modified nodes' with customizable
+   variable =delve-last-modified-limit= to set the number of nodes to be
+   displayed.
  - Add new Dashboard query 'TODO items'
  - Use hand-made =completing-read-multiple= (found in
    https://github.com/emacs-citar/citar/compare/simple-crm) since
