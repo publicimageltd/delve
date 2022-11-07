@@ -73,7 +73,7 @@ OBJ must be an instance of `delve-transient-switches'."
          (n 0))
     (mapconcat (lambda (pretty-choice)
                  (cl-incf n)
-                 (propertize pretty-choice
+                 (propertize (or pretty-choice "")
                              'face (if (equal value (elt choices (1- n)))
                                        'transient-value
                                      'transient-inactive-value)))

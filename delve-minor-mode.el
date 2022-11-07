@@ -332,7 +332,7 @@ Return a list with the Ewoc list node and the containing buffer."
 (cl-defmethod transient-format-value ((obj delve-minor-mode--target-buffer-variable-class))
   "Display the value of OBJ as a  buffer variable."
   (let ((val (oref obj value)))
-    (when val
+    (when (and val (buffer-name (oref obj value)))
       (propertize (buffer-name (oref obj value))
               'face 'transient-value))))
 
