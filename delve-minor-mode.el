@@ -394,7 +394,7 @@ Return a list with the Ewoc list node and the containing buffer."
   "Local minor mode to collect org roam node via Delve."
   :lighter " DelveMM"
   :group 'delve
-  :keymap 'delve-minor-mode-map
+  :keymap delve-minor-mode-map
   :require 'delve)
 
 (defun delve--maybe-activate-minor-mode ()

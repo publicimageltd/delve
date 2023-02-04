@@ -112,6 +112,11 @@ entries."
   :group 'delve
   :type 'integer)
 
+(defcustom delve-compact-view-shows-node-path t
+  "If set, also show complete node path in compact view."
+  :group 'delve
+  :type 'boolean)
+
 ;;; * Global Variables
 
 (defvar delve-version "0.9"
@@ -333,13 +338,14 @@ LINK has to be a LINK element as returned by
      :link   link)))
 
 (defun delve--buttonize-link (link-plist)
-  "In current buffer, replace link LINK-PLIST with a button."
-  (let ((beg (plist-get link-plist :beg))
-        (end (plist-get link-plist :end))
-        (link  (plist-get link-plist :link))
-        (label (plist-get link-plist :label))
+  "In current buffer, replace link LINK-PLIST with a button.
+For the format of LINK-PLIST, see `delve--collect-link'."
+  (let ((beg    (plist-get link-plist :beg))
+        (end    (plist-get link-plist :end))
+        (link   (plist-get link-plist :link))
+        (label  (plist-get link-plist :label))
         (blanks (plist-get link-plist :blanks))
-        (id    (plist-get link-plist :id)))
+        (id     (plist-get link-plist :id)))
     (delete-region beg (- end (or blanks 1)))
     (goto-char beg)
     (insert-text-button
@@ -388,7 +394,19 @@ Return the prepared string."
          ;; Compact View - one line only::
          (if delve-local-compact-view
              (list
-              (delve-pp-fields zettel `(;; title:
+              (delve-pp-fields zettel `(;; path:
+                                        ((and delve-compact-view-shows-node-path
+                                              (> (delve--zettel-level it) 0)
+                                              (delve--zettel-filetitle it))
+                                         :format "%s/"
+                                         :add-face delve-path-face)
+                                        ((and delve-compact-view-shows-node-path
+                                              (> (delve--zettel-level it) 0)
+                                              (delve--zettel-olp it))
+                                           (string-join (delve--zettel-olp it) "/")
+                                         :format "%s/"
+                                         :add-face delve-path-face)
+                                        ;; title:
                                         ((or (delve--zettel-title it) "<No title>")
                                          :add-face delve-title-face)
                                         ;; tags:
