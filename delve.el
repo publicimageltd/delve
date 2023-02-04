@@ -1707,21 +1707,56 @@ region.  Only delete the item at point if no region is active and
 no items are marked.  If any of the deleted items has a sublist,
 decrease the indentation of its subitems."
   (interactive)
-  (let ((ewoc lister-local-ewoc))
+  (let (hidden-nodes (n-decreased 0)
+        (ewoc lister-local-ewoc))
     (delve--maybe-mark-region ewoc)
     ;; If there are no marked items, mark the item at point:
     (unless (lister-items-marked-p ewoc)
       (lister-mark-unmark-at ewoc :point t))
-    ;; Ask the user:
-    (if (not (y-or-n-p (format "Delete %s item(s)? " (lister-count-marked-items ewoc))))
-        (user-error "Canceled")
-      ;; Decrease any sublists:
-      (lister-walk-marked-nodes ewoc
-                                (lambda (ewoc node)
-                                  (lister-with-sublist-below ewoc node beg end
-                                    (lister-walk-nodes ewoc #'lister-move-item-left beg end))))
-      ;; Actually delete the items:
-      (lister-delete-marked-list ewoc))))
+    ;; Count marked and items hidden via outline:
+    (let ((n-marked 0) (n-hidden 0)
+          prompt)
+      (lister-dolist-nodes (ewoc node)
+        (when (lister-node-marked-p node)
+          (cl-incf n-marked)
+          (when (lister--outline-invisible-p ewoc node)
+            (cl-incf n-hidden))))
+      ;; Ask the user:
+      (cl-labels ((item-s (n) (if (eq n 1) "item" "items")))
+        (setq prompt (cond
+                      ((eq n-hidden 0)        (format "Delete %d %s?" n-marked (item-s n-marked)))
+                      ((eq n-hidden n-marked) (format "Delete %d hidden %s?" n-marked (item-s n-marked)))
+                      (t                      (format "Delete %d visible %s and %d hidden %s?"
+                                                      (- n-marked n-hidden)
+                                                      (item-s (- n-marked n-hidden))
+                                                      n-hidden
+                                                      (item-s n-hidden))))))
+      (if (not (y-or-n-p prompt))
+          (user-error "Canceled")
+        ;; Temporarily remove outline:
+        (lister-outline-show-all ewoc)
+        ;; Decrease any sublists:
+        (cl-labels ((move-and-count (ewoc pos)
+                                    (lister-move-item-left ewoc pos)
+                                    (cl-incf n-decreased)))
+        (lister-walk-marked-nodes ewoc
+                                  (lambda (ewoc node)
+                                    (lister-with-sublist-below ewoc node beg end
+                                      (lister-walk-nodes ewoc #'move-and-count beg end)))))
+        ;; Collect all hidden items
+        (setq hidden-nodes
+              (lister-collect-nodes ewoc nil nil
+                                    (apply-partially #'lister--outline-invisible-p ewoc)))
+        ;; Actually delete the items:
+        (lister-delete-marked-list ewoc)
+        ;; Re-hide what is still alive:
+        (cl-dolist (node hidden-nodes)
+          (and node
+               (lister--outline-hide-show ewoc node node t)))
+        ;; Show some info on buffer manipulations:
+        (if (and n-decreased (> n-decreased 0))
+            (message "Moved %d items to the left because their parent item has been deleted" n-decreased)
+          (message "Deleted %d items" n-marked))))))
 
 ;; * Storing and reading buffer lists in a file
 
