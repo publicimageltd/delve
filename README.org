@@ -444,6 +444,11 @@ for all Delve nodes tagged with the tag =relevant=.
 Number of nodes to be displayed in the pre-configured Dashboard query
 'last modified items'. Defaults to 20.
 
+: delve-compact-view-shows-node-path
+
+In compact view, show the complete path to the node if it is not a
+file node (that is, if it is a subtree). Defaults to =t=. 
+
 * Upcoming 
 
 This is a list of stuff I intend to add (soonish):
@@ -459,8 +464,8 @@ This is a list of stuff I intend to add (soonish):
 
 ** Current
 
-
- - In =Delve= buffers, remap `rename-buffer` to edit the collection's title
+ - Add option =delve-compact-view-shows-node-path=
+ - In =Delve= buffers, remap =rename-buffer= to edit the collection's title
  - Add new Dashboard query 'last modified nodes' with customizable
    variable =delve-last-modified-limit= to set the number of nodes to be
    displayed.
