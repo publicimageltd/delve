@@ -186,7 +186,11 @@ function (so-called 'mods').  In that latter case, a string can
 also be used instead of a function name, again making it a
 constant.
 
-For syntactic sugar, this mod list can be either added as an
+In the last variant `(fn mods)', the function name can be
+replaced by a s-expression which will be evaluated with the
+variable `it' bound to the object.
+
+For syntactic sugar, the mod list can be either added as an
 explicit additional cons cell like in \(accessor-fn .\(:prop
 arg\)\).  Alternatively, it can be a simple continuation of the
 list, like in \(accessor-fn :prop arg\).  See

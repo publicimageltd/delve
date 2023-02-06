@@ -395,17 +395,18 @@ Return the prepared string."
          (if delve-local-compact-view
              (list
               (delve-pp-fields zettel `(;; path:
-                                        ((and delve-compact-view-shows-node-path
-                                              (> (delve--zettel-level it) 0)
-                                              (delve--zettel-filetitle it))
+                                        ((when (and delve-compact-view-shows-node-path
+                                                    (> (delve--zettel-level it) 0))
+                                           (delve--zettel-filetitle it))
                                          :format "%s/"
                                          :add-face delve-path-face)
-                                        ((and delve-compact-view-shows-node-path
-                                              (> (delve--zettel-level it) 0)
-                                              (delve--zettel-olp it))
-                                           (string-join (delve--zettel-olp it) "/")
-                                         :format "%s/"
-                                         :add-face delve-path-face)
+                                        ;; NOTE Seems unnecessary.
+                                        ;; ((when (and delve-compact-view-shows-node-path
+                                        ;;             (> (delve--zettel-level it) 0)
+                                        ;;             (delve--zettel-olp it))
+                                        ;;    (string-join (delve--zettel-olp it) "/"))
+                                        ;;  :format "%s/"
+                                        ;;  :add-face delve-path-face)
                                         ;; title:
                                         ((or (delve--zettel-title it) "<No title>")
                                          :add-face delve-title-face)
@@ -976,7 +977,7 @@ one of the args is nil."
   (interactive (list (transient-args transient-current-command)))
   (when (equal args '(nil))
     (error "No arguments defined for sorting?"))
-  
+
   (let* ((plist (delve-transient--args-to-plist args))
          (sort1  (plist-get plist :sort1))
          (sort2  (plist-get plist :sort2))
@@ -1742,6 +1743,9 @@ decrease the indentation of its subitems."
         (lister-walk-marked-nodes ewoc
                                   (lambda (ewoc node)
                                     (lister-with-sublist-below ewoc node beg end
+                                      ;; TODO Replace with (cl-incf n
+                                      ;; (lister-walk-nodes...))
+                                      ;; once new version is online
                                       (lister-walk-nodes ewoc #'move-and-count beg end)))))
         ;; Collect all hidden items
         (setq hidden-nodes
