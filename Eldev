@@ -16,7 +16,7 @@
 (eldev-add-loading-roots 'test "tests/utils")
 
 ;; Avoid including archived files
-(setf eldev-standard-excludes (append eldev-standard-excludes '("./archive/**")))
+(setf eldev-standard-excludes `(:or ,eldev-standard-excludes '("./archive/**")))
 
 ;; Tell package lint where's the main data
 (setq package-lint-main-file "delve-pkg.el")
