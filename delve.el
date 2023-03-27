@@ -1968,7 +1968,7 @@ To enable special Delve bookmark handling, set the local value of
 
 ;; * Transient Commands
 
-(transient-define-prefix delve--node-transient-key
+(transient-define-prefix delve--node-transient-key ()
   "Transient for doing stuff with node(s)."
   [["Select and insert"
     ("n" "New node(s)"                      delve--key--insert-node)
