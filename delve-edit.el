@@ -27,17 +27,33 @@
 
 ;;; Code:
 
+(defmacro delve-edit--with-file (file point &rest body)
+  "Execute BODY with FILE as current buffer.
+Open FILE, move to POINT and execute BODY while preserving mark
+and point. Kill the buffer afterwards if it has not been visited
+yet.
+
+This is basically a wrapper around `org-roam-with-file', which
+see."
+  (declare (indent 2) (debug (sexp sexp body)))
+  `(org-roam-with-file ,file t
+     (save-mark-and-excursion
+       (goto-char ,point)
+       ,@body)))
+
 (defmacro delve-edit--with-zettel-node (zettel &rest body)
   "Execute BODY with point at ZETTEL's node."
   (declare (indent 1) (debug (sexp body)))
-  (let ((file-var (make-symbol "--file--")))
-    `(let ((,file-var (delve--zettel-file ,zettel)))
+  (let ((file-var (make-symbol "--file--"))
+        (point-var (make-symbol "--point--")))
+    `(let ((,file-var (delve--zettel-file ,zettel))
+           (,point-var (delve--zettel-point ,zettel)))
        (unless ,file-var
-         (user-error "Zettel does not have corresponding file"))
-       (org-roam-with-file ,file-var t
-         (save-mark-and-excursion
-           (goto-char (delve--zettel-point ,zettel))
-           ,@body)))))
+         (error "Zettel does not have corresponding file"))
+       (unless ,point-var
+         (error "Zettel has no associated position"))
+       (delve-edit--with-file ,file-var ,point-var
+         ,@body))))
 
 (defun delve-edit--add-tags (zettels &optional tags)
   "Add TAGS to all nodes in ZETTELS.
