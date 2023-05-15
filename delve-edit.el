@@ -67,31 +67,6 @@ zettel."
       (delve-edit--with-zettel-node zettel
         (org-roam-tag-add tags)))))
 
-(defun delve-edit--file-tags ()
-  "Get all filetags from the current Org mode buffer."
-  (split-string
-   (or (cadar (org-collect-keywords '("filetags"))) "")
-   ":" :omit-nulls))
-
-(defun delve-edit--heading-tags ()
-  "Get all tags from the current Org mode heading."
-  (mapcar #'substring-no-properties (org-get-tags)))
-
-(defun delve-edit--do-remove-tags (tags)
-  "Remove TAGS from the node at point."
-  (if (= (org-outline-level) 0)
-      ;; file node
-      (let* ((file-tags (delve-edit--file-tags))
-             (new-tags  (seq-difference file-tags tags #'string=)))
-        (if new-tags
-            (org-roam-set-keyword "filetags"
-                                  (org-make-tag-string new-tags))
-          (org-roam-erase-keyword "filetags")))
-    ;; heading node
-    (let* ((current-tags (delve-edit--heading-tags))
-           (new-tags     (seq-difference current-tags tags #'string=)))
-      (org-set-tags new-tags))))
-
 (defun delve-edit--remove-tags (zettels &optional tags)
   "Remove TAGS from all nodes in ZETTELS.
 If TAGS is nil, ask the user."
@@ -101,7 +76,7 @@ If TAGS is nil, ask the user."
                                                   (delve-query-tags (mapcar #'delve--zettel-id zettels))))))
     (cl-dolist (zettel zettels)
       (delve-edit--with-zettel-node zettel
-        (delve-edit--do-remove-tags tags)))))
+        (org-roam-tag-remove tags)))))
 
 (provide 'delve-edit)
 ;;; delve-edit.el ends here
