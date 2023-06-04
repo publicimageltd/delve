@@ -22,6 +22,13 @@
 ;; Tests for remote editing Org files.
 
 ;;; Code:
+(require 'buttercup)
+(require 'delve-test-db-utils)
+(require 'delve-edit)
+
+;; Test the org-roam-functions
+;; org-roam-tag-{remove,add} directly in-buffer
+;; (delve-edit-with-file nil ...)
 
 
 
