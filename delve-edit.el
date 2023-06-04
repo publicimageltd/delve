@@ -55,6 +55,7 @@ see."
        (delve-edit--with-file ,file-var ,point-var
          ,@body))))
 
+;; TODO Use `interactive` instead of optional nil
 (defun delve-edit--add-tags (zettels &optional tags)
   "Add TAGS to all nodes in ZETTELS.
 ZETTELS must be a zettel object or a list of zettel objects.  If
