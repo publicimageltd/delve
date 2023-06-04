@@ -400,19 +400,17 @@ Return a list with the Ewoc list node and the containing buffer."
 (defun delve--maybe-activate-minor-mode ()
   "Turn on delve minor mode if current buffer is in Org Roam."
   (interactive)
-  (when (and (buffer-file-name)
-             (org-roam-file-p))
+  (when (delve--org-roam-buffer-p)
     (delve-minor-mode +1)))
 
 (defun delve-minor-mode--mass-activate (&optional deactivate)
   "Activate or deactivate Delve minor mode in all Org Roam buffers.
 Activate the mode unless DEACTIVATE is non-nil."
-  (mapcar (lambda (buf)
-            (with-current-buffer buf
-              (when (and (buffer-file-name)
-                         (org-roam-file-p))
-                (delve-minor-mode (if deactivate -1 +1)))))
-          (buffer-list)))
+  (when-let ((bufs (-filter #'delve--org-roam-buffer-p (buffer-list))))
+    (let ((mode (if deactivate -1 +1)))
+      (seq-doseq (buf bufs)
+        (with-current-buffer buf
+          (delve-minor-mode mode))))))
 
 ;;;###autoload
 (define-minor-mode delve-global-minor-mode

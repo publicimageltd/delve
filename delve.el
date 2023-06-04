@@ -239,7 +239,7 @@ entries."
   "Face for displaying the title of a Delve query."
   :group 'delve-faces)
 
-;;; * Assertions
+;;; * Assertions and Buffer Predicates
 
 (defun delve--assert-buf (&optional buf-or-ewoc error-msg)
   "Cancel if BUF-OR-EWOC does not belong to a Delve buffer with an Ewoc.
@@ -258,6 +258,16 @@ optionally use ERROR-MSG."
              (not (null (buffer-local-value 'lister-local-ewoc buf))))
         (error (or error-msg "Function has to be called in a Delve buffer")))))
 
+
+;; TODO write test
+(defun delve--org-roam-buffer-p (&optional buf)
+  "Check if BUF is a valid Org Roam buffer.
+Recognize those buffers which are both in Org Roam Mode and are
+actually written, so that its contents are likely to be available
+in the DB. BUF defaults to the current buffer."
+  (with-current-buffer (or buf (current-buffer))
+    (and (buffer-file-name)
+         (org-roam-file-p))))
 
 ;;; * The Lister Mapper
 
