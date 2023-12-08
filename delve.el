@@ -1246,7 +1246,7 @@ Optional argument PREFIX is currently not used."
 Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item-or-marked 'delve--zettel)))
   (ignore prefix)
-  (delve-edit--remove-tags zettels)
+  (delve-edit--prompt-remove-tags zettels)
   (delve--taint-and-refresh-marked-nodes lister-local-ewoc)
   (message "Edited %d nodes" (length zettels)))
 

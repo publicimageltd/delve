@@ -66,13 +66,13 @@ ZETTELS must be a zettel object or a list of zettel objects."
       (delve-edit--with-zettel-node zettel
         (org-roam-tag-add tags)))))
 
-(defun delve-edit--remove-tags (zettels &optional tags)
-  "Remove TAGS from all nodes in ZETTELS.
-If TAGS is nil, ask the user."
+(defun delve-edit--prompt-remove-tags (zettels)
+  "Prompt user to remove tags from ZETTELS.
+ZETTELS must be a zettel object or a list of zettel objects."
   (let* ((org-use-tag-inheritance nil)
          (zettels (-list zettels))
-         (tags (or tags (completing-read-multiple "Remove tag(s): "
-                                                  (delve-query-tags (mapcar #'delve--zettel-id zettels))))))
+         (tags (completing-read-multiple "Remove tag(s): "
+                                         (delve-query-tags (-map #'delve--zettel-id zettels)))))
     (cl-dolist (zettel zettels)
       (delve-edit--with-zettel-node zettel
         (org-roam-tag-remove tags)))))
