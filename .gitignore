@@ -6,3 +6,7 @@
 /.eldev
 /Eldev-local
 /archive/
+*~
+/tests/init/transient/
+/tests/init/org-roam.db
+/tests/init/.org-id-locations
