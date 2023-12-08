@@ -71,6 +71,18 @@ Each element can be a tag or a list of tags."
   :type '(repeat (choice (string :tag "Tag")
                          (repeat (string :tag "Tags")))))
 
+(defcustom delve-dashboard-queries (list #'delve--create-todo-query
+                                         #'delve--create-unlinked-query
+                                         #'delve--create-last-modified-query)
+  "Additional non-tag queries for the initial Dashboard.
+A list of functions which each returns a `delve--query'
+struct (which see). If nil, do not add any non-tag queries to the
+Dashboard."
+  :group 'delve
+  :type '(choice
+          (const :tag "No additional queries" nil)
+          (repeat function)))
+
 (defcustom delve-storage-paths (concat (file-name-directory user-emacs-directory)
                                          "delve-store")
   "Paths to for default directories to store Delve buffers in.
@@ -136,6 +148,7 @@ entries."
 
 (defvar delve--last-storage-dir nil
   "Directory from last used storage file.")
+
 
 ;; * Buffer Local Variables
 
@@ -691,12 +704,9 @@ Return the buffer object."
   "Return a new Delve dashboard buffer."
   (with-temp-message "Setting up dashboard..."
     (let* ((tag-queries (--map (delve--create-tag-query (-list it)) delve-dashboard-tags))
-           ;; these are the actual items / queries which will populate the dashboard:
-           (items       (list  (delve--create-todo-query)
-                               tag-queries
-                               (delve--create-unlinked-query)
-                               (delve--create-last-modified-query)))
-           (buf         (delve--new-buffer delve-dashboard-name (flatten-tree items))))
+           (non-tag-queries (-flatten (-map #'funcall delve-dashboard-queries)))
+           (items (append tag-queries non-tag-queries))
+           (buf (delve--new-buffer delve-dashboard-name items)))
       (lister-goto (lister-get-ewoc buf) :first)
       buf)))
 
