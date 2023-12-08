@@ -429,6 +429,3 @@ Activate the mode unless DEACTIVATE is non-nil."
 
 (provide 'delve-minor-mode)
 ;;; delve-minor-mode.el ends here
-;; Local Variables:
-;; eval: (add-to-list 'load-path (file-name-directory (buffer-file-name)))
-;; End:
