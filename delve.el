@@ -108,7 +108,7 @@ entries."
   :type 'boolean)
 
 (defcustom delve-last-modified-limit 20
-  "Number of items for the Dashboard query 'last modified'."
+  "Number of items for the Dashboard query \\='last modified\\='."
   :group 'delve
   :type 'integer)
 
@@ -841,13 +841,17 @@ SLOT-FN.  Optionally pass the slot value through MAP-FN before
 using it for sorting."
   (-on sort-fn (-compose (or map-fn #'identity) slot-fn)))
 
-(cl-defstruct (delve-dual-cmp (:constructor delve-dual-cmp--create))
+(cl-defstruct (delve-dual-cmp
+               (:constructor delve-dual-cmp--create))
   "Structure holding two comparator functions for sorting in
 ascending and descending order, and a description of the sorting
 criterion for the user."
   comp-asc comp-desc
   criterion-name ascending-name descending-name)
 
+;; FIXME Since the predicates for sorting are just the reverse from
+;;       each other, maybe just use one and construct the other on
+;;       on the fly (being nothing but '(not (fn ....)))
 (defmacro delve--build-dual-cmp (name criterion-name
                                       sort-fn-asc ascending-name
                                       sort-fn-desc descending-name
@@ -857,16 +861,22 @@ criterion for the user."
 A dual comperator object holds two comparator functions.  NAME is
 the name of the variable which holds the comperator object.
 
-CRITERION-NAME is a telling description of the sorting criterion
-for the user (e.g. 'title').
+CRITERION-NAME is a description of the sorting criterion for the
+user (e.g. \"title\"). It will be used for constructing a user
+interface where the user can select this criterion.
 
-SORT-FN-ASC sort is responsible for sorting in ascending order
-and SORT-FN-DESC for the other direction.  ASCENDING-NAME and
-DESCENDING-NAME give a user readable description of the sorting
-result, e.g. 'from A to Z'.
+SORT-FN-ASC and SORT-FN-DESC are predicates used for sorting in
+ascending or in descending order, respectively. For ascending
+order, the predicate should return non-nil if the first element
+is \"less\" than the second, or nil if not; for descending order,
+the reverse holds.
 
-For the meaning of
-SLOT-FN and MAP-FN, see `delve--cmp-fn'."
+ASCENDING-NAME and DESCENDING-NAME give a user readable
+description of the sorting result, e.g. \"from A to Z\".
+
+SLOT-FN will be used to access the value, e.g.
+`delve--zettel-tags'. Optionally pass the slot value through
+MAP-FN before using it for sorting, e.g. `length'."
   (declare (indent 1))
   `(defvar ,name
      (delve-dual-cmp--create :comp-asc (delve--cmp-fn ,sort-fn-asc ,slot-fn ,map-fn)
@@ -874,7 +884,7 @@ SLOT-FN and MAP-FN, see `delve--cmp-fn'."
                              :criterion-name ,criterion-name
                              :ascending-name ,ascending-name
                              :descending-name ,descending-name)
-     ,(concat "Structure holding a dual comporator to sort by " (downcase criterion-name))))
+     ,(concat "Structure holding a dual comporator to sort Zettel structs by " (downcase criterion-name))))
 
 ;; * Define the comparators for sorting
 
@@ -1014,7 +1024,7 @@ one of the args is nil."
   (message "Value: %S" (transient-get-value)))
 
 (transient-define-prefix delve--key--sort ()
-  "Sort"
+  "Sort."
   [["First sorting criterion"
     ("s" "Sort by" "--sort1="
      :class delve--transient-cmp-switches
