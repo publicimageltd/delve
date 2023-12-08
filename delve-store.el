@@ -1,6 +1,6 @@
 ;;; delve-store.el --- file i/o for the Delve tool  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021
+;; Copyright (C) 2021-2023
 
 ;; Author:  <joerg@joergvolbers.de>
 ;; Keywords: files

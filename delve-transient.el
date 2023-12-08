@@ -1,6 +1,6 @@
 ;;; delve-transient.el --- transient keymaps for Delve  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021
+;; Copyright (C) 2021-2023
 
 ;; Author:  <joerg@joergvolbers.de>
 ;;

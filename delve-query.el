@@ -1,6 +1,6 @@
 ;;; delve-query.el --- Delve queries for the Org Roam database  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021
+;; Copyright (C) 2021-2023
 
 ;; Author:  <joerg@joergvolbers.de>
 

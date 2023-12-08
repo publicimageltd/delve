@@ -1,6 +1,6 @@
 ;;; delve-data-types.el --- Data Types for the Delve Program  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021
+;; Copyright (C) 2021-2023
 
 ;; Author:  <joerg@joergvolbers.de>
 

@@ -1,6 +1,6 @@
 ;;; delve-crm.el --- completing read multiple for Delve nodes  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2022
+;; Copyright (C) 2022-2023
 
 ;; Author:  <joerg@joergvolbers.de>
 ;; Keywords:

@@ -1,6 +1,6 @@
 ;;; delve-pp.el --- Pretty printer for delve         -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021
+;; Copyright (C) 2021-2023
 
 ;; This file is part of Delve.
 

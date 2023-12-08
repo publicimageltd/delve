@@ -1,6 +1,6 @@
 ;;; delve-export-test.el --- Tests for the export module  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021
+;; Copyright (C) 2021-2023
 
 ;; Author:  <joerg@joergvolbers.de>
 

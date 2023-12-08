@@ -1,6 +1,6 @@
 ;;; delve.el --- Delve into the depths of your Org Roam zettelkasten       -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020-2021
+;; Copyright (C) 2020-2023
 
 ;; Author:  <joerg@joergvolbers.de>
 

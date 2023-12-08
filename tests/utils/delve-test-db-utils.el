@@ -1,6 +1,6 @@
 ;;; delve-test-db-utils.el ---  Helpers for testing delve -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021
+;; Copyright (C) 2021-2023
 
 ;; Author:  Jörg Volbers <joerg@joergvolbers.de>
 
