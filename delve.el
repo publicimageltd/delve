@@ -676,7 +676,7 @@ Return the buffer object."
       (current-buffer))))
 
 (defun delve--create-tag-query (tags)
-  "Create an item searching for nodes matching TAGS."
+  "Create a Query list item searching for nodes matching TAGS."
   (let* ((tags (-list tags)))
     (delve--query-create :info (format "Query for nodes matching %s"
                                        (delve--string-join tags " and " "#"))
@@ -684,18 +684,18 @@ Return the buffer object."
                                (delve-query-nodes-by-tags tags)))))
 
 (defun delve--create-unlinked-query ()
-  "Create an item searching for unlinked nodes."
+  "Create a Query list item searching for unlinked nodes."
   (delve--query-create :info "Unlinked nodes"
                        :fn #'delve-query-unlinked))
 
 (defun delve--create-last-modified-query ()
-  "Create an item searching for the 10 last modified nodes."
+  "Create a Query list item searching for the 10 last modified nodes."
   (delve--query-create :info "Last modified nodes"
                        :fn (apply-partially #'delve-query-last-modified
                                             delve-last-modified-limit)))
 
 (defun delve--create-todo-query ()
-  "Create an item returning all nodes marked \"TODO\"."
+  "Create a Query list item returning all nodes marked \"TODO\"."
   (delve--query-create :info "Nodes marked 'TODO'"
                        :fn (lambda ()
                              (delve-query-nodes-by-todo "TODO"))))
