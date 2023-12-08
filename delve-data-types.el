@@ -28,20 +28,24 @@
 ;;; * Data Types
 
 ;; Each list item has to be derived from this unspecific structure:
-(cl-defstruct (delve--item (:constructor delve--item-create))
+(cl-defstruct (delve--item
+               (:constructor delve--item-create))
   "A generic single delve list item.")
 
-(cl-defstruct (delve--note (:include delve--item)
-                           (:constructor delve--note-create))
+(cl-defstruct (delve--note
+               (:include delve--item)
+               (:constructor delve--note-create))
   "A note item for free text."
   text)
 
-(cl-defstruct (delve--heading (:include delve--note)
-                              (:constructor delve--heading-create))
+(cl-defstruct (delve--heading
+               (:include delve--note)
+               (:constructor delve--heading-create))
   "A heading.")
 
-(cl-defstruct (delve--info (:include delve--note)
-                           (:constructor delve--info-create))
+(cl-defstruct (delve--info
+               (:include delve--note)
+               (:constructor delve--info-create))
   "A text item for information to the user.")
 
 (cl-defstruct (delve--zettel
@@ -73,14 +77,14 @@ SLOT-NAME must be the name of a slot of an org-roam-node.  Give
 (delve-data-types--zettel--accessor-fn delve--zettel-atime   'file-atime)
 
 (cl-defstruct (delve--pile
-            (:include delve--item)
-            (:constructor delve--pile-create))
+               (:include delve--item)
+               (:constructor delve--pile-create))
   "A pile (list) of Zettels."
   name zettels)
 
 (cl-defstruct (delve--query
-            (:include delve--item)
-            (:constructor delve--query-create))
+               (:include delve--item)
+               (:constructor delve--query-create))
   "A query returning Delve objects."
   info fn)
 
