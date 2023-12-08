@@ -39,16 +39,9 @@ function to automate that; see [[#storing-collections-in-files][this section]].
  
 * State of Development
 
-The present version is a complete rewrite in response to =Org Roam=
-fundamentally changing its internal structure when migrating from =v1=
-to =v2=. It has grown much more than its author has expected. Please
-file an issue if there are functionalities you miss or if you find an
-error. Also feel free to discuss conceptual issues. 
-
 Presently, development is mostly aiming at stabilizing the current
 basic set of features and covering the present functionality with
-automated tests. There are also plans for a closer integration with
-[[https://github.com/org-roam/org-roam-ui][org-roam-ui]]. Further plans are to add some export options.
+automated tests.
 
 * Feature List
 
@@ -449,21 +442,45 @@ Number of nodes to be displayed in the pre-configured Dashboard query
 In compact view, show the complete path to the node if it is not a
 file node (that is, if it is a subtree). Defaults to =t=. 
 
-* Upcoming 
+* Testing Delve
 
-This is a list of stuff I intend to add (soonish):
+=Delve= uses the excellent [[https://github.com/emacs-eldev/eldev][Eldev]] for development. There is a =tests/=
+directory with tests. To run the automated tests, use:
 
- - +Save all stores with suffix '.delve'.+
- - +Do not restrict storage to one directory; use list of directories instead.+
- - +Remote editing on all marked lists.+
- - Make minor mode collection functions also work in org roam mode buffer.
- - +Add 'modified' flag and show it in the header.+
- - +Add sorting according to title and mtime.+
+#+begin_src bash
+eldev test
+#+end_src
+
+Not eveything is covered by the tests. In particular interactive stuff
+is tested 'manually' (that is, not at all). For interactive testing,
+the repository ships with a live environment which does not interfere
+with your own local =Emacs= setup. From the root directory of the
+repository, just call:
+
+#+begin_src bash
+bin/test-emacs 
+#+end_src
+
+The script will upgrade the dependencies in an isolated environment
+and then start a new =Emacs= instance with only =Delve=, =Org Roam= and some
+basic packages for completion installed.
+
+If you want to have nice icons in the live environment, you will have
+to manually install the icons on your system using =M-x
+all-the-icons-install-fonts= from within the testing =Emacs= instance.
+Note that these icons are installed system-wide and are not restricted
+to the test environment. In general, however, this should not be a
+problem, since all this command does is to install the fonts and to
+update the font cache.
+
+The testing enviroment provides a small non-sense Zettelkasten to
+browse with =Delve=, with links, tags, and all.
 
 * Changelog
 
 ** Current
 
+ - Provide a live environment for testing
  - Add option =delve-compact-view-shows-node-path=
  - In =Delve= buffers, remap =rename-buffer= to edit the collection's title
  - Add new Dashboard query 'last modified nodes' with customizable
