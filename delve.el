@@ -252,6 +252,18 @@ entries."
   "Face for displaying the title of a Delve query."
   :group 'delve-faces)
 
+;;; * Utility functions for debugging in live environment
+
+(defun delve-reload ()
+  "Reload Delve."
+  (interactive)
+  (when (y-or-n-p "Reload Delve? ")
+    (when (featurep 'delve-minor-mode)
+      (unload-feature 'delve-minor-mode t))
+    (unload-feature 'delve t)
+    (require 'delve)
+    (message "Loaded Delve version %s" delve-version)))
+
 ;;; * Assertions
 
 (defun delve--assert-buf (&optional buf-or-ewoc error-msg)

@@ -1,0 +1,14 @@
+:PROPERTIES:
+:ID:       dc5fa589-3fde-48a3-99a5-a5ec058a03ac
+:END:
+#+TITLE: Some Notes on this Zettelkasten
+#+FILETAGS: :notes:
+
+* TODO This could become a documentation :idea:
+:PROPERTIES:
+:ID:       10460ecb-cb0b-4dde-9c76-517f3e148753
+:END:
+
+Serious thought: This Zettelkasten could become a documentation. After
+all, it is included in the Repository anyways.
+

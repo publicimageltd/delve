@@ -2,9 +2,13 @@
 
 (setq org-roam-v2-ack t)
 
-;; Add with-simulated-input as development tool
-(push '(with-simulated-input :archive melpa) eldev-known-tool-packages)
-(eldev-add-extra-dependencies 'test 'with-simulated-input)
+;; Extra dependencies for starting Emacs in its own environment
+;; to "live-test" the package:
+(cl-dolist (package-name '(all-the-icons ;; for the icons
+                           marginalia    ;; for nicer completion
+                           orderless     ;; for nicer completion
+                           vertico))     ;; for nicer completion
+  (eldev-add-extra-dependencies 'emacs package-name))
 
 ;; Uncomment some calls below as needed for your project.
 ;(eldev-use-package-archive 'gnu)

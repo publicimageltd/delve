@@ -1,0 +1,38 @@
+:PROPERTIES:
+:ID:       b484506b-d6a8-4bf1-b0ca-7e67d09a7ffb
+:END:
+#+TITLE: Important concepts
+#+FILETAGS: :overview:
+
+* Data :concept:
+:PROPERTIES:
+:ID:       31544722-dd81-43d0-9221-4163432fac15
+:END:
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
+nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
+sed diam voluptua. 
+
+* Code :concept:
+:PROPERTIES:
+:ID:       b750ffb0-c0cc-464f-94a1-99c33d84e6d3
+:END:
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
+nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
+sed diam voluptua. 
+
+* Data is Code :concept:
+:PROPERTIES:
+:ID:       5acd6c2b-6007-4547-8907-066168882930
+:END:
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
+nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
+sed diam voluptua.
+
+We add links to some other concepts!
+
+So here is the link to [[id:12ebf0b7-d37a-4ff5-bc12-155f688b7b3b][form]].
+
+And here is the link to [[id:31544722-dd81-43d0-9221-4163432fac15][data]].

@@ -1,0 +1,11 @@
+#!/usr/bin/bash
+
+self='bin/emacs'
+init_dir='tests/init'
+
+[[ ${0} != 'bin/test-emacs' ]] && (echo "Script has to be called from the repository's root directory"; exit 1)
+
+echo 'Checking dependencies'
+eldev upgrade
+echo 'Starting Emacs in test environment'
+eldev emacs -- --init-directory "${init_dir}" &

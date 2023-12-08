@@ -1,0 +1,44 @@
+:PROPERTIES:
+:ID:       12ebf0b7-d37a-4ff5-bc12-155f688b7b3b
+:END:
+#+TITLE: Form
+#+FILETAGS: :concept:
+
+* Form :definition:
+:PROPERTIES:
+:ID:       c36e4800-cb93-49ec-bc8f-f26688ff1313
+:END:
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
+nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
+sed diam voluptua.  (Definitions have to be short.)
+
+* Some ideas on form :ideas:
+:PROPERTIES:
+:ID:       df5f951c-8388-4d0f-b0cf-34a047c256dd
+:END:
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
+nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
+sed diam voluptua. At vero eos et accusam et justo duo dolores et ea
+rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem
+ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur
+sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et
+dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam
+et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea
+takimata sanctus est Lorem ipsum dolor sit amet.
+
+* TODO Form and content in LISPs   :wip:
+:PROPERTIES:
+:ID:       b03ced40-669c-491c-87af-f7b1c99d1343
+:END:
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
+nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
+sed diam voluptua. At vero eos et accusam et justo duo dolores et ea
+rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem
+ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur
+sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et
+dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam
+et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea
+takimata sanctus est Lorem ipsum dolor sit amet.
