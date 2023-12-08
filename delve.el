@@ -1215,7 +1215,6 @@ If no region is active, do nothing."
                                      (region-end)
                                      t)))
 
-;; TODO Use handmade crm now since consult-crm is deprecated
 (defun delve--select-nodes (nodes-or-node-fn prompt)
   "Let the user select multiple nodes from NODES-OR-NODE-FN.
 NODES-OR-NODE-FN can be either a list of nodes or a function
