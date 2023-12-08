@@ -131,7 +131,7 @@ entries."
 
 ;;; * Global Variables
 
-(defvar delve-version "0.9"
+(defvar delve-version "0.9.4-dev"
   "Current version of delve.")
 
 (defvar delve--no-icons nil
