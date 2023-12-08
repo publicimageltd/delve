@@ -1361,8 +1361,6 @@ Option ARG is currently ignored."
         (delve--yank-handler yank)
       (user-error "Current kill is not a Delve object; cannot yank"))))
 
-;; (current-kill 0)
-
 ;; * Insert backlinks and fromlinks in slot `info'
 
 (defvar delve--backlink-format "Backlink to %s"
