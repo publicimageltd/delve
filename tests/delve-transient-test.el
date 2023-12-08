@@ -23,7 +23,6 @@
 ;; Test transients.
 
 ;;; Code:
-;;(require 'with-simulated-input)
 (require 'buttercup)
 (require 'delve-transient)
 (require 'cl-lib)
