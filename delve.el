@@ -1237,7 +1237,7 @@ passed to completing read."
 Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item-or-marked 'delve--zettel)))
   (ignore prefix)
-  (delve-edit--add-tags zettels)
+  (delve-edit--prompt-add-tags zettels)
   (delve--taint-and-refresh-marked-nodes lister-local-ewoc)
   (message "Edited %d nodes" (length zettels)))
 

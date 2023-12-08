@@ -55,15 +55,13 @@ see."
        (delve-edit--with-file ,file-var ,point-var
          ,@body))))
 
-;; TODO Use `interactive` instead of optional nil
-(defun delve-edit--add-tags (zettels &optional tags)
-  "Add TAGS to all nodes in ZETTELS.
-ZETTELS must be a zettel object or a list of zettel objects.  If
-TAGS is nil, ask the user first.  Add all TAGS to each
-zettel."
+(defun delve-edit--prompt-add-tags (zettels)
+  "Prompt user to add tags to ZETTELS.
+ZETTELS must be a zettel object or a list of zettel objects."
   (let ((org-use-tag-inheritance nil)
         (zettels (-list zettels))
-        (tags    (or tags (completing-read-multiple "Add tag(s): " (org-roam-tag-completions)))))
+        (tags    (completing-read-multiple "Add tag(s): "
+                                           (org-roam-tag-completions))))
     (cl-dolist (zettel zettels)
       (delve-edit--with-zettel-node zettel
         (org-roam-tag-add tags)))))
