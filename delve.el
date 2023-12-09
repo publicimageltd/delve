@@ -714,13 +714,16 @@ Return the buffer object."
                        :fn (lambda ()
                              (delve-query-nodes-by-todo "TODO"))))
 
+(defun delve--dashboard-queries ()
+  "Return a list of all dashboard Query items."
+  (let* ((tag-queries (--map (delve--create-tag-query (-list it)) delve-dashboard-tags))
+         (non-tag-queries (-flatten (-map #'funcall delve-dashboard-queries))))
+    (append tag-queries non-tag-queries)))
+
 (defun delve--new-dashboard ()
   "Return a new Delve dashboard buffer."
   (with-temp-message "Setting up dashboard..."
-    (let* ((tag-queries (--map (delve--create-tag-query (-list it)) delve-dashboard-tags))
-           (non-tag-queries (-flatten (-map #'funcall delve-dashboard-queries)))
-           (items (append tag-queries non-tag-queries))
-           (buf (delve--new-buffer delve-dashboard-name items)))
+    (let ((buf (delve--new-buffer delve-dashboard-name (delve--dashboard-queries))))
       (lister-goto (lister-get-ewoc buf) :first)
       buf)))
 
