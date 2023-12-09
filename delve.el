@@ -257,7 +257,9 @@ entries."
 (defun delve-reload ()
   "Reload Delve."
   (interactive)
-  (when (y-or-n-p "Reload Delve? ")
+  (when (y-or-n-p "This will close all existing Delve buffers. Reload Delve? ")
+    (let ((kill-buffer-query-functions nil))
+      (-each (delve-buffer-list) #'kill-buffer))
     (when (featurep 'delve-minor-mode)
       (unload-feature 'delve-minor-mode t))
     (unload-feature 'delve t)
