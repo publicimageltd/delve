@@ -1583,30 +1583,83 @@ With PREFIX, expand all hidden subtrees in the EWOC's buffer."
 
 ;; Force refresh
 
-(defun delve--key--sync (ewoc &optional prefix)
-  "In EWOC, sync all zettel out of sync with the Org Roam database.
+(defun delve--zettel-equal-id (z1 z2)
+  "Check if Zettel Z1 and Z2 share the same Org Roam Node ID."
+  (equal (delve--zettel-id z1) (delve--zettel-id z2)))
+
+(defun delve--update-queries (ewoc)
+  "Update all queries in the current EWOC buffer.
+Return the count of the inserted nodes."
+  (let ((count 0))
+    (lister-dolist (ewoc data :first :last node)
+      (when (and (delve--query-p data)
+                 (lister-sublist-below-p ewoc node))
+        (let* ((queried-zettels (-> (funcall (delve--query-fn data))
+                                    (delve--nodes-to-zettel)))
+               ;; FIXME It is not clear why we need to flatten the
+               ;; sublist. There might be a bug hiding here.
+               (existing-zettels (lister--flatten (lister-get-sublist-below ewoc node)))
+               (-compare-fn #'delve--zettel-equal-id)
+               (diff (-difference queried-zettels existing-zettels)))
+          (when diff
+            (lister-insert-sublist-below ewoc node diff)
+            (setq count (+ count (length diff)))))))
+    count))
+
+;; TODO Check function in live environment
+(defun delve--sync-items (ewoc &optional prefix)
+  "Update the Org Roam DB and sync all items.
 With PREFIX, force sync all marked zettel or, if none is marked,
-the zettel at point."
+the zettel at point.
+
+EWOC is the buffer's list object.
+
+Return the number of nodes synced."
   (interactive (list lister-local-ewoc current-prefix-arg))
-  (when prefix
-    (delve--current-item-or-marked 'delve--zettel))
-  (let ((nodes (lister-collect-nodes ewoc
-                                     :first :last
-                                     (if prefix
-                                         #'lister-node-marked-and-visible-p
-                                       #'delve--out-of-sync-p))))
-    (unless nodes
-      (error (if prefix
-                 "Cannot sync items; no items marked"
-               "Cannot sync items; no items out of sync.  Maybe use prefix arg to force resyncing")))
-    (delve--sync-zettel (-map #'lister-node-get-data nodes))
-    (lister-save-current-node ewoc
-      (let ((n 0))
-        (cl-dolist (node nodes)
-          (cl-incf n)
-          (lister-mark-unmark-at ewoc node nil)
-          (lister-refresh-at ewoc node))
-        (message "Redisplayed %d nodes" n)))))
+  (let* ((n 0)
+         (check-items (if prefix
+                          (delve--current-item-or-marked 'delve--zettel)
+                        t)))
+    (when check-items
+      (when-let ((nodes (lister-collect-nodes ewoc :first :last
+                                              (if prefix
+                                                  #'lister-node-marked-and-visible-p
+                                                #'delve--out-of-sync-p))))
+        (delve--sync-zettel (-map #'lister-node-get-data nodes))
+        (lister-save-current-node ewoc
+            (cl-dolist (node nodes)
+              (cl-incf n)
+              (lister-mark-unmark-at ewoc node nil)
+              (lister-refresh-at ewoc node)))))
+    n))
+
+;; TODO Move to the beginning of the file
+;; this is a direct copy from s-capitalize
+(defun delve--capitalize (s)
+  "Convert S first word's first character to upper and the rest to lower case."
+  (declare (side-effect-free t))
+  (concat (upcase (substring s 0 1)) (downcase (substring s 1))))
+
+;; TODO Document new behavior in the README
+(defun delve--key--refresh (ewoc &optional prefix)
+  "Sync all Zettel with the DB and re-insert Query items.
+With PREFIX, do not update Query items. Instead, force sync all
+marked Zettel items or, if none is marked, the zettel at point.
+
+EWOC is the buffer's list object."
+  (interactive (list lister-local-ewoc current-prefix-arg))
+  (let ((count-sync (delve--sync-items ewoc prefix))
+        (count-updates (if prefix 0 (delve--update-queries ewoc))))
+    (message (delve--capitalize
+              (concat
+               (when (> count-sync 0)
+                 (format "synced %d items" count-sync))
+               (when (and (> count-sync 0) (> count-updates 0))
+                 " and ")
+               (when (> count-updates 0)
+                 (format "re-inserted %d queried items" count-updates))
+               (when (= count-updates count-sync 0)
+                 "nothing to do"))))))
 
 ;; Insert tagged subset of all nodes
 
@@ -2058,7 +2111,7 @@ To enable special Delve bookmark handling, set the local value of
     (define-key map [remap write-file]               #'delve-write-buffer)
     (define-key map [remap find-file]                #'delve-find-storage-file)
     (define-key map [remap rename-buffer]            #'delve--key--edit-title)
-    (define-key map (kbd "g")                        #'delve--key--sync)
+    (define-key map (kbd "g")                        #'delve--key--refresh)
     (define-key map (kbd "v")                        #'delve-compact-view-mode)
     ;; Any item:
     (define-key map (kbd "<delete>")                 #'delve--key--multi-delete)
