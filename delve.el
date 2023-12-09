@@ -1194,7 +1194,7 @@ or POS, if supplied.  Skip any typechecking if TYPES is nil."
 (defun delve--current-item-or-marked (&optional types)
   "Get either all marked items or the item at point, marking it.
 Use the current buffer.  Always return a list.  TYPES is a type
-symbol or a list of type symbols.  If on of the items is not of
+symbol or a list of type symbols.  If one of the items is not of
 type TYPES, throw an error."
   (let ((ewoc lister-local-ewoc))
     (delve--assert-buf ewoc "Command must be called in a Delve buffer")
@@ -1491,8 +1491,8 @@ as a sublist below point."
 
 (defun delve--key--insert-query (query &optional select-target)
   "Insert results of QUERY.
-With SELECT-TARGET, select target for the results, else insert it
-as a sublist below point."
+With SELECT-TARGET, interatively select target for the results,
+else insert it as a sublist below point."
   (interactive (list (delve--current-item-or-error '(delve--query)) current-prefix-arg))
   (or (delve--insert-or-select (-map #'delve--zettel-create
                                      (funcall (delve--query-fn query)))
