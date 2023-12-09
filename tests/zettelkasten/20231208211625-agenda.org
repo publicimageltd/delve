@@ -1,0 +1,18 @@
+:PROPERTIES:
+:ID:       29e4a1c5-2146-4829-a9a2-729ce75b5495
+:END:
+#+title: Agenda
+
+* TODO Stop the madness
+:PROPERTIES:
+:ID:       742d8f0e-15fa-4d97-bc23-eafa67850940
+:END:
+
+Lorem ipsum upsala.
+
+* TODO Let Love Rule
+:PROPERTIES:
+:ID:       56434c70-3987-4011-863b-17f2754abc3e
+:END:
+
+Or something else. But not how it is currently.
