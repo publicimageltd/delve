@@ -13,10 +13,12 @@ Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
 nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
 sed diam voluptua.  (Definitions have to be short.)
 
-* Some ideas on form :ideas:
+* Some new ideas on form                                              :ideas:
 :PROPERTIES:
 :ID:       df5f951c-8388-4d0f-b0cf-34a047c256dd
 :END:
+
+New Content. That's what we need.
 
 Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
 nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
