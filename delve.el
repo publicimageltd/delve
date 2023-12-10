@@ -252,7 +252,16 @@ entries."
   "Face for displaying the title of a Delve query."
   :group 'delve-faces)
 
-;;; * Utility functions for debugging in live environment
+;;;; -----------------------------------------------------------
+;; * Small utilities
+
+;; this is a direct copy from s-capitalize
+(defun delve--capitalize (s)
+  "Convert S first word's first character to upper and the rest to lower case."
+  (declare (side-effect-free t))
+  (concat (upcase (substring s 0 1)) (downcase (substring s 1))))
+
+;; * Debugging in the live environment
 
 (defun delve-reload ()
   "Reload Delve."
@@ -266,7 +275,7 @@ entries."
     (require 'delve)
     (message "Loaded Delve version %s" delve-version)))
 
-;;; * Assertions
+;; * Assertions
 
 (defun delve--assert-buf (&optional buf-or-ewoc error-msg)
   "Cancel if BUF-OR-EWOC does not belong to a Delve buffer with an Ewoc.
@@ -286,6 +295,7 @@ optionally use ERROR-MSG."
         (error (or error-msg "Function has to be called in a Delve buffer")))))
 
 
+;;; -----------------------------------------------------------
 ;;; * The Lister Mapper
 
 ;; Type icon
@@ -574,6 +584,7 @@ Return the prepared string."
            (propertize "<Collection not saved>" 'face 'warning)))))
 
 
+;; -----------------------------------------------------------
 ;; * Storage File Handling
 
 (defun delve--file-as-dir (s)
@@ -1634,11 +1645,6 @@ Return the number of nodes synced."
     n))
 
 ;; TODO Move to the beginning of the file
-;; this is a direct copy from s-capitalize
-(defun delve--capitalize (s)
-  "Convert S first word's first character to upper and the rest to lower case."
-  (declare (side-effect-free t))
-  (concat (upcase (substring s 0 1)) (downcase (substring s 1))))
 
 ;; TODO Document new behavior in the README
 (defun delve--key--refresh (ewoc &optional prefix)
