@@ -82,23 +82,27 @@ Here's an example using =straight.el=:
 
 #+begin_src emacs-lisp
   (use-package delve
-    :straight (:repo "publicimageltd/delve"
-               :host github
-               :type git)
+    :straight (:repo "publicimageltd/delve" :host github :type git)
     :after (org-roam)
     ;; this is necessary if use-package-always-defer is true
     :demand t
+    :custom
+    ;; set meaningful tag names for the dashboard query
+    (delve-dashboard-tags '("Tag1" "Tag2"))
+    :hook
+    (delve-mode . delve-compact-view)
+    (delve-mode . hl-line-mode)   ; nicer to use with hl-line
     :bind
     ;; the main entry point, offering a list of all stored collections
     ;; and of all open Delve buffers:
-    (("<f12>" . delve))
+    (("<f12>" . delve)))
+
+  (use-package delve-minor-mode
+    :straight (:repo "publicimageltd/delve" :host github :type git)
+    :init
+    (setq delve-minor-mode-prefix-key (kbd "C-."))
     :config
-    ;; set meaningful tag names for the dashboard query
-    (setq delve-dashboard-tags '("Tag1" "Tag2"))
-    ;; optionally turn on compact view as default
-    (add-hook #'delve-mode-hook #'delve-compact-view-mode)
-   ;; turn on delve-minor-mode when Org Roam file is opened:
-    (delve-global-minor-mode))
+    (delve-global-minor-mode +1))
 #+end_src
 
 * The notion of a 'collection'
