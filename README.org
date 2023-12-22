@@ -478,8 +478,9 @@ browse with =Delve=, with links, tags, and all.
 
 * Changelog
 
-** Current
+** 0.9.5
 
+ - Add intelligent update of queries 
  - Provide a live environment for testing
  - Add option =delve-compact-view-shows-node-path=
  - In =Delve= buffers, remap =rename-buffer= to edit the collection's title
