@@ -295,6 +295,13 @@ There is currently no replacement for =yank-pop=.
 | g              | Update all nodes marked as "out of sync" (with a star) |
 | C-u g          | Force update of marked nodes or node at point |
 
+Since 0.9.5, the update command has a special behavior in Dashboard
+buffers. If a query is open (e.g. a query for all Zettels with a
+certain tag), the update command inserts any Zettels matching the
+query which are currently not shown. This helps to keep the query
+output in sync with the database.
+
+
 *** Piling Zettel
 
 Like on any good real desktop, you can pile the Zettels:
@@ -424,6 +431,26 @@ It is planned to enable the collection keys also in =Org Roam Mode=
 buffers (TODO).
 
 * Customizations
+
+: delve-dashboard-queries
+
+A list of functions determining the initial dashboard queries (e.g.,
+for "TODO Items" or for tags. Each function must return a
+=delve--query= struct (which see). If this variable is set to nil, do
+not add any non-tag queries to the Dashboard.
+
+Default setting:
+
+#+begin_src emacs-lisp
+(defcustom delve-dashboard-queries (list #'delve--create-todo-query
+                                         #'delve--create-unlinked-query
+                                         #'delve--create-last-modified-query)
+#+end_src
+
+This adds:
+ - A query for TODO items
+ - A query for uninked items
+- A query for the 10 last modified items
 
 : delve-dashboard-tags 
 
