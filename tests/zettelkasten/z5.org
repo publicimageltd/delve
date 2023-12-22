@@ -1,0 +1,8 @@
+:PROPERTIES:
+:ID:       f77bda95-244c-4595-a03a-c03417a5150f
+:END:
+#+TITLE: Misunderstandings about the concept of concept
+#+FILETAGS: :concept:
+
+A concept is not what it refers to. (Wittgenstein)
+
