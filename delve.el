@@ -1097,10 +1097,10 @@ anything; that's up to the calling function."
     ;; zettel objects each one by one:
     (let ((hash (delve-store--prefetch-ids (-map #'delve--zettel-id zettels))))
       (cl-dolist (z zettels)
-        (setf (delve--zettel-node z)       (gethash (delve--zettel-id z) hash)
+        (setf (delve--zettel-node z) (gethash (delve--zettel-id z) hash)
               (delve--zettel-out-of-sync z) nil)
         (when (delve--zettel-preview z)
-          (setf (delve--zettel-preview z)  (delve--get-preview-contents z)))))))
+          (setf (delve--zettel-preview z) (delve--get-preview-contents z)))))))
 
 (defun delve--out-of-sync-p (node)
   "Check if NODE has a zettel item which is out of sync."
