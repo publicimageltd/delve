@@ -1621,26 +1621,20 @@ EWOC is the buffer's list object.
 
 Return the number of nodes synced."
   (interactive (list lister-local-ewoc current-prefix-arg))
-  (let* ((n 0)
-         (check-items (if prefix
-                          (delve--current-item-or-marked 'delve--zettel)
-                        t)))
-    (when check-items
-      (when-let ((nodes (lister-collect-nodes ewoc :first :last
-                                              (if prefix
-                                                  #'lister-node-marked-and-visible-p
-                                                #'delve--out-of-sync-p))))
-        (delve--sync-zettel (-map #'lister-node-get-data nodes))
-        (lister-save-current-node ewoc
-            (cl-dolist (node nodes)
-              (cl-incf n)
-              (lister-mark-unmark-at ewoc node nil)
-              (lister-refresh-at ewoc node)))))
+  ;; with prefix, check marked nodes, else those which are marked out
+  ;; of sync
+  (let ((n 0))
+    (when-let* ((check (if prefix (delve--current-item-or-marked 'delve--zettel) t))
+                (pred (if prefix #'lister-node-marked-and-visible-p #'delve--out-of-sync-p))
+                (nodes (lister-collect-nodes ewoc :first :last pred)))
+      (delve--sync-zettel (-map #'lister-node-get-data nodes))
+      (lister-save-current-node ewoc
+          (cl-dolist (node nodes)
+            (cl-incf n)
+            (lister-mark-unmark-at ewoc node nil)
+            (lister-refresh-at ewoc node))))
     n))
 
-;; TODO Move to the beginning of the file
-
-;; TODO Document new behavior in the README
 (defun delve--key--refresh (ewoc &optional prefix)
   "Sync all Zettel with the DB and re-insert Query items.
 With PREFIX, do not update Query items. Instead, force sync all
