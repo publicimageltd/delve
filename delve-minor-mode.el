@@ -138,7 +138,7 @@ Throw an error if there is no node at all."
 
 (defun delve-minor-mode--get-all-nodes ()
   "Return all Org Roam nodes from current buffer.
-Throw an error if there are no nodes."
+Throw an error if there are none."
   ;; TODO Add handling for Org Roam Mode buffers
   (unless (org-roam-file-p)
     (user-error "This command can only be used in Org Roam files"))

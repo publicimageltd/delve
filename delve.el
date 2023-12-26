@@ -860,9 +860,7 @@ buffer."
 IDS can be either a single ID string or a list of IDs.  For
   possible values for COLLECTION, see
   `delve--get-collection-buffer'.  Return the collection buffer."
-  (let* ((ids    (-list ids))
-         (nodes  (delve-query-nodes-by-id ids)))
-    (delve-insert-nodes collection nodes)))
+  (delve-insert-nodes collection (delve-query-nodes-by-id (-list ids))))
 
 (defun delve--add-to-buffer (items prompt)
   "Add ITEMS to a Delve buffer and return that buffer object.
@@ -1095,6 +1093,7 @@ anything; that's up to the calling function."
       (org-roam-db-update-file file))
     ;; we first prefetch all nodes in one query, then update the
     ;; zettel objects each one by one:
+    ;; TODO Handle out-of-sync ids (refactored delve-store--query-nodes-by-id)
     (let ((hash (delve-store--create-node-table (-map #'delve--zettel-id zettels))))
       (cl-dolist (z zettels)
         (setf (delve--zettel-node z) (gethash (delve--zettel-id z) hash)

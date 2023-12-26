@@ -138,8 +138,9 @@ Return nil if ELT does not reference any Org Roam node."
     (delve-store--map-tree #'delve-store--get-ids-for-token)
     (flatten-tree)))
 
+;; TODO Handle out of sync
 (defun delve-store--create-node-table (ids)
-  "Create an hash table associating Org Roam nodes by IDS.
+  "Create an hash table associating Org Roam nodes by IDs.
 The Org Roam ID serves as the key, the node object is the
 associated value."
   (let ((nodes  (delve-query-nodes-by-id ids))

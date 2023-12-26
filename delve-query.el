@@ -96,8 +96,8 @@ and return nil."
                                (flatten-tree args)))))
         (when delve-query-log-queries
           (delve-query-log (format " -- query returns %d items in %.2f seconds."
-                                 (length res)
-                                 (car time))))
+                                   (length res)
+                                   (car time))))
         res)
     (error (if (not delve-query-catch-db-errors)
                (signal (car err) (cdr err))
@@ -243,21 +243,38 @@ Optionally restrict to those nodes with an id in IDS."
                    ;; todo-state in double quotes to ensure an exact match
                    (delve-query--quote-string todo-state nil t)))))
 
+;; TODO Re-add messages in calling fns: One around, one if out of sync
 (defun delve-query-nodes-by-id (id-list)
-  "Return all nodes in ID-LIST sorted by the node's title."
-  (let ((nodes (with-temp-message (format "Querying database for %d nodes..." (length id-list))
-                 (delve-query-do-super-query
-                  (concat delve-query--super-query
-                          (format "HAVING id IN (%s) ORDER BY title"
-                                  ;; No need for SQL wildcards here;
-                                  ;; simple quoting is enough.
-                                  (delve-query--quote-strings id-list ", " nil)))))))
-    (unless (eq (length nodes) (length id-list))
-      ;; make sure inequality is not due to aliased nodes with same ID
-      (when (-difference (-uniq (mapcar #'org-roam-node-id nodes))
-                         (-uniq id-list))
-          (message "delve: Could not get all requested IDs, maybe DB is out of sync?")))
-    nodes))
+  "Query for Org Roam nodes matching ID-LIST."
+  (delve-query-do-super-query
+   (concat delve-query--super-query
+           (format "HAVING id IN (%s) ORDER BY title"
+                   ;; No need for SQL wildcards here;
+                   ;; simple quoting is enough.
+                   (delve-query--quote-strings id-list ", " nil)))))
+
+;; TODO Add tests
+(defun delve-query-missing-nodes (id-list nodes)
+  "Return those IDs from ID-LIST which are not in NODES."
+  (unless (eq (length id-list) (length nodes))
+    (-difference (-uniq (-map #'org-roam-node-id in-sync))
+                 (-uniq id-list))))
+
+(defun delve-query-nodes-by-id-with-msg (id-list)
+  "Query for Org Roam nodes matching ID-LIST with messages."
+  (let ((nodes nil))
+    (with-temp-message (format "Querying Org Roam DB for %n nodes..." (length (id-list)))
+      (setq nodes (delve-query-nodes-by-id id-list)))
+    (let (msg (cond
+               ((null nodes)
+                "No matching nodes found.")
+               ((delve-query-missing-nodes id-list nodes)
+                "Some nodes could not be found.")
+               (t nil)))
+      (when msg
+        ;; TODO If in a Delve buffer, tell the user which key to
+        ;; press.
+        (message (concat msg " Maybe the Delve buffer is out of sync?"))))))
 
 (defun delve-query-node-by-id (id)
   "Return node with ID."
