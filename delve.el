@@ -1601,19 +1601,14 @@ With PREFIX, expand all hidden subtrees in the EWOC's buffer."
   "Update all queries in the current EWOC buffer.
 Return the count of the inserted nodes."
   (let ((count 0))
-    (lister-dolist (ewoc data :first :last node)
-      (when (and (delve--query-p data)
+    (lister-dolist (ewoc query :first :last node)
+      (when (and (delve--query-p query)
                  (lister-sublist-below-p ewoc node))
-        (let* ((queried-zettels (-> (funcall (delve--query-fn data))
-                                    (delve--nodes-to-zettel)))
-               ;; FIXME It is not clear why we need to flatten the
-               ;; sublist. There might be a bug hiding here.
-               (existing-zettels (lister--flatten (lister-get-sublist-below ewoc node)))
-               (-compare-fn #'delve--zettel-equal-id)
-               (diff (-difference queried-zettels existing-zettels)))
-          (when diff
-            (lister-insert-sublist-below ewoc node diff)
-            (setq count (+ count (length diff)))))))
+        (when-let* ((-compare-fn #'delve--zettel-equal-id)
+                    (diff (-difference (delve--nodes-to-zettel (funcall (delve--query-fn query)))
+                                       (-flatten (lister-get-sublist-below ewoc node)))))
+          (lister-insert-sublist-below ewoc node diff)
+          (setq count (+ count (length diff))))))
     count))
 
 ;; TODO Check function in live environment
