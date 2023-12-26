@@ -110,14 +110,14 @@
                 :to-equal (delve-store--get-ids-for-token-list
                            (mapcar #'delve-store--tokenize-object zs))))))
 
-  (describe "delve-store--prefetch-ids"
+  (describe "delve-store--create-node-table"
     :var (ids hash)
     ;; "Spies may only be created in before-each or it blocks"
     (before-each
       (setq ids (number-sequence 10 100))
       (spy-on 'delve-query-nodes-by-id :and-return-value
               (--map (org-roam-node-create :id it) ids))
-      (setq  hash (delve-store--prefetch-ids ids)))
+      (setq  hash (delve-store--create-node-table ids)))
 
     (it "creates a hash"
       (expect hash :not :to-be nil))
@@ -158,7 +158,7 @@
               zettels (mapcar #'delve--zettel-create nodes))
         (spy-on 'delve-query-nodes-by-id :and-return-value
                 (--map (org-roam-node-create :id it) ids))
-        (setq hash (delve-store--prefetch-ids ids))))
+        (setq hash (delve-store--create-node-table ids))))
 
     (it "'delve--zettel'"
       (let ((zettel (car zettels)))

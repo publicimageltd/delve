@@ -138,7 +138,7 @@ Return nil if ELT does not reference any Org Roam node."
     (delve-store--map-tree #'delve-store--get-ids-for-token)
     (flatten-tree)))
 
-(defun delve-store--prefetch-ids (ids)
+(defun delve-store--create-node-table (ids)
   "Create an hash table associating Org Roam nodes by IDS.
 The Org Roam ID serves as the key, the node object is the
 associated value."
@@ -152,7 +152,7 @@ associated value."
 (defun delve-store--parse-list (l)
   "Create Delve objects from token list L."
   (let* ((ids    (delve-store--get-ids-for-token-list l))
-         (table  (delve-store--prefetch-ids ids)))
+         (table  (delve-store--create-node-table ids)))
     (delve-store--map-tree
      (-partial #'delve-store--parse-element table)
      l)))

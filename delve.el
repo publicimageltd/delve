@@ -1095,7 +1095,7 @@ anything; that's up to the calling function."
       (org-roam-db-update-file file))
     ;; we first prefetch all nodes in one query, then update the
     ;; zettel objects each one by one:
-    (let ((hash (delve-store--prefetch-ids (-map #'delve--zettel-id zettels))))
+    (let ((hash (delve-store--create-node-table (-map #'delve--zettel-id zettels))))
       (cl-dolist (z zettels)
         (setf (delve--zettel-node z) (gethash (delve--zettel-id z) hash)
               (delve--zettel-out-of-sync z) nil)
