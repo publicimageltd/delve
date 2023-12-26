@@ -243,15 +243,15 @@ Optionally restrict to those nodes with an id in IDS."
                    ;; todo-state in double quotes to ensure an exact match
                    (delve-query--quote-string todo-state nil t)))))
 
-;; TODO Re-add messages in calling fns: One around, one if out of sync
 (defun delve-query-nodes-by-id (id-list)
   "Query for Org Roam nodes matching ID-LIST."
-  (delve-query-do-super-query
-   (concat delve-query--super-query
-           (format "HAVING id IN (%s) ORDER BY title"
-                   ;; No need for SQL wildcards here;
-                   ;; simple quoting is enough.
-                   (delve-query--quote-strings id-list ", " nil)))))
+  (with-temp-message (format "Querying Org Roam DB for %d nodes..." (length id-list))
+    (delve-query-do-super-query
+     (concat delve-query--super-query
+             (format "HAVING id IN (%s) ORDER BY title"
+                     ;; No need for SQL wildcards here;
+                     ;; simple quoting is enough.
+                     (delve-query--quote-strings id-list ", " nil))))))
 
 ;; TODO Add tests
 (defun delve-query-missing-nodes (id-list nodes)
