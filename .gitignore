@@ -11,3 +11,4 @@
 /tests/init/org-roam.db
 /tests/init/.org-id-locations
 /tests/init/bookmarks
+*.elc
