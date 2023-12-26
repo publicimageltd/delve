@@ -257,25 +257,27 @@ Optionally restrict to those nodes with an id in IDS."
 (defun delve-query-missing-nodes (id-list nodes)
   "Return those IDs from ID-LIST which are not in NODES."
   (unless (eq (length id-list) (length nodes))
-    (-difference (-uniq (-map #'org-roam-node-id in-sync))
+    (-difference (-uniq (-map #'org-roam-node-id nodes))
                  (-uniq id-list))))
 
+;; TODO Replace delve-query-nodes-by-id with this fn where appropriate
 (defun delve-query-nodes-by-id-with-msg (id-list)
   "Query for Org Roam nodes matching ID-LIST with messages."
   (let ((nodes nil))
-    (with-temp-message (format "Querying Org Roam DB for %n nodes..." (length (id-list)))
+    (with-temp-message (format "Querying Org Roam DB for %d nodes..." (length id-list))
       (setq nodes (delve-query-nodes-by-id id-list)))
-    (let (msg (cond
-               ((null nodes)
-                "No matching nodes found.")
-               ((delve-query-missing-nodes id-list nodes)
-                "Some nodes could not be found.")
-               (t nil)))
+    (let ((msg (cond
+                ((null nodes)
+                 "No matching nodes found.")
+                ((delve-query-missing-nodes id-list nodes)
+                 "Some nodes could not be found.")
+                (t nil))))
       (when msg
         ;; TODO If in a Delve buffer, tell the user which key to
         ;; press.
         (message (concat msg " Maybe the Delve buffer is out of sync?"))))))
 
+;; TODO Who calls this function, do we need error handling?
 (defun delve-query-node-by-id (id)
   "Return node with ID."
   (car (delve-query-nodes-by-id (list id))))
@@ -296,16 +298,19 @@ Optionally restrict to those nodes with an id in IDS."
                                       :and (= type "id")]
                              id)))
 
+;; TODO Who calls this function? Error handling? Msg?
 (defun delve-query-backlinks-by-id (id)
   "Get all nodes linking to ID."
   (let ((backlinks (delve-query--ids-linking-to id)))
     (delve-query-nodes-by-id (flatten-tree backlinks))))
 
+;; TODO Who calls this function? Error handling? Msg?
 (defun delve-query-fromlinks-by-id (id)
   "Get all nodes linking from ID."
   (let ((tolinks (delve-query--ids-linking-from id)))
     (delve-query-nodes-by-id (flatten-tree tolinks))))
 
+;; TODO Who calls this function? Error handling? Msg?
 (defun delve-query-unlinked ()
   "Get all nodes with no backlinks or tolinks."
   (let* ((ids (delve-query "SELECT id FROM nodes WHERE id NOT IN

@@ -103,6 +103,7 @@
          ("C-c n i" . org-roam-node-insert)))
 
 (use-package delve
+  :demand t
   :hook
   (delve-mode . delve-compact-view-mode)
   (delve-mode . hl-line-mode)

@@ -136,17 +136,23 @@ Throw an error if there is no node at all."
                    (user-error "No Org Roam node with ID found at point"))))
     (delve-query-node-by-id id)))
 
+;; TODO Test manually
+;; TODO Add tests
 (defun delve-minor-mode--get-all-nodes ()
-  "Return all Org Roam nodes from current buffer.
-Throw an error if there are none."
+  "Return all Org Roam nodes from the current Org Mode buffer.
+Throw an error if there are none, or if the current buffer's
+UUIDs cannot be fully retrieved from the DB."
   ;; TODO Add handling for Org Roam Mode buffers
   (unless (org-roam-file-p)
     (user-error "This command can only be used in Org Roam files"))
   (let* ((tree  (org-element-parse-buffer))
          (ids   (or (org-element-map tree 'headline
                      (apply-partially #'org-element-property :ID))
-                    (user-error "No headlines with ID"))))
-    (delve-query-nodes-by-id ids)))
+                    (user-error "No headlines with ID")))
+         (nodes (delve-query-nodes-by-id ids)))
+    (when (delve-query-missing-nodes ids nodes)
+      (user-error "Buffer is not in sync with Org Roam database"))
+    nodes))
 
 (defun delve-minor-mode--get-backlinks ()
   "Return all backlinks to the node at point as Org Roam nodes.
@@ -202,9 +208,11 @@ error."
 
 (transient-define-suffix delve-minor-mode--do-collect-all (&optional args)
   "Collect all headline nodes with an ID into a Delve buffer.
-Select target buffer using ARGS.  ARGS must be a list with a
-string expressing the key-value pair '--target=X', where X must
-be either `auto', `last' or `select'."
+Select target buffer using ARGS.
+
+ARGS must be a string within a list, where the string holds the
+key-value pair '--target=X', X being either `auto', `last' or
+`select'."
   (interactive (list (transient-args transient-current-command)))
   ;; default if not called from a transient
   (when (or (not args) (equal args '(nil)))
