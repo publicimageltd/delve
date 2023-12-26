@@ -21,9 +21,10 @@
 
 ;; Avoid including archived files
 (setf eldev-standard-excludes `(:or ,eldev-standard-excludes '("./archive/**")))
-(setf eldev-test-fileset `(:and ,eldev-test-fileset '("!./tests/init"
-                                                       "!/.tests/utils"
-                                                       "!/.tests/zettelkasten")))
+(setf eldev-test-fileset `(:and ,eldev-test-fileset '("!_*"
+                                                      "!./tests/init"
+                                                      "!/.tests/utils"
+                                                      "!/.tests/zettelkasten")))
 
 ;; Tell package lint where's the main data
 (setq package-lint-main-file "delve-pkg.el")
