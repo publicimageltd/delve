@@ -7,5 +7,7 @@ init_dir='tests/init'
 
 echo 'Checking dependencies'
 eldev upgrade
+echo 'Cleaning up init directory'
+rm -f ${init_dir}/*.elc
 echo 'Starting Emacs in test environment'
-eldev emacs -- --init-directory "${init_dir}" &
+eldev emacs -- --init-directory "${init_dir}" --debug-init &
