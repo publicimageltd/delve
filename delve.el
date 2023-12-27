@@ -434,7 +434,7 @@ Return the prepared string."
               (delve-pp-fields zettel `(;; path:
                                         ((when (and delve-compact-view-shows-node-path
                                                     (> (delve--zettel-level it) 0))
-                                           (delve--zettel-filetitle it))
+                                           (delve--zettel-file-title it))
                                          :format "%s/"
                                          :add-face delve-path-face)
                                         ;; NOTE Seems unnecessary.
@@ -456,7 +456,7 @@ Return the prepared string."
             (when (and delve-display-path
                        (not (eq 0 (delve--zettel-level zettel))))
               (delve-pp-fields zettel `(;; path:
-                                        (,#'delve--zettel-filetitle
+                                        (,#'delve--zettel-file-title
                                          :format "%s/"
                                          :add-face delve-path-face)
                                         ((when (delve--zettel-olp it)
@@ -947,13 +947,13 @@ MAP-FN before using it for sorting, e.g. `length'."
   "file title"
   #'string< "from A to Z"
   #'string> "from Z to A"
-  #'delve--zettel-filetitle)
+  #'delve--zettel-file-title)
 
 (delve--build-dual-cmp delve-2cmp--file-mtime
   "modification time"
   (-compose #'not #'time-less-p) "last modified first"
   #'time-less-p             "last modified last"
-  #'delve--zettel-mtime)
+  #'delve--zettel-file-mtime)
 
 ;; * Utilities to use comparators in transients
 

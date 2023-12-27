@@ -54,27 +54,12 @@
   "A Zettel item storing an Org Roam node."
   node preview out-of-sync info)
 
-;; Some shortcuts to the node element of a zettel:
-(defmacro delve-data-types--zettel--accessor-fn (name slot-name)
-  "Define an accessor function for the node in a Zettel item.
-SLOT-NAME must be the name of a slot of an org-roam-node.  Give
-  the function the name NAME."
-  `(defun ,name (z)
-     ,(format "Access the slot %s of the node object stored in a Zettel item." slot-name)
-     (cl-struct-slot-value 'org-roam-node ,slot-name (delve--zettel-node z))))
-
-(delve-data-types--zettel--accessor-fn delve--zettel-title   'title)
-(delve-data-types--zettel--accessor-fn delve--zettel-olp     'olp)
-(delve-data-types--zettel--accessor-fn delve--zettel-properties 'properties)
-(delve-data-types--zettel--accessor-fn delve--zettel-point   'point)
-(delve-data-types--zettel--accessor-fn delve--zettel-id      'id)
-(delve-data-types--zettel--accessor-fn delve--zettel-file    'file)
-(delve-data-types--zettel--accessor-fn delve--zettel-tags    'tags)
-(delve-data-types--zettel--accessor-fn delve--zettel-level   'level)
-(delve-data-types--zettel--accessor-fn delve--zettel-aliases 'aliases)
-(delve-data-types--zettel--accessor-fn delve--zettel-filetitle   'file-title)
-(delve-data-types--zettel--accessor-fn delve--zettel-mtime   'file-mtime)
-(delve-data-types--zettel--accessor-fn delve--zettel-atime   'file-atime)
+;; Create shortcuts to the node element of a Zettel:
+(dolist (slot (cdr (-map #'car (cl-struct-slot-info 'org-roam-node))))
+  (let ((name (intern (format "delve--zettel-%s" slot))))
+    (eval `(defun ,name (z)
+             ,(format "Access slot `%s' of the Org Roam node stored in a Zettel object." slot)
+             (cl-struct-slot-value 'org-roam-node (quote ,slot) (delve--zettel-node z))))))
 
 (cl-defstruct (delve--pile
                (:include delve--item)
