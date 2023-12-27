@@ -43,6 +43,7 @@
 ;;; Code:
 
 (setq init-dir  (file-name-directory user-init-file))
+(require 'use-package)
 
 ;; Some sane keyboard defaults
 (setq select-enable-clipboard t
