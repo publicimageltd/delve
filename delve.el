@@ -1084,23 +1084,6 @@ one of the args is nil."
 
 ;; * Remote Editing - Background Utilites
 
-(defun delve--sync-zettel (zettels)
-  "Force sync of all ZETTELS with the Org Roam db.
-First update the db, then reload the ZETTELS.  Do not redisplay
-anything; that's up to the calling function."
-  (when-let* ((filelist (-map #'delve--zettel-file zettels)))
-    (cl-dolist (file (seq-uniq filelist #'string=))
-      (org-roam-db-update-file file))
-    ;; we first prefetch all nodes in one query, then update the
-    ;; zettel objects each one by one:
-    ;; TODO Handle out-of-sync ids (refactored delve-store--query-nodes-by-id)
-    (let ((hash (delve-store--create-node-table (-map #'delve--zettel-id zettels))))
-      (cl-dolist (z zettels)
-        (setf (delve--zettel-node z) (gethash (delve--zettel-id z) hash)
-              (delve--zettel-out-of-sync z) nil)
-        (when (delve--zettel-preview z)
-          (setf (delve--zettel-preview z) (delve--get-preview-contents z)))))))
-
 (defun delve--out-of-sync-p (node)
   "Check if NODE has a zettel item which is out of sync."
   (let ((data (lister-node-get-data node)))
@@ -1613,26 +1596,36 @@ Return the count of the inserted nodes."
 
 ;; TODO Check function in live environment
 (defun delve--sync-items (ewoc &optional prefix)
-  "Update the Org Roam DB and sync all items.
-With PREFIX, force sync all marked zettel or, if none is marked,
-the zettel at point.
-
-EWOC is the buffer's list object.
-
-Return the number of nodes synced."
+  "Update the Org Roam DB and sync all Zettel in EWOC.
+Sync all Zettel which are marked as `out-of-sync'. With PREFIX,
+sync only the marked Zettel or, if none is marked, the Zettel at
+point. Return the number of nodes synced."
   (interactive (list lister-local-ewoc current-prefix-arg))
-  ;; with prefix, check marked nodes, else those which are marked out
-  ;; of sync
   (let ((n 0))
+    ;; get relevant nodes:
+    ;; if prefix, use marked nodes, else all marked out of sync
     (when-let* ((check (if prefix (delve--current-item-or-marked 'delve--zettel) t))
                 (pred (if prefix #'lister-node-marked-and-visible-p #'delve--out-of-sync-p))
-                (nodes (lister-collect-nodes ewoc :first :last pred)))
-      (delve--sync-zettel (-map #'lister-node-get-data nodes))
+                (nodes (lister-collect-nodes ewoc :first :last pred))
+                (zettels (-map #'lister-node-get-data nodes)))
+      ;; Update the Org Roam DB
+      (--each (-uniq (-map #'delve--zettel-file zettels))
+        (org-roam-db-update-file it))
+      ;; Update 'tainted' Zettels:
+      (let ((hash (delve-store--create-node-table (-map #'delve--zettel-id zettels))))
+        (cl-dolist (z zettels)
+          (-let ((&hash (delve--zettel-id z) hash) node)
+            (setf (delve--zettel-node z) node
+                  (delve--zettel-out-of-sync z) nil)
+            (when (delve--zettel-preview z)
+              (setf (delve--zettel-preview z)
+                    (delve--get-preview-contents z))))))
+      ;; Update display
       (lister-save-current-node ewoc
-          (cl-dolist (node nodes)
-            (cl-incf n)
-            (lister-mark-unmark-at ewoc node nil)
-            (lister-refresh-at ewoc node))))
+                                (cl-dolist (node nodes)
+                                  (cl-incf n)
+                                  (lister-mark-unmark-at ewoc node nil)
+                                  (lister-refresh-at ewoc node))))
     n))
 
 (defun delve--key--refresh (ewoc &optional prefix)
