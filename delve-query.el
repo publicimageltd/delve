@@ -146,29 +146,29 @@ and return nil."
   "Call one big SQL QUERY and return results as Org Roam node structs.
 QUERY must be `delve-query--super-query' or a subset.  See the
 query `delve-query--super-query' for allowed fields."
-  (cl-loop for row in (delve-query query)
-           append (pcase-let* ((`(,id ,file ,file-title ,level ,todo ,pos ,priority ,scheduled ,deadline
-                                      ,title ,properties ,olp ,atime ,mtime ,tags ,aliases ,refs)
-                                row)
-                               (all-titles (cons title aliases)))
-                    (mapcar (lambda (temp-title)
-                              (org-roam-node-create :id id
-                                                    :file file
-                                                    :file-title file-title
-                                                    :file-atime atime
-                                                    :file-mtime mtime
-                                                    :level level
-                                                    :point pos
-                                                    :todo todo
-                                                    :priority priority
-                                                    :scheduled scheduled
-                                                    :deadline deadline
-                                                    :title temp-title
-                                                    :properties properties
-                                                    :olp olp
-                                                    :tags tags
-                                                    :refs refs))
-                            all-titles))))
+  (-reduce-from (lambda (acc row)
+                  (-let* (((id file file-title level todo pos priority scheduled deadline
+                          title properties olp atime mtime tags aliases refs)
+                           row))
+                    (append acc (--map (org-roam-node-create :id id
+                                                             :file file
+                                                             :file-title file-title
+                                                             :file-atime atime
+                                                             :file-mtime mtime
+                                                             :level level
+                                                             :point pos
+                                                             :todo todo
+                                                             :priority priority
+                                                             :scheduled scheduled
+                                                             :deadline deadline
+                                                             :title it
+                                                             :properties properties
+                                                             :olp olp
+                                                             :tags tags
+                                                             :refs refs)
+                                       (cons title aliases)))))
+                nil
+               (delve-query query)))
 
 (defun delve-query--quote-string (string &optional add-wildcards add-double-quotes)
   "Return STRING as a quoted string to be used in SQL queries.
