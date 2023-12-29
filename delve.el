@@ -1266,9 +1266,11 @@ passed to completing read."
 Optional argument PREFIX is currently not used."
   (interactive (list (delve--current-item-or-marked 'delve--zettel)))
   (ignore prefix)
-  (delve-edit--prompt-add-tags zettels)
-  (delve--taint-and-refresh-marked-nodes lister-local-ewoc)
-  (message "Edited %d nodes" (length zettels)))
+  (if (not zettels)
+      (user-error "Nothing to tag")
+    (delve-edit--prompt-add-tags zettels)
+    (delve--taint-and-refresh-marked-nodes lister-local-ewoc)
+    (message "Edited %d nodes" (length zettels))))
 
 (defun delve--key--remove-tags (zettels &optional prefix)
   "Remove tags from all marked ZETTELS or the zettel at point.
