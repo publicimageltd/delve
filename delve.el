@@ -1605,11 +1605,11 @@ Return the count of the inserted nodes."
 
 (defun delve--sync-items (ewoc &optional prefix)
   "Update the Org Roam DB and sync all Zettels in EWOC.
-Sync all Zettels marked as `out-of-sync' and remove Zettels
-without corresponding Org Roam Nodes. With PREFIX, only sync the
-marked Zettels or, if none is marked, the Zettel at point. Return
-a plist (:synced :removed :msgs) with the number of Zettels
-synced and removed, and a list of messages to display."
+Sync all Zettels in the EWOC's buffer and remove those which have
+no corresponding Org Roam Node. With PREFIX, only sync marked
+Zettels or, if none is marked, the Zettel at point. Return a
+plist (:synced :removed :msgs) with the number of Zettels synced
+and removed, and a list of messages to display."
   (interactive (list lister-local-ewoc current-prefix-arg))
   ;; if prefixed, only use marked nodes
   (let* ((msgs nil)
@@ -1625,26 +1625,22 @@ synced and removed, and a list of messages to display."
       (org-roam-db-update-file file))
     ;; Build an ID-indexed hash table for further examinations:
     (let ((hash (delve-store--create-node-table (-map #'delve--zettel-id zettels))))
-      ;; Zettels can already be marked out of sync. Here, additionally
-      ;; mark those which cannot be found in the DB anymore:
+      ;; Update all zettels, if possible.
+      ;; Updated zettels are not 'out of sync' anymore.
       (--each zettels  (-let (((&hash (delve--zettel-id it) org-roam-node) hash))
-                         (unless org-roam-node
-                           (setf (delve--zettel-out-of-sync it) t))))
-      ;; Update all unsynced Zettels, if possible:
-      (let ((unsynced-nodes (-filter #'delve--out-of-sync-p nodes)))
-        (--each (-map #'lister-node-get-data unsynced-nodes)
-          (-when-let (((&hash (delve--zettel-id it) org-roam-node) hash))
-            (setf (delve--zettel-node it) org-roam-node
-                  (delve--zettel-out-of-sync it) nil)
-            (when (delve--zettel-preview it)
-              (setf  (delve--zettel-preview it) (delve--get-preview-contents it)))))
-        ;; Delete nodes with unlinked Zettels and update display:
-        (-let (((unlinked update) (-separate #'delve--out-of-sync-p unsynced-nodes)))
-          (--each unlinked (lister-delete-at ewoc it))
-          (delve--refresh-nodes ewoc update)
-          (list :synced (length update)
-                :removed (length unlinked)
-                :msgs msgs))))))
+                         (setf (delve--zettel-out-of-sync it) (not org-roam-node))
+                         (when org-roam-node
+                           (setf (delve--zettel-node it) org-roam-node)
+                           (when (delve--zettel-preview it)
+                             (setf (delve--zettel-preview it)
+                                   (delve--get-preview-contents it))))))
+      ;; Delete nodes with unlinked Zettels and update display:
+      (-let (((unlinked update) (-separate #'delve--out-of-sync-p nodes)))
+        (--each unlinked (lister-delete-at ewoc it))
+        (delve--refresh-nodes ewoc update)
+        (list :synced (length update)
+              :removed (length unlinked)
+              :msgs msgs)))))
 
 (defun delve--key--refresh (ewoc &optional prefix)
   "Sync all Zettel with the DB and re-insert Query items.
