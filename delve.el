@@ -1603,25 +1603,20 @@ Return the count of the inserted nodes."
           (setq count (+ count (length diff))))))
     count))
 
-(defun delve--sync-items (ewoc &optional prefix)
-  "Update the Org Roam DB and sync all Zettels in EWOC.
-Sync all Zettels in the EWOC's buffer and remove those which have
-no corresponding Org Roam Node. With PREFIX, only sync marked
-Zettels or, if none is marked, the Zettel at point. Return a
-plist (:synced :removed :msgs) with the number of Zettels synced
-and removed, and a list of messages to display."
-  (interactive (list lister-local-ewoc current-prefix-arg))
-  ;; if prefixed, only use marked nodes
-  (let* ((msgs nil)
-         (pred (when (and prefix (delve--current-item-or-marked 'delve--zettel))
-                 #'lister-node-marked-and-visible-p))
-         (nodes (lister-collect-nodes ewoc :first :last pred))
-         (zettels (-filter #'delve--zettel-p (-map #'lister-node-get-data nodes))))
+(defun delve--sync-items (ewoc nodes)
+  "Update the Org Roam DB, then sync and update all NODES in EWOC.
+Sync all NODES in the EWOC's buffer and remove those which have
+no corresponding Org Roam Node. Return a plist (:synced :removed
+:msgs) with the number of Zettels synced and removed, and a list
+of warnings about unsaved buffers."
+  (let* ((warnings nil)
+         (zettel-nodes (--filter (delve--zettel-p (lister-node-get-data it)) nodes))
+         (zettels (-map #'lister-node-get-data zettel-nodes)))
     ;; Update the Org Roam DB
     (cl-dolist (file (-uniq (-map #'delve--zettel-file zettels)))
       (when-let ((buf (get-file-buffer file)))
         (when (buffer-modified-p buf)
-          (setq msgs (cons (format "Delve: Buffer visiting %s has been modified, DB might not be up to date" file) msgs))))
+          (setq warnings (cons (format "Delve: Buffer visiting %s has been modified, DB might not be up to date" file) warnings))))
       (org-roam-db-update-file file))
     ;; Build an ID-indexed hash table for further examinations:
     (let ((hash (delve-store--create-node-table (-map #'delve--zettel-id zettels))))
@@ -1635,31 +1630,36 @@ and removed, and a list of messages to display."
                              (setf (delve--zettel-preview it)
                                    (delve--get-preview-contents it))))))
       ;; Delete nodes with unlinked Zettels and update display:
-      (-let (((unlinked update) (-separate #'delve--out-of-sync-p nodes)))
+      (-let (((unlinked update) (-separate #'delve--out-of-sync-p zettel-nodes)))
         (--each unlinked (lister-delete-at ewoc it))
         (delve--refresh-nodes ewoc update)
         (list :synced (length update)
               :removed (length unlinked)
-              :msgs msgs)))))
+              :warnings warnings)))))
 
 (defun delve--key--refresh (ewoc &optional prefix)
   "Sync all Zettels with the DB and re-insert query items.
 With PREFIX, do not update the query items and force sync all
 marked Zettel, or, if none is marked, the Zettel at point. Think
-of PREFIX as a way to \='focus' on the marked Zettels only,
-ignoring any queries and unmarked Zettels.
+of PREFIX as a way focus on the marked Zettels only, ignoring any
+queries and unmarked Zettels.
 
 EWOC is the buffer's list object."
   (interactive (list lister-local-ewoc current-prefix-arg))
-  (-let* (((&plist :synced n-synced :removed n-removed :msgs msgs) (delve--sync-items ewoc prefix))
-          (n-updates (if prefix 0 (delve--update-queries ewoc)))
-          (info (concat (format "Synced %d items; inserted %d items; removed %d items"
-                                n-synced n-updates n-removed)
-                        (when msgs (format ". There were warnings (see %s)" messages-buffer-name)))))
-    (--each msgs (message it))
-    (message (if (and (not msgs) (= 0 n-updates n-synced n-removed))
-                 "Nothing to do"
-               info))))
+  ;; Determine the relevant nodes (plus type-checking of marked nodes):
+  (let* ((pred (when (and prefix (delve--current-item-or-marked 'delve--zettel))
+                  #'lister-node-marked-and-visible-p))
+         (nodes (lister-collect-nodes ewoc :first :last pred)))
+    ;; the actual sync:
+    (-let* (((&plist :synced n-synced :removed n-removed :warnings warnings) (delve--sync-items ewoc nodes))
+            (n-updates (if prefix 0 (delve--update-queries ewoc)))
+            (info (concat (format "Synced %d items; inserted %d items; removed %d items"
+                                  n-synced n-updates n-removed)
+                          (when warnings (format ". There were warnings (see %s)" messages-buffer-name)))))
+      (--each warnings (message it))
+      (message (if (and (not warnings) (= 0 n-updates n-synced n-removed))
+                   "Nothing to do"
+                 info)))))
 
 ;; Insert tagged subset of all nodes
 
