@@ -9,3 +9,7 @@
   :keywords '("org-roam" "hypermedia")
   :homepage "https://github.com/publicimageltd/delve")
 
+
+;; Local Variables:
+;; eval: (flycheck-mode -1)
+;; End:
