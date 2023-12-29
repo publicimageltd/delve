@@ -44,7 +44,7 @@ Must match `org-roam-db-version'.")
 (defvar delve-query-catch-db-errors t
   "If set, catch and log database errors.")
 
-(defvar delve-query-log-queries t
+(defvar delve-query-log-queries nil
   "If set, log all SQL queries issued by Delve.")
 
 (defvar delve-query-log-buffer "*Delve DB Interactions*"
@@ -245,13 +245,12 @@ Optionally restrict to those nodes with an id in IDS."
 
 (defun delve-query-nodes-by-id (id-list)
   "Query for Org Roam nodes matching ID-LIST."
-  (with-temp-message (format "Querying Org Roam DB for %d nodes..." (length id-list))
-    (delve-query-do-super-query
-     (concat delve-query--super-query
-             (format "HAVING id IN (%s) ORDER BY title"
-                     ;; No need for SQL wildcards here;
-                     ;; simple quoting is enough.
-                     (delve-query--quote-strings id-list ", " nil))))))
+  (delve-query-do-super-query
+   (concat delve-query--super-query
+           (format "HAVING id IN (%s) ORDER BY title"
+                   ;; No need for SQL wildcards here;
+                   ;; simple quoting is enough.
+                   (delve-query--quote-strings id-list ", " nil)))))
 
 
 ;; TODO Who calls this function, do we need error handling?
