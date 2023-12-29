@@ -1643,9 +1643,11 @@ and removed, and a list of messages to display."
               :msgs msgs)))))
 
 (defun delve--key--refresh (ewoc &optional prefix)
-  "Sync all Zettel with the DB and re-insert Query items.
-With PREFIX, do not update Query items. Instead, force sync all
-marked Zettel items or, if none is marked, the zettel at point.
+  "Sync all Zettels with the DB and re-insert query items.
+With PREFIX, do not update the query items and force sync all
+marked Zettel, or, if none is marked, the Zettel at point. Think
+of PREFIX as a way to \='focus' on the marked Zettels only,
+ignoring any queries and unmarked Zettels.
 
 EWOC is the buffer's list object."
   (interactive (list lister-local-ewoc current-prefix-arg))
