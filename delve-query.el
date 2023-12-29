@@ -253,27 +253,6 @@ Optionally restrict to those nodes with an id in IDS."
                      ;; simple quoting is enough.
                      (delve-query--quote-strings id-list ", " nil))))))
 
-;; TODO Add tests
-(defun delve-query-missing-nodes (id-list nodes)
-  "Return those IDs from ID-LIST which are not in NODES."
-  (unless (eq (length id-list) (length nodes))
-    (-difference (-uniq (-map #'org-roam-node-id nodes))
-                 (-uniq id-list))))
-
-;; TODO Replace delve-query-nodes-by-id with this fn where appropriate
-(defun delve-query--msg-sync-success (id-list nodes)
-  "Give user feedback if querying ID-LIST did not return all nodes.
-NODES is the list of Org Roam nodes returned by querying ID-LIST."
-  (let ((msg (cond
-              ((null nodes)
-               "No matching nodes found.")
-              ((delve-query-missing-nodes id-list nodes)
-               "Some nodes could not be found.")
-              (t nil))))
-    (when msg
-      ;; TODO If in a Delve buffer, tell the user which key to
-      ;; press.
-      (message (concat msg " Maybe the Delve buffer is out of sync?")))))
 
 ;; TODO Who calls this function, do we need error handling?
 (defun delve-query-node-by-id (id)
