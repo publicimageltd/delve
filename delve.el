@@ -1608,18 +1608,20 @@ Return the count of the inserted nodes."
 Sync all Zettels marked as `out-of-sync' and remove Zettels
 without corresponding Org Roam Nodes. With PREFIX, only sync the
 marked Zettels or, if none is marked, the Zettel at point. Return
-the number of nodes synced."
+a plist (:synced :removed :msgs) with the number of Zettels
+synced and removed, and a list of messages to display."
   (interactive (list lister-local-ewoc current-prefix-arg))
   ;; if prefixed, only use marked nodes
-  (let* ((pred (when (and prefix (delve--current-item-or-marked 'delve--zettel))
+  (let* ((msgs nil)
+         (pred (when (and prefix (delve--current-item-or-marked 'delve--zettel))
                  #'lister-node-marked-and-visible-p))
          (nodes (lister-collect-nodes ewoc :first :last pred))
          (zettels (-filter #'delve--zettel-p (-map #'lister-node-get-data nodes))))
     ;; Update the Org Roam DB
     (cl-dolist (file (-uniq (-map #'delve--zettel-file zettels)))
       (when-let ((buf (get-file-buffer file)))
-          (when (buffer-modified-p buf)
-            (message "Delve: Buffer visiting %s has been modified, DB might not be up to date" file)))
+        (when (buffer-modified-p buf)
+          (setq msgs (cons (format "Delve: Buffer visiting %s has been modified, DB might not be up to date" file) msgs))))
       (org-roam-db-update-file file))
     ;; Build an ID-indexed hash table for further examinations:
     (let ((hash (delve-store--create-node-table (-map #'delve--zettel-id zettels))))
@@ -1640,7 +1642,9 @@ the number of nodes synced."
         (-let (((unlinked update) (-separate #'delve--out-of-sync-p unsynced-nodes)))
           (--each unlinked (lister-delete-at ewoc it))
           (delve--refresh-nodes ewoc update)
-          (length unsynced-nodes))))))
+          (list :synced (length update)
+                :removed (length unlinked)
+                :msgs msgs))))))
 
 (defun delve--key--refresh (ewoc &optional prefix)
   "Sync all Zettel with the DB and re-insert Query items.
@@ -1649,18 +1653,15 @@ marked Zettel items or, if none is marked, the zettel at point.
 
 EWOC is the buffer's list object."
   (interactive (list lister-local-ewoc current-prefix-arg))
-  (let* ((count-sync (delve--sync-items ewoc prefix))
-         (count-updates (if prefix 0 (delve--update-queries ewoc))))
-    (message (delve--capitalize
-              (concat
-               (when (> count-sync 0)
-                 (format "synced %d items" count-sync))
-               (when (and (> count-sync 0) (> count-updates 0))
-                 " and ")
-               (when (> count-updates 0)
-                 (format "re-inserted %d queried items" count-updates))
-               (when (= count-updates count-sync 0)
-                 "nothing to do"))))))
+  (-let* (((&plist :synced n-synced :removed n-removed :msgs msgs) (delve--sync-items ewoc prefix))
+          (n-updates (if prefix 0 (delve--update-queries ewoc)))
+          (info (concat (format "Synced %d items; inserted %d items; removed %d items"
+                                n-synced n-updates n-removed)
+                        (when msgs (format ". There were warnings (see %s)" messages-buffer-name)))))
+    (--each msgs (message it))
+    (message (if (and (not msgs) (= 0 n-updates n-synced n-removed))
+                 "Nothing to do"
+               info))))
 
 ;; Insert tagged subset of all nodes
 
