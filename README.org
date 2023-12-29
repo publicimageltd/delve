@@ -509,6 +509,10 @@ browse with =Delve=, with links, tags, and all.
 
 * Changelog
 
+** Current
+
+  - Add two-way syncing Delve <-> DB
+
 ** 0.9.5
 
  - Add intelligent update of queries 
