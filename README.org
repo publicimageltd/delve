@@ -512,6 +512,7 @@ browse with =Delve=, with links, tags, and all.
 ** Current
 
   - Add two-way syncing Delve <-> DB
+ - Refactor deletion
 
 ** 0.9.5
 
