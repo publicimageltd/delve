@@ -5,7 +5,7 @@
     (dash "2.20")
     (transient "0.3.7")
     (org-roam "2.2.2")
-    (lister "0.9.4"))
+    (lister "0.9.6"))
   :keywords '("org-roam" "hypermedia")
   :homepage "https://github.com/publicimageltd/delve")
 
