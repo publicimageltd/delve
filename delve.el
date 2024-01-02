@@ -255,16 +255,8 @@ entries."
 ;;;; -----------------------------------------------------------
 ;; * Small utilities
 
-;; this is a direct copy from s-capitalize
-(defun delve--capitalize (s)
-  "Convert S first word's first character to upper and the rest to lower case."
-  (declare (side-effect-free t))
-  (concat (upcase (substring s 0 1)) (downcase (substring s 1))))
-
-;; * Debugging in the live environment
-
 (defun delve-reload ()
-  "Reload Delve."
+  "Reload Delve for debugging. Only use it if you know what you do."
   (interactive)
   (when (y-or-n-p "This will close all existing Delve buffers. Reload Delve? ")
     (let ((kill-buffer-query-functions nil))
@@ -274,8 +266,6 @@ entries."
     (unload-feature 'delve t)
     (require 'delve)
     (message "Loaded Delve version %s" delve-version)))
-
-;; * Assertions
 
 (defun delve--assert-buf (&optional buf-or-ewoc error-msg)
   "Cancel if BUF-OR-EWOC does not belong to a Delve buffer with an Ewoc.
@@ -294,6 +284,27 @@ optionally use ERROR-MSG."
              (not (null (buffer-local-value 'lister-local-ewoc buf))))
         (error (or error-msg "Function has to be called in a Delve buffer")))))
 
+
+(defun delve--ewoc-node-invalid-p (ewoc node)
+  "Return t if NODE is not a valid node in EWOC."
+  (or (null node)
+      (and (not (marker-buffer (ewoc-location node)))
+           (and (not (or (ewoc-next ewoc node)
+                         (ewoc-prev ewoc node)))))))
+
+(defmacro delve--save-outline (ewoc &rest body)
+  "In EWOC, unhide all items, execute BODY and restore visibility.
+Return the value returned by BODY."
+  (declare (indent 1) (debug (sexp body)))
+  (let ((nodes-var (gensym))
+        (res-var (gensym)))
+    `(let ((,nodes-var (lister-collect-nodes ,ewoc nil nil
+                                             (-partial #'lister--outline-invisible-p ,ewoc))))
+       (lister-outline-show-all ,ewoc)
+       (let ((,res-var (progn ,@body)))
+         (--each (-remove (-partial #'delve--ewoc-node-invalid-p ,ewoc) ,nodes-var)
+           (lister--outline-hide-show ,ewoc it it t))
+         ,res-var))))
 
 ;;; -----------------------------------------------------------
 ;;; * The Lister Mapper
@@ -1793,26 +1804,6 @@ collecting."
 
 ;; * Delete Items
 
-(defun delve--ewoc-node-invalid-p (ewoc node)
-  "Return t if NODE is not a valid node in EWOC."
-  (or (null node)
-      (and (not (marker-buffer (ewoc-location node)))
-           (and (not (or (ewoc-next ewoc node)
-                         (ewoc-prev ewoc node)))))))
-
-(defmacro delve--save-outline (ewoc &rest body)
-  "In EWOC, unhide all items, execute BODY and restore visibility.
-Return the value returned by BODY."
-  (declare (indent 1) (debug (sexp body)))
-  (let ((nodes-var (gensym))
-        (res-var (gensym)))
-    `(let ((,nodes-var (lister-collect-nodes ,ewoc nil nil
-                                             (-partial #'lister--outline-invisible-p ,ewoc))))
-       (lister-outline-show-all ,ewoc)
-       (let ((,res-var (progn ,@body)))
-         (--each (-remove (-partial #'delve--ewoc-node-invalid-p ,ewoc) ,nodes-var)
-           (lister--outline-hide-show ,ewoc it it t))
-         ,res-var))))
 
 (defun delve--delete-item (ewoc node)
   "In EWOC, delete NODE, taking care of indentation."
