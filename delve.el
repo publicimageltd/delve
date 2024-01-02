@@ -1635,7 +1635,8 @@ of warnings about unsaved buffers."
                                    (delve--get-preview-contents it))))))
       ;; Delete nodes with unlinked Zettels and update display:
       (-let (((unlinked update) (-separate #'delve--out-of-sync-p zettel-nodes)))
-        (--each unlinked (lister-delete-at ewoc it))
+        (delve--save-outline ewoc
+          (--each unlinked (delve--delete-item ewoc it)))
         (delve--refresh-nodes ewoc update)
         (list :synced (length update)
               :removed (length unlinked)
