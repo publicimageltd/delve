@@ -1792,66 +1792,56 @@ collecting."
 
 ;; * Delete Items
 
-(defun delve--key--multi-delete ()
-  "Delete all marked items or the single item at point.
-If a region is active, additionally delete all the items in the
-region.  Only delete the item at point if no region is active and
-no items are marked.  If any of the deleted items has a sublist,
-decrease the indentation of its subitems."
-  (interactive)
-  (let (hidden-nodes (n-decreased 0)
-        (ewoc lister-local-ewoc))
-    (delve--maybe-mark-region ewoc)
-    ;; If there are no marked items, mark the item at point:
-    (unless (lister-items-marked-p ewoc)
-      (lister-mark-unmark-at ewoc :point t))
-    ;; Count marked and items hidden via outline:
-    (let ((n-marked 0) (n-hidden 0)
-          prompt)
-      (lister-dolist-nodes (ewoc node)
-        (when (lister-node-marked-p node)
-          (cl-incf n-marked)
-          (when (lister--outline-invisible-p ewoc node)
-            (cl-incf n-hidden))))
-      ;; Ask the user:
-      (cl-labels ((item-s (n) (if (eq n 1) "item" "items")))
-        (setq prompt (cond
-                      ((eq n-hidden 0)        (format "Delete %d %s?" n-marked (item-s n-marked)))
-                      ((eq n-hidden n-marked) (format "Delete %d hidden %s?" n-marked (item-s n-marked)))
-                      (t                      (format "Delete %d visible %s and %d hidden %s?"
-                                                      (- n-marked n-hidden)
-                                                      (item-s (- n-marked n-hidden))
-                                                      n-hidden
-                                                      (item-s n-hidden))))))
-      (if (not (y-or-n-p prompt))
-          (user-error "Canceled")
-        ;; Temporarily remove outline:
-        (lister-outline-show-all ewoc)
-        ;; Decrease any sublists:
-        (cl-labels ((move-and-count (ewoc pos)
-                                    (lister-move-item-left ewoc pos)
-                                    (cl-incf n-decreased)))
-        (lister-walk-marked-nodes ewoc
-                                  (lambda (ewoc node)
-                                    (lister-with-sublist-below ewoc node beg end
-                                      ;; TODO Replace with (cl-incf n
-                                      ;; (lister-walk-nodes...))
-                                      ;; once new version is online
-                                      (lister-walk-nodes ewoc #'move-and-count beg end)))))
-        ;; Collect all hidden items
-        (setq hidden-nodes
-              (lister-collect-nodes ewoc nil nil
-                                    (apply-partially #'lister--outline-invisible-p ewoc)))
-        ;; Actually delete the items:
-        (lister-delete-marked-list ewoc)
-        ;; Re-hide what is still alive:
-        (cl-dolist (node hidden-nodes)
-          (and node
-               (lister--outline-hide-show ewoc node node t)))
-        ;; Show some info on buffer manipulations:
-        (if (and n-decreased (> n-decreased 0))
-            (message "Moved %d items to the left because their parent item has been deleted" n-decreased)
-          (message "Deleted %d items" n-marked))))))
+(defun delve--ewoc-node-invalid-p (ewoc node)
+  "Return t if NODE is not a valid node in EWOC."
+  (or (null node)
+      (and (not (marker-buffer (ewoc-location node)))
+           (and (not (or (ewoc-next ewoc node)
+                         (ewoc-prev ewoc node)))))))
+
+(defmacro delve--save-outline (ewoc &rest body)
+  "In EWOC, unhide all items, execute BODY and restore visibility.
+Return the value returned by BODY."
+  (declare (indent 1) (debug (sexp body)))
+  (let ((nodes-var (gensym))
+        (res-var (gensym)))
+    `(let ((,nodes-var (lister-collect-nodes ,ewoc nil nil
+                                             (-partial #'lister--outline-invisible-p ,ewoc))))
+       (lister-outline-show-all ,ewoc)
+       (let ((,res-var (progn ,@body)))
+         (--each (-remove (-partial #'delve--ewoc-node-invalid-p ,ewoc) ,nodes-var)
+           (lister--outline-hide-show ,ewoc it it t))
+         ,res-var))))
+
+(defun delve--delete-item (ewoc node)
+  "In EWOC, delete NODE, taking care of indentation."
+  (lister-with-sublist-below ewoc node beg end
+    (lister-walk-nodes ewoc #'lister-move-item-left beg end))
+  (lister-delete-at ewoc node))
+
+(defun delve--key--multi-delete (ewoc)
+  "Delete region, marked items or the single item at point.
+If a region is active, delete all marked items and the items in
+the region. Delete the item at point if no region is active and
+if no items are marked.
+
+Note that it is not possible to delete a full tree by just
+deleting its root item. Indented items (\='branches' in a
+tree-like structure) will be re-indented.
+
+EWOC is the buffer's lister object."
+  (interactive (list lister-local-ewoc))
+  (delve--maybe-mark-region ewoc)
+  (unless (lister-items-marked-p ewoc)
+    (lister-mark-unmark-at ewoc :point t))
+  (let* ((nodes (lister-collect-nodes ewoc nil nil #'lister-node-marked-and-visible-p))
+         (n (length nodes))
+         (item-s (if (= n 0) "item" "items")))
+    (if (not (y-or-n-p (format "Delete %d marked %s?" n item-s)))
+        (user-error "Canceled")
+      (delve--save-outline ewoc
+          (--each nodes #'delve--delete-item)
+        (message "Deleted %d %s" n item-s)))))
 
 ;; * Storing and reading buffer lists in a file
 

@@ -128,5 +128,94 @@ as its key and an integer count as value."
         (let ((delve-storage-paths tempdir))
           (expect (length (delve--storage-files)) :to-be 8))))))
 
+(describe "Deleting"
+  :var (ewoc)
+  (before-each
+    (setq ewoc nil)
+    (setq ewoc (lister-setup "*LISTER*" (lambda (x) (format "%S" x))))
+    (with-current-buffer (ewoc-buffer ewoc)
+      (setq-local lister-local-left-margin 0)))
+
+  (after-each
+    (kill-buffer (ewoc-buffer ewoc)))
+
+  (describe "delve--ewoc-node-invalid-p"
+    (it "returns t for a deleted node"
+      (lister-insert-at ewoc :first '(:eins :zwei :drei))
+      (let ((node (lister-get-node-at ewoc 0)))
+        (lister-delete-at ewoc 0)
+        (expect (delve--ewoc-node-invalid-p ewoc node) :to-be-truthy)))
+    (it "returns nil for a normal node"
+      (lister-insert-at ewoc :first '(:eins :zwei :drei))
+      (expect (--map (delve--ewoc-node-invalid-p ewoc
+                                                 (lister-get-node-at ewoc it))
+                     '(0 1 2))
+              :to-equal '(nil nil nil)))
+    (it "returns t for a nil value"
+      (expect (delve--ewoc-node-invalid-p ewoc nil) :to-be-truthy)))
+
+  (describe "delve--delete-item"
+    (it "deletes a single node"
+      (lister-insert-at ewoc :first :test-data)
+      (let ((node (lister-get-node-at ewoc :first)))
+        (delve--delete-item ewoc node)
+        (expect (lister-get-list ewoc) :to-be nil)))
+    (it "reindents a subtree"
+      (lister-insert-list-at ewoc :first '(:top-node (:indented-node :indented-node)))
+      (let ((node (lister-get-node-at ewoc :first)))
+        (delve--delete-item ewoc node)
+        (expect (lister-get-list ewoc) :to-equal '(:indented-node :indented-node))
+        (expect (lister-get-level-at ewoc 0) :to-be 0)
+        (expect (lister-get-level-at ewoc 1) :to-be 0)))
+    (it "reindents a nested subtree"
+      (lister-insert-list-at ewoc :first '(:top-node (:second-top-node (:indented-node :indented-node))))
+      (let ((node (lister-get-node-at ewoc 1)))
+        (delve--delete-item ewoc node)
+        (expect (lister-get-list ewoc) :to-equal '(:top-node (:indented-node :indented-node)))
+        (expect (lister-get-level-at ewoc 0) :to-be 0)
+        (expect (lister-get-level-at ewoc 1) :to-be 1)
+        (expect (lister-get-level-at ewoc 2) :to-be 1)))
+    (it "deletes a nested item"
+      (lister-insert-list-at ewoc :first '(:top-node (:second-top-node) :node-2 :node-3))
+      (let ((node (lister-get-node-at ewoc 1)))
+        (delve--delete-item ewoc node)
+        (expect (lister-get-list ewoc) :to-equal '(:top-node :node-2 :node-3))
+        (expect (lister-get-level-at ewoc 0) :to-be 0))))
+
+  (describe "delve--save-outline"
+    (it "unhides all nodes within its body"
+      (let ((nested-list '(:top-node (:level-1-parent (:hidden-item :hidden-item) :level-1-item))))
+        (lister-insert-list-at ewoc :first nested-list)
+        (lister-outline-hide-sublist-below ewoc 1) ;; :level-1-parent
+        (delve--save-outline ewoc
+          (expect (-map (-partial #'lister--outline-invisible-p ewoc)
+                        '(0 1 2 3 4))
+                  :to-equal '(nil nil nil nil nil)))))
+    (it "restores previous state after exiting body"
+      (let ((nested-list '(:top-node (:level-1-parent (:hidden-item :hidden-item) :level-1-item))))
+        (lister-insert-list-at ewoc :first nested-list)
+        (lister-outline-hide-sublist-below ewoc 1) ;; :level-1-parent
+        (delve--save-outline ewoc)
+        (expect (-map (-partial #'lister--outline-invisible-p ewoc)
+                      '(0 1 2 3 4))
+                :to-equal '(nil nil t t nil))))
+    (it "ignores deleted nodes when restoring visibility state"
+      (let ((nested-list '(:top-node (:level-1-parent (:hidden-item :hidden-item) :level-1-item))))
+        (lister-insert-list-at ewoc :first nested-list)
+        (lister-outline-hide-sublist-below ewoc 1) ;; :level-1-parent
+        (delve--save-outline ewoc
+          (lister-delete-at ewoc 2))
+        (expect (-map (-partial #'lister--outline-invisible-p ewoc)
+                      '(0 1 2 3))
+                :to-equal '(nil nil t nil))))
+    (it "returns the result of BODY"
+      (lister-insert-list ewoc :first '(:item))
+      (expect (delve--save-outline ewoc :a-value) :to-be :a-value))
+    (it "can be called with an empty list"
+      (expect (delve--save-outline ewoc) :not :to-throw))))
+
+
+
+
 (provide 'delve-test)
 ;;; delve-test.el ends here
