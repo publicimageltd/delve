@@ -1831,17 +1831,21 @@ tree-like structure) will be re-indented.
 
 EWOC is the buffer's lister object."
   (interactive (list lister-local-ewoc))
-  (delve--maybe-mark-region ewoc)
-  (unless (lister-items-marked-p ewoc)
-    (lister-mark-unmark-at ewoc :point t))
+  (let ((selection :marked))
+    (delve--maybe-mark-region ewoc)
+    (unless (lister-items-marked-p ewoc)
+      (setq selection :at-point)
+      (lister-mark-unmark-at ewoc :point t))
   (let* ((nodes (lister-collect-nodes ewoc nil nil #'lister-node-marked-and-visible-p))
          (n (length nodes))
-         (item-s (if (= n 0) "item" "items")))
-    (if (not (y-or-n-p (format "Delete %d marked %s?" n item-s)))
+         (item-s (if (= n 1) "item" "items")))
+    (if (not (y-or-n-p (if (eq selection :marked)
+                           (format  "Delete %d marked %s?" n item-s)
+                         "Delete item at point?")))
         (user-error "Canceled")
       (delve--save-outline ewoc
-          (--each nodes #'delve--delete-item)
-        (message "Deleted %d %s" n item-s)))))
+          (--each nodes (delve--delete-item ewoc it)))
+      (message "Deleted %d %s" n item-s)))))
 
 ;; * Storing and reading buffer lists in a file
 
