@@ -1,8 +1,8 @@
 #+TITLE: delve.el
 
-**  So what is Delve?
+** So what is Delve?
 
-=Delve= (currently version =0.9.5=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
+=Delve= (currently version =0.9.6=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
 provides tools to collect, inspect and edit Org Roam Nodes in a
 separate application buffer. It helps you to quickly establish and
 maintain a project-specific subset of Org Roam Nodes, e.g. when
@@ -15,14 +15,6 @@ itself.
 Here's a slightly outdated gif:
 
 [[./screenshots/delve-intro-tour.gif]]
-
-*Slightly Breaking Change*: As of v =0.9.4=, the [[#Storing collections in files][storage system]] has
-changed. Previously, =Delve= storage files had only been accepted in a
-special user directory relative to the Emacs root directory. The new
-system accepts multiple storage directories. Since all storage files
-will be recognized by their extension =.delve=, you must change all
-existing storages by renaming the files. There is an interactive
-function to automate that; see [[#storing-collections-in-files][this section]].
 
 ** Table of Contents
  - [[#feature-list][Quick overview: Features]]
@@ -41,44 +33,53 @@ function to automate that; see [[#storing-collections-in-files][this section]].
 
 Presently, development is mostly aiming at stabilizing the current
 basic set of features and covering the present functionality with
-automated tests.
+automated tests. 
+
+The one big feature still lacking, in my view, is a decent =undo=
+function. I'm staring at that goal intensively each time I work on the
+repo for some other reasons, and I hope the relevant code will thus
+materialize itself. Until then, =Delve= will not be added to MELPA yet.
 
 * Feature List
 
- - =Dashboard= with customizable queries for quick access (and overview)
-   of nodes with certain tags and of nodes with no links.
+ - Provide a =Dashboard= with customizable queries for quick access (and
+   overview) of nodes with certain tags and of nodes with no links.
  - Sort any list with a spiffy interactive transient menu.
- - Insert or delete nodes interactively from the =Delve= buffer, or from
-   any Org Roam file using =delve-minor-mode=.
- - Re-arrange nodes manually by moving them around, or by creating
-   hierarchical trees.
- - Copy and paste Delve nodes individually, by marking them or simply
-   using transient regions.
- - Yank copied Zettel into Org buffers as links.
- - Preview a node in =Delve= for a rough glance at the content of a node
+ - Insert or delete Org Roam nodes interactively in the =Delve= buffer,
+   or add them directly from any open Org Roam file using
+   =delve-minor-mode=.
+ - Re-arrange nodes manually by moving them around or by creating
+   hierarchical trees (outlines).
+ - Copy and paste Delve nodes.
+ - Yank copied Zettel into Org buffers (they will be rendered as
+   links),
+ - Preview an Org Roam node in =Delve= for a rough glance at its content
    without having to leave the collection buffer.
  - Toggle between a short node view and a more extended one.
  - Edit the node's tags from within the =Delve= buffer without leaving it.
- - Insert backlinks or fromlinks of a specific node.
- - Hide away nodes by creating "piles".
- - Move marked nodes into a new collection.
+ - Add backlinks or 'fromlinks' of a specific node into the current
+   =Delve= buffer.
+ - Hide away nodes by creating "piles". I do not like this feature and
+   will most likely remove it in =1.0=.
+ - Move nodes into a new collection.
  - Bookmark stored collections for quick access.
 
 * Installation
 
 =Delve= requires =lister=, which is available on Melpa. =Delve= itself,
-however, is not (yet?) on Melpa. For the time being, you will have to
+however, is not yet on Melpa. For the time being, you will have to
 install it manually.
 
 =Delve= is currently following the =org-roam= source without taking care
-of the releases. If there is a DB error or something similar, consider
-updating =org-roam= from source even if there is not a new official
-release yet.
+of the releases. The only 'strong' dependency is the DB scheme used by
+Org Roam, which has to conform to the Org Roam scheme. If there is a
+DB error or something similar, thus consider updating =org-roam= from
+source even if there is not a new official release yet.
 
 =Delve= profits from =all-the-icons=. If it is installed, items will be
 displayed with nice icons. Install it from [[https://github.com/domtronn/all-the-icons.el][there]].
 
-Here's an example using =straight.el=:
+Here's an example installation using =straight.el=:
 
 #+begin_src emacs-lisp
   (use-package delve
@@ -90,7 +91,7 @@ Here's an example using =straight.el=:
     ;; set meaningful tag names for the dashboard query
     (delve-dashboard-tags '("Tag1" "Tag2"))
     :hook
-    (delve-mode . delve-compact-view)
+    (delve-mode . delve-compact-view) ; turn on compact view per default
     (delve-mode . hl-line-mode)   ; nicer to use with hl-line
     :bind
     ;; the main entry point, offering a list of all stored collections
@@ -107,49 +108,51 @@ Here's an example using =straight.el=:
 
 * The notion of a 'collection'
 
-The core idea of Delve is to allow you to add stuff to "collections",
-and to edit those. A collection is a list of nodes, either stored in a
-file or currently visited in a =Delve= buffer. All commands which ask
-you to do something "with a collection", e.g. to add a node to a
-collection, first ask you to select the collection to act on. In these
-cases, you can always choose both an open =Delve= buffer or a
-storage file. Selecting a storage file effectively causes the file to
-be read in a new buffer, reading it 'on the fly'.
+The core idea of =Delve= is to add stuff to editable "collections". A
+collection is a list of Org Roam nodes, and it can be stored in a file
+or be visited in a =Delve= buffer. All commands which ask you to do
+something "with a collection", e.g. to add a node to a collection,
+first ask you to select the collection to act on. In these cases, you
+can always choose either an open =Delve= buffer or a storage file to act
+on. Selecting a storage file effectively causes the file to be read in
+a new buffer, reading it 'on the fly'.
 
 *Example*: Imagine you have a stored collection of nodes referring to
 the topic /Artificial Intelligence/. Then when visiting an Org Roam
 file, you find an interesting node which you would like to add to that
-collection. You press =M-n c= (=delve-minor-mode-collect=) and select the
-file which contains that collection. Now a new =Delve= buffer has been
-created in the background and the node at point been added to it. To
-explicitly visit that buffer, use =C-u f12= (=C-u M-x delve=).
+collection. You press =M-n c= (=delve-minor-mode-collect=) from within the
+file's buffer and select the =Delve= file which contains that collection
+on AI. Now a new =Delve= buffer has been created in the background and
+the node at point been added to it. To explicitly visit that buffer
+after adding the Org Roam node, use =C-u f12= (=C-u M-x delve=). Don't
+forget to save the modified collection to persist these changes.
 
 * Storing collections in files
 
-If you call =Delve= (=M-x delve=), it will offer you a list of all stored
-collections. This is useful e.g. when adding Org roam nodes to an
-existing collection.
+The top-level command =Delve= (=M-x delve=) a list of all collections,
+stored and currently open. This is useful e.g. when adding Org roam
+nodes to an existing collection.
 
 =Delve= tries to mimic Emacs's established behavior of storing buffers
 into files. To store a collection, save any =Delve= buffer with =M-x
 delve-save-buffer= (or =C-x s= from within a =Delve= buffer). To open a
-collection (visit it in a new buffer), respectively use =M-x
-delve-find-storage-file= (or =C-x f= from within a =Delve= buffer). To save
-a buffer which is already linked to a new file, use =M-x
+collection (that is, to visit it in a new buffer), respectively use
+=M-x delve-find-storage-file= (or =C-x f= from within a =Delve= buffer). To
+save a buffer which is already linked to a file, use =M-x
 delve-write-buffer= (or =C-x w= from within a =Delve= buffer).
 
 All storage files will be recognized by the file extension =.delve=. The
 extension can be changed by setting =delve-storage-suffix=.
 
 Once a buffer is associated with a file, the file name will be
-displayed in the header. There will be an asterisk displayed before
-the file name if the buffer content has been modified.
+displayed in the header. An asterisk indicates that the buffer content
+has been modified.
 
 The default storage directory is defined in the variable
 =delve-storage-paths=. It is initially set to a directory =delve-store=
-within the local emacs user directory, which will be created when you
-use the storage feature for the first time. But since it's Emacs, you
-can customize it:
+within the local emacs user directory. It will be created when you use
+the storage feature for the first time. But since it's Emacs, you can
+customize it:
 
 #+begin_src emacs-lisp
 ;; one file name -- one directory:
@@ -184,7 +187,7 @@ All nodes which refer to a file (and not to a subheading) look like that:
 
 Here the node has been created as a backlink from the node "Künstliche
 Intelligenz (AI)". If you press RET on the button linking to that
-original node, =Delve= will look for it and jump to it if it exists.
+original node, =Delve= will jump to it.
 
 The other type of nodes (i.e., headings) looks like that:
 
@@ -216,7 +219,7 @@ Use the usual nagivation commands.
    hide them outline-style.
  - If the current node hides a sublist, open it.
  - If there is no sublist, and the current item is a Zettel, insert
-   all backlinks and fromlinks as sublist.
+   all backlinks and fromlinks as a sublist.
  - If there is no sublist, and the current item is a query, execute
    the query and insert the results as a sublist.
  - If there is no sublist, and the current item is a a pile, insert
@@ -235,11 +238,11 @@ the command offers you to add that result into another collection.
 | v              | Toggle display of node (long view vs. short view with only basic infos) |
 | RET            | If on a node, toggle preview                                            |
 
-The preview buffer recognizes all id links in the previewed text and
-turns them into 'buttons'. Press RET or click on these buttonized
+The preview buffer recognizes all Org Roam links in the previewed text
+and turns them into 'buttons'. Press =RET= or click on these buttonized
 links to visit the node they are referring to. Press =i= on the links in
-the preview to directly insert the node referred to after the node at
-point.
+the preview to directly add the node referred to the current
+collection.
 
 *** Marking / unmarking nodes
 
@@ -294,17 +297,14 @@ There is currently no replacement for =yank-pop=.
 
 *** Refresh / Update
 
-| Command / Keys | Function                                           |
-|----------------+----------------------------------------------------|
-| g              | Update all nodes marked as "out of sync" (with a star) |
+| Command / Keys | Function                                      |
+|----------------+-----------------------------------------------|
+| g              | Sync all nodes                                |
 | C-u g          | Force update of marked nodes or node at point |
 
-Since 0.9.5, the update command has a special behavior in Dashboard
-buffers. If a query is open (e.g. a query for all Zettels with a
-certain tag), the update command inserts any Zettels matching the
-query which are currently not shown. This helps to keep the query
-output in sync with the database.
-
+Press =g= to sync all nodes with the Org Roam DB. =Delve= items which have
+no corresponding DB entry will be removed, queries will be updated.
+Use =C-u g= to just update the node at point (or some marked nodes).
 
 *** Piling Zettel
 
@@ -321,9 +321,12 @@ region.
 
 To insert a pile, either press =<TAB>= or =i=.
 
+Piling will most likely be removed in =1.0=.
+
 *** Insert headings
 Use =h= to insert a heading. A heading is just a simple text item which
 you can use to internally structure your nodes.
+
 *** Remote Editing of Org Roam Nodes 
 
 | Command / Keys | Function               |
@@ -349,11 +352,11 @@ sublist at point. If there is no sublist, the whole list is sorted.
 ** Delve Minor Mode
 
 If you enable the =delve-global-minor-mode=, a =delve-minor-mode= will be
-locally enabled when visting an Org Roam file. This binds some keys
-which facilitate 'collecting' stuff. All keys are on a transient prefix 
-which defaults to =M-n=. You can change the binding for this transient
-by setting the variable =delve-minor-mode-prefix-key= manually (or using
-customize).
+automatically enabled when visting an Org Roam file. This binds some
+keys which facilitate 'collecting' stuff. All keys are on a transient
+prefix defaultsing to =M-n=. You can change the binding for this
+transient by setting the variable =delve-minor-mode-prefix-key= manually
+(or using customize).
 
 #+begin_src emacs-lisp
   ;; set this /before/ loading Delve!, e.g. in the :init section of a
@@ -366,27 +369,29 @@ customize).
 =Delve= offers two distinct ways of collecting nodes, corresponding to
 different workflows. 
 
-One variant is that you collect nodes while browsing through your note
-files, that is, you visit =Org Roam= files and think 'Yes, that's
-interesting, I will use it later!' You want to copy this node into a
-list and then move on looking through your notes. For this, =Delve
-Minor Mode= commands which have the word =collect= in their function name
-are your friends. Per default, they add the nodes to the =last selected
-Delve buffer= in the background, not disturbing your evaluation of th
-nodes. 
+One variant is to *collect Org Roam nodes* while browsing through your
+note files. The imagined workflow is that you visit =Org Roam= files and
+think 'Yes, that's interesting, I will use it later!' Thus you copy
+this node into a list which remains in the background and move on
+looking through your notes. (Very much like "open tab in background"
+in web browsers).
 
-For these collecting commands, use prefix key (usually =C-u=) to
-finetune the selection of the target =Delve= buffer. If you call the
-command with /no/ prefix key (the default), =Delve= will use the last
-selected buffer or ask you to select one if there is none yet (e.g. by
-selecting a collection stored into a file). Using /one/ prefix (=C-u=)
-will unconditionally prompt you to select the target collection. Using
-/two/ prefixes (=C-u C-u=) will create a new buffer for you. Note that in
-this case, since you do not explicitly select these automatically
-generated buffer, it will not be recognized as the "last selected
-buffer" for the following operations.
+For this workflow, =Delve Minor Mode= commands which have the word
+=collect= in their function name are your friends. Per default, they add
+the nodes to the =last selected Delve buffer= in the background, not
+disturbing your evaluation of th nodes.
 
-The second variant is that you want to collect nodes in order to
+These collecting commands accept the prefix key (usually =C-u=) to
+finetune the selection of the target =Delve= buffer. Per default (no
+prefix), =Delve= uses the last selected buffer or asks you to select one
+if there is none yet. Using /one/ prefix (=C-u=) unconditionally prompts
+you to select the target collection. Using /two/ prefixes (=C-u C-u=)
+creates a new buffer for you. Note that in this case, since this
+automatically generated buffer remains in the background, it will not
+be recognized as the "last selected buffer" by the following
+operations.
+
+The second workflow supported is to *inspect nodes* in order to further
 explore their relations to other nodes within a =Delve= buffer. That is,
 you encounter an interesting node and think: 'Hey, I want to look at
 this node's backlinks, and their backlinks, and just generally check
@@ -395,53 +400,52 @@ immediately to the buffer in which you have just collected the nodes.
 Functions offering this kind of functionality have the word =inspect= in
 their function name. They add the nodes to an =automatically created
 Delve buffer= and then switch to it. Additionally, this buffer is
-marked as the "last selected buffer" so that all collection commands
-recognize it.
+always marked as the "last selected buffer" so that all further
+collection commands recognize it.
 
 *** Minor Mode Keys
 
-`M-n' opens a transient offering the user to either edit, inspect or
-collect the node at point. The functions finally reached through the
-transients can easily be bound separately. Have a look at how the
-transients are defined or post an issue.
+=M-n= opens a transient menu offering the user to either edit, inspect
+or collect the node at point. However, the functions finally reached
+through the transients can also be bound separately. Have a look at
+how the transients are defined or post an issue. It is planned to
+enable the collection keys also in =Org Roam Mode= buffers.
 
-For editing the node at point:
-
-| Command / Keys | Function                                                     |
-|----------------+--------------------------------------------------------------|
-| M-n e.         | Create ID link for the current heading                       |
-| M-n e+         | Add tag to the heading at point                              |
-| M-n e-         | Remove tag from the heading at point                         |
-
-For collecting the node at point:
+For *collecting* the node at point, use these commands:
 
 | Command / Keys | Function                                                     |
 |----------------+--------------------------------------------------------------|
-| M-n cn         | Add node at point to a Delve collection                      |
-| M-n ca         | Add all nodes of current Org Roam file to a Delve collection |
-| M-n cb         | Collect backlinks from current node                          |
-| M-n cf         | Find the node at point in currently open Delve buffers       |
+| M-n c n        | Add node at point to a Delve collection                      |
+| M-n c a        | Add all nodes of current Org Roam file to a Delve collection |
+| M-n c b        | Collect backlinks from current node                          |
+| M-n c f        | Find the node at point in currently open Delve buffers       |
 
-For inspecting:
+For *inspecting* nodes, these commands are available:
 
 | Command / Keys | Function                                                     |
 |----------------+--------------------------------------------------------------|
-| M-n in         | Add node to an automatically created collection and open it  |
-| M-n ia         | Inspect all nodes of the current Org Roam file               |
-| M-n ib         | Inspect backlinks                                            |
+| M-n i n        | Add node to an automatically created collection and open it  |
+| M-n i a        | Inspect all nodes of the current Org Roam file               |
+| M-n i b        | Inspect backlinks                                            |
 
+Furthermore, =delve-minor-mode= offers some convenience functions for
+editing the node at point, which are basically wrappers around the
+corresponding =Org Roam= and =Org Mode= functions:
 
-It is planned to enable the collection keys also in =Org Roam Mode=
-buffers (TODO).
+| Command / Keys | Function                                                     |
+|----------------+--------------------------------------------------------------|
+| M-n e .        | Create an ID link for the current heading                    |
+| M-n e +        | Add tag to the heading at point                              |
+| M-n e -        | Remove tag from the heading at point                         |
 
 * Customizations
 
 : delve-dashboard-queries
 
 A list of functions determining the initial dashboard queries (e.g.,
-for "TODO Items" or for tags. Each function must return a
-=delve--query= struct (which see). If this variable is set to nil, do
-not add any non-tag queries to the Dashboard.
+for "TODO Items" or for tags). Each function must return a
+=delve--query= struct (see the docstring). If this variable is set to
+=nil=, do not add any non-tag queries to the Dashboard.
 
 Default setting:
 
@@ -456,17 +460,19 @@ This adds:
  - A query for uninked items
 - A query for the 10 last modified items
 
+Please open an issue if you want any specific query to be added.
+
 : delve-dashboard-tags 
 
 List of strings (or of lists of strings), from which the initial
 Dashboard queries are built. E.g., with the setting =(setq
-delve-dashboard-tags '("relevant"))=; the Dashboard will have a query
+delve-dashboard-tags '("relevant"))=, the Dashboard will offer a query
 for all Delve nodes tagged with the tag =relevant=.
 
 : delve-last-modified-limit
 
 Number of nodes to be displayed in the pre-configured Dashboard query
-'last modified items'. Defaults to 20.
+'last modified items'.
 
 : delve-compact-view-shows-node-path
 
@@ -482,11 +488,10 @@ directory with tests. To run the automated tests, use:
 eldev test
 #+end_src
 
-Not eveything is covered by the tests. In particular interactive stuff
-is tested 'manually' (that is, not at all). For interactive testing,
-the repository ships with a live environment which does not interfere
-with your own local =Emacs= setup. From the root directory of the
-repository, just call:
+Not eveything is covered by the tests. In particular, interactive stuff
+is tested 'manually'. For interactive testing, the repository ships
+with a live environment which does not interfere with your own local
+=Emacs= setup. From the root directory of the repository, just call:
 
 #+begin_src bash
 bin/test-emacs 
@@ -496,23 +501,25 @@ The script will upgrade the dependencies in an isolated environment
 and then start a new =Emacs= instance with only =Delve=, =Org Roam= and some
 basic packages for completion installed.
 
-If you want to have nice icons in the live environment, you will have
-to manually install the icons on your system using =M-x
+If you want to have nice icons in the live environment, you have to
+manually install the icons on your system using =M-x
 all-the-icons-install-fonts= from within the testing =Emacs= instance.
-Note that these icons are installed system-wide and are not restricted
-to the test environment. In general, however, this should not be a
-problem, since all this command does is to install the fonts and to
-update the font cache.
+Note that even though you install them from your test instance, these
+icons will be installed system-wide and will not be restricted to the
+test environment. In general, however, this should not be a problem,
+since all this command does is to install the fonts and to update the
+font cache.
 
-The testing enviroment provides a small non-sense Zettelkasten to
-browse with =Delve=, with links, tags, and all.
+The testing enviroment provides a small pseudo Org Roam Zettelkasten
+to browse, with links, tags, and all.
 
 * Changelog
 
-** Current
+** 0.9.6.
 
   - Add two-way syncing Delve <-> DB
  - Refactor deletion
+ - Sync with lister v0.9.6.
 
 ** 0.9.5
 
