@@ -85,15 +85,14 @@ Dashboard."
 
 (defcustom delve-storage-paths (concat (file-name-directory user-emacs-directory)
                                          "delve-store")
-  "Paths to for default directories to store Delve buffers in.
+  "Default paths to store Delve buffers in.
 When the user is prompted for reading a storage, all Delve stores
 found here will be offered as default choices.  It is, however,
 not obligatory to store files in these locations.  Storages
 located elsewhere just don't show up in the prompt.
 
 When writing a Delve list to a new storage file, the first (or
-only) value of this variable is initially used as the default
-directory.
+only) value of this variable is used.
 
 The value of this variable can be either a file path, a list of
 file paths, or nil.
@@ -112,10 +111,9 @@ of default storage paths."
   :type  'string)
 
 (defcustom delve-display-path t
-  "Turn on display of paths before the node's title.
-If non-nil, insert the file title and the outline path, if they
-exist, before the node's title.  This can cause quite long
-entries."
+  "Add outline path to the node's title.
+If non-nil, add the file title and the node's Org outline path in
+front of the title. This can cause quite long entries."
   :group 'delve
   :type 'boolean)
 
@@ -125,7 +123,7 @@ entries."
   :type 'integer)
 
 (defcustom delve-compact-view-shows-node-path t
-  "If set, also show complete node path in compact view."
+  "If set, show the complete node path in compact view."
   :group 'delve
   :type 'boolean)
 
@@ -135,7 +133,7 @@ entries."
   "Current version of delve.")
 
 (defvar delve--no-icons nil
-  "If bound, do not use any icons when creating output.")
+  "*INTERNAL* If bound, do not use any icons when creating output.")
 
 (defvar delve-dashboard-name "Dashboard"
   "Name of the dashboard buffer.")
@@ -149,11 +147,10 @@ entries."
 (defvar delve--last-storage-dir nil
   "Directory from last used storage file.")
 
-
 ;; * Buffer Local Variables
 
 (defvar-local delve-local-storage-file nil
-  "Associated local storage file.")
+  "Local storage file for a Delve buffer.")
 
 (defun delve-get-storage-file (buf)
   "Get the buffer local storage file for BUF."
@@ -163,7 +160,9 @@ entries."
   "First line of the local Lister header.")
 
 (defvar-local delve-local-compact-view nil
-  "Whether to display the nodes in a compact way.")
+  "*INTENRAL* Display the nodes in a compact way.
+Do not set this variable directly, use `delve-compact-view-mode'
+instead.")
 
 ;; * Faces
 
@@ -256,7 +255,8 @@ entries."
 ;; * Small utilities
 
 (defun delve-reload ()
-  "Reload Delve for debugging. Only use it if you know what you do."
+  "*INTERNAL* Reload Delve for debugging.
+Only use it if you know what you do."
   (interactive)
   (when (y-or-n-p "This will close all existing Delve buffers. Reload Delve? ")
     (let ((kill-buffer-query-functions nil))
@@ -268,12 +268,12 @@ entries."
     (message "Loaded Delve version %s" delve-version)))
 
 (defun delve--assert-buf (&optional buf-or-ewoc error-msg)
-  "Cancel if BUF-OR-EWOC does not belong to a Delve buffer with an Ewoc.
-Check if the buffer belonging to BUF-OR-EWOC is a Delve buffer
-and has a local Ewoc object.  BUF-OR-EWOC can be nil, a buffer
-object or an ewoc object.  If BUF-OR-EWOC is nil, check the
-current buffer.  When canceling, display standard error or
-optionally use ERROR-MSG."
+  "Raise an error if BUF-OR-EWOC does not belong to a Delve buffer.
+BUF-OR-EWOC can be nil, meaning to check the current buffer, or a
+buffer or an Ewoc object.
+
+In case of a negative result, raise an error with ERROR-MSG, if
+passed, or use a standardized error message."
   (let ((buf (if (not buf-or-ewoc)
                  (current-buffer)
                (cl-etypecase buf-or-ewoc
@@ -314,8 +314,8 @@ Return the value returned by BODY."
 
 (defun delve--type-as-string (delve-item)
   "Return a string or icon representing the type of DELVE-ITEM.
-If the global variable `delve--no-icons' is bound, always only
-return strings."
+If the global variable `delve--no-icons' is bound, always return
+strings."
   (pcase-let ((`(,s ,icon-name)
               (pcase (type-of delve-item)
                 ('delve--query   (list "QUERY" "search"))
@@ -342,9 +342,14 @@ return strings."
       "No file or title"))
 
 (defun delve--get-button (label &rest properties)
-  "Make a button LABEL in a temporary buffer and return it as a string.
+  "Return a propertized string with the button labeled LABEL.
 Pass PROPERTIES to `insert-text-button', which creates the
-button."
+button.
+
+Example:
+
+  \(delve--get-button tag
+    \\='action \(lambda \(_\) \(message \"Do something with %s\" tag\)\)\)\)"
   (declare (indent 1))
   (with-temp-buffer
     (apply #'insert-text-button label properties)
@@ -358,11 +363,6 @@ Optionally add string PREFIX to each non-nil item."
       (setq strings (--map (concat prefix it) strings)))
     (string-join strings separator)))
 
-(defun delve--tag-button (tag)
-  "Return TAG as a button object."
-  (delve--get-button tag
-    'action (lambda (_) (message "Do something with %s" tag))))
-
 ;; TODO Change that to buttons which open all links with that tag in a
 ;; new buffer?
 (defun delve--tags-as-string (node)
@@ -372,9 +372,9 @@ Optionally add string PREFIX to each non-nil item."
     "No tags."))
 
 (defun delve--collect-link (link)
-  "In an org mode buffer, collect data for buttonizing LINK.
+  "In an Org mode buffer, collect data for buttonizing LINK.
 LINK has to be a LINK element as returned by
-`org-element-parse-buffer'."
+`org-element-parse-buffer'"
   (when (equal (org-element-property :type link) "id")
     (list
      :beg    (copy-marker (org-element-property :begin link))
@@ -389,6 +389,7 @@ LINK has to be a LINK element as returned by
 (defun delve--buttonize-link (link-plist)
   "In current buffer, replace link LINK-PLIST with a button.
 For the format of LINK-PLIST, see `delve--collect-link'."
+  ;; TODO Use -let with &plist destructuring
   (let ((beg    (plist-get link-plist :beg))
         (end    (plist-get link-plist :end))
         (link   (plist-get link-plist :link))
@@ -432,13 +433,14 @@ Return the prepared string."
         (when (> (count-lines (point-min) (point-max))
                  (/ (window-body-height) 3))
           (add-text-properties (point-min) (point-max)  '(field t)))
-        ;; now buttonize the linke:
+        ;; now buttonize the links:
         (cl-dolist (link links)
           (delve--buttonize-link link)))
       (buffer-string))))
 
 (defun delve--zettel-strings (zettel)
   "Return a list of strings representing ZETTEL."
+  ;; TODO Refactor: split in two subfunctions
   (let ((main-item-list
          ;; Compact View - one line only::
          (if delve-local-compact-view
@@ -559,9 +561,9 @@ Return the prepared string."
                             (delve--zettel  (delve--zettel-strings item))
                             (delve--pile    (delve--pile-strings item))
                             (delve--query   (delve--query-strings item))
-                            ;; always check the basic type "delve--note" last!
                             (delve--heading (delve--heading-strings item))
                             (delve--info    (delve--info-strings item))
+                            ;; always check the basic type "delve--note" last!
                             (delve--note    (delve--note-strings item))
                             (t (list "no printer available for that item type")))
                           (list (format "Error: Mapper for item type %s returned NIL" item)))))
@@ -623,16 +625,17 @@ Optionally set the value to the directory part of LAST-FILE-NAME."
 
 (defun delve--all-files-in-paths (paths &optional suffix)
   "Return all files ending in SUFFIX within list of PATHS.
-Returns the full paths (expanded file names)."
-  (let* ((the-suffix (or suffix "")))
+Return the full paths (expanded file names)."
+  (let* ((the-suffix (or suffix ""))
+         (regexp (rx (and string-start (* (not "."))
+                          (literal the-suffix) string-end))))
     ;; delete dups in case there's a "." in the list
-    (-uniq (-flatten (--map (directory-files it t (rx (and string-start
-                                                           (* (not "."))
-                                                           (literal the-suffix) string-end)))
-                            paths)))))
+    (-uniq
+     (-flatten
+      (--map (directory-files it t regexp) paths)))))
 
 (defun delve--all-file-extensions (files)
-  ;; DONT TEST, will be removed in 1.1
+  ;; DONT TEST, will be removed in 1.0
   "Return an aggregate list counting all extensions in FILES.
 The result is an alist with the file extension (without period)
 as its key and an integer count as value."
@@ -640,7 +643,7 @@ as its key and an integer count as value."
          (-group-by #'file-name-extension files)))
 
 (defun delve-convert-storage-directory (delve-store)
-  ;; DONT TEST, will be removed in 1.1
+  ;; DONT TEST, will be removed in 1.0
   "Change all files in DELVE-STORE to conform to `delve-storage-suffix'.
 Prompt the user before doing any real changes.  If DELVE-STORE is
 not provided, also prompt the user for the directory to be
@@ -685,6 +688,8 @@ does not yet exist, create it."
 (defun delve--storage-p (file-path)
   "Check if FILE-PATH represents an existing Delve storage file.
 Just check the existence of the file, don't look at the contents."
+;; TODO this function might modify the file system by using
+;; `delve--storage-files'; change it to a pure function
   (-contains-p (delve--storage-files)
                (expand-file-name file-path)))
 
@@ -770,6 +775,8 @@ Return the buffer object."
 
 (defun delve-unopened-storages ()
   "Return all Delve storage files which are not visited yet."
+  ;; TODO Use ->
+  ;; TODO Write tests
   (-map #'abbreviate-file-name
         (-difference (delve--storage-files)
                      (-map #'expand-file-name
