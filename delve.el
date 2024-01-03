@@ -284,7 +284,7 @@ optionally use ERROR-MSG."
              (not (null (buffer-local-value 'lister-local-ewoc buf))))
         (error (or error-msg "Function has to be called in a Delve buffer")))))
 
-
+;; TODO Move this to lister
 (defun delve--ewoc-node-invalid-p (ewoc node)
   "Return t if NODE is not a valid node in EWOC."
   (or (null node)
@@ -292,6 +292,7 @@ optionally use ERROR-MSG."
            (and (not (or (ewoc-next ewoc node)
                          (ewoc-prev ewoc node)))))))
 
+;; TODO Move this to lister
 (defmacro delve--save-outline (ewoc &rest body)
   "In EWOC, unhide all items, execute BODY and restore visibility.
 Return the value returned by BODY."
