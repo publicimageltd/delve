@@ -1636,7 +1636,7 @@ of warnings about unsaved buffers."
          (zettel-nodes (--filter (delve--zettel-p (lister-node-get-data it)) nodes))
          (zettels (-map #'lister-node-get-data zettel-nodes)))
     ;; Update the Org Roam DB
-    (cl-dolist (file (-uniq (-map #'delve--zettel-file zettels)))
+    (cl-dolist (file (-filter #'file-exists-p (-uniq (-map #'delve--zettel-file zettels))))
       (when-let ((buf (get-file-buffer file)))
         (when (buffer-modified-p buf)
           (setq warnings (cons (format "Delve: Buffer visiting %s has been modified, DB might not be up to date" file) warnings))))
