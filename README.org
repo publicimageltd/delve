@@ -1,5 +1,16 @@
 #+TITLE: delve.el
 
+-------------
+
+* IMPORTANT
+
+*This repository is archived*
+
+I haven't worked on it anymore for more than a year, and I don't feel that the overall UI approach was a good idea. Plus, I feel bad at feeding Github's AI; I might be switching to some other public repository.
+
+------------
+
+
 ** So what is Delve?
 
 =Delve= (currently version =0.9.6=) is a package on top of [[https://github.com/org-roam/org-roam][Org Roam]]. It
